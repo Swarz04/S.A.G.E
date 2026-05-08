@@ -1,0 +1,11 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run S.A.G.E. Login",
+            "request": "launch",
+            "mainClass": "it.unibo.sage.view.MainFrame"
+        }
+    ]
+}
