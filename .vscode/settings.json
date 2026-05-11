@@ -5,5 +5,25 @@
     "java.project.outputPath": "bin",
     "java.project.referencedLibraries": [
         "lib/**/*.jar"
+    ],
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "pdflatex",
+            "tools": [
+                "pdflatex"
+            ]
+        }
+    ],
+    "latex-workshop.latex.tools": [
+        {
+            "name": "pdflatex",
+            "command": "pdflatex",
+            "args": [
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "%DOC%"
+            ]
+        }
     ]
 }

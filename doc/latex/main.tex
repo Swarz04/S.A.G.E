@@ -1,0 +1,535 @@
+% main.tex - Struttura del report di progetto per S.A.G.E.
+% Compilare con: pdflatex main.tex oppure latexmk -pdf main.tex
+
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+% Stile "Viola Professionale" per SQL
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codeblue}{rgb}{0,0,0.8}
+
+\lstset{
+    language=SQL,
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codepurple}\bfseries,
+    numberstyle=\tiny\color{gray},
+    stringstyle=\color{orange},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    morekeywords={LAST_INSERT_ID, ON, DUPLICATE, KEY, UPDATE, LIMIT, COALESCE, NULLIF}
+}
+\setlist{nosep, leftmargin=*}
+
+% Dati del frontespizio
+\newcommand{\ProjectTitle}{S.A.G.E. - Sistema di Analisi e Gestione Economica}
+\newcommand{\CourseName}{Corso: Basi di Dati}
+\newcommand{\AcademicYear}{Anno accademico 2025/2026}
+\newcommand{\GroupMembers}{Antonio Scharmuller \\ Riccardo Dallacasa}
+\newcommand{\StudentNumbers}{Matricola 000000 \\ Matricola 000000}
+\newcommand{\Emails}{antonio.scharmuller@studio.unibo.it \\ riccardo.dallacasa@studio.unibo.it}
+\newcommand{\Supervisor}{Docente: Nome Cognome}
+\newcommand{\UniversityLogo}{logo-unibo.png}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+    {\Huge\bfseries \ProjectTitle \\[1.5em]}
+    \vfill
+    {\Large \CourseName \\}
+    {\Large \AcademicYear \\}
+    \vspace{1.5cm}
+    {\large\bfseries Componenti del gruppo}\\
+    \GroupMembers\\[1em]
+    {\large\bfseries Matricole}\\
+    \StudentNumbers\\[1em]
+    {\large\bfseries Email universitarie}\\
+    \Emails\\[1.5em]
+    {\large \Supervisor}\\[2em]
+    % Inserire il logo Unibo nella stessa cartella del file .tex o aggiornare il percorso
+    % \includegraphics[height=3cm]{\UniversityLogo}
+    \vfill
+    {\large \today}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Introduzione}
+\subsection{Obiettivo del progetto}
+La proposta iniziale di S.A.G.E. è la realizzazione di un sistema per la gestione e l'analisi delle finanze personali universitarie. L'obiettivo è supportare lo studente nella registrazione, organizzazione e analisi delle proprie transazioni economiche, offrendo strumenti per classificazione, pianificazione e monitoraggio nel tempo.
+
+\subsection{Descrizione generale del sistema}
+S.A.G.E. è progettato come un'applicazione multiutente in cui ogni studente dispone di un portafoglio finanziario personale isolato. Il sistema consente la registrazione di spese e entrate, la categorizzazione tramite categorie e tag, la definizione di budget temporali e la gestione di documenti digitali associati alle transazioni.
+
+\subsection{Ambito del sistema}
+L'ambito del progetto comprende:
+\begin{itemize}
+    \item gestione individuale del portafoglio economico personale;
+    \item classificazione delle transazioni tramite categorie gerarchiche e tag trasversali;
+    \item gestione dei budget mensili e per categoria;
+    \item supporto per spese ricorrenti come modelli astratti;
+    \item associazione di documenti digitali alle spese;
+    \item analisi e reportistica aggregata.
+\end{itemize}
+Non sono previste funzionalità di condivisione di spese o conti comuni tra utenti.
+
+\subsection{Utenti e ruoli previsti}
+Il sistema prevede due ruoli principali:
+\begin{itemize}
+    \item \textbf{Utente}: gestisce le proprie transazioni, categorie e tag personali, definisce budget, registra documenti e visualizza report finanziari.
+    \item \textbf{Amministratore}: gestisce gli elementi globali del sistema (categorie, tag, fonti) e analizza dati aggregati anonimi senza accedere ai dettagli finanziari personali degli utenti.
+\end{itemize}
+
+\subsection{Tecnologie utilizzate}
+DBMS: MySQL\\
+Linguaggio applicativo: Java\\
+Interfaccia: Java Swing\\
+Connessione DB: JDBC
+
+\subsection{Scelte progettuali preliminari}
+Fin dalla fase iniziale sono state adottate alcune scelte progettuali rilevanti: l'isolamento dei dati finanziari tra utenti, la distinzione tra elementi di classificazione globali e personali e la memorizzazione dei documenti digitali tramite percorso file anziché tramite BLOB nel database. Tali decisioni mirano a garantire privacy, personalizzazione e maggiore semplicità di gestione del DBMS.
+
+\section{Analisi dei requisiti}
+\subsection{Requisiti in linguaggio naturale}
+Il sistema deve supportare la registrazione e il monitoraggio dei movimenti finanziari personali di uno studente universitario, distinguendo tra spese ed entrate. Ogni transazione deve avere importo, data e descrizione. Le spese devono essere associate a una categoria, mentre le entrate devono essere associate a una fonte. Il sistema deve permettere la definizione di budget mensili e per categoria, nonché la gestione di spese ricorrenti tramite un modello astratto. Deve inoltre conservare il percorso dei documenti associati alle spese senza memorizzare i file nel database.
+
+\subsection{Analisi delle ambiguità e decisioni progettuali}
+\begin{longtable}{p{3.5cm} p{5cm} p{6cm}}
+\toprule
+\textbf{Termine/Concetto} & \textbf{Criticità/Ambiguità} & \textbf{Decisione progettuale} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Termine/Concetto} & \textbf{Criticità/Ambiguità} & \textbf{Decisione progettuale} \\
+\midrule
+\endhead
+Periodo temporale & Come associare una spesa a un budget mensile? & Il periodo è derivato dalla data della transazione. L'entità \textsc{PERIODO} serve per la storicizzazione dei budget. \\
+Spesa ricorrente & Generazione dei record nel DB? & È un modello astratto; la logica Java crea nuove \textsc{SPESE} a partire dai parametri del modello. \\
+Privacy/Admin & L'admin vede i dati degli utenti? & Vincolo applicativo: l'admin accede solo a viste aggregate (COUNT/SUM), non ai dati granulari. \\
+Documenti & Dove salvare i file? & Si salva solo il percorso sul file system; il DB non gestisce BLOB per evitare overhead. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Specifiche ristrutturate}
+\begin{itemize}
+    \item R1: Gestione delle transazioni finanziarie (spese/entrate) con dettagli minimi obbligatori.
+    \item R2: Classificazione delle spese tramite categorie e classificazione trasversale delle transazioni tramite tag.
+    \item R3: Definizione e storico dei budget mensili e dei budget per categoria.
+    \item R4: Supporto per spese ricorrenti come modello di generazione automatica.
+    \item R5: Salvare solo il percorso dei documenti digitali associati alle spese, senza memorizzare i file nel database.
+    \item R6: Accesso amministrativo limitato a statistiche aggregate, senza visibilità sui dati finanziari personali.
+\end{itemize}
+
+\subsection{Glossario dei termini essenziali}
+\begin{itemize}
+    \item \textbf{Transazione}: entità astratta che rappresenta un movimento monetario con ID, data, importo e descrizione.
+    \item \textbf{Budget}: reificazione della soglia di spesa legata a Utente, Categoria e Periodo.
+    \item \textbf{Tag}: etichetta trasversale associabile a una o più transazioni, utile per analisi granulari non limitate alla sola categoria.
+    \item \textbf{Categoria}: classificazione gerarchica 1:N applicata alle spese.
+    \item \textbf{Fonte}: origine finanziaria obbligatoria per le entrate.
+\end{itemize}
+
+\subsection{Classi di utenza / viste del sistema}
+\begin{itemize}
+    \item \textbf{Utente/Studente}: accede al proprio portafoglio, registra transazioni, gestisce categorie personali e visualizza report.
+    \item \textbf{Amministratore}: gestisce categorie/tag di sistema e visualizza statistiche aggregate.
+\end{itemize}
+Le viste del sistema includono il portafoglio personale, il cruscotto dei budget e la dashboard degli andamenti finanziari.
+
+\subsection{Elenco delle operazioni principali}
+\begin{itemize}
+    \item Inserimento di una nuova spesa.
+    \item Inserimento di una nuova entrata.
+    \item Creazione/modifica/eliminazione di categorie personali.
+    \item Creazione/modifica/eliminazione di tag personali.
+    \item Definizione e aggiornamento dei budget mensili e per categoria.
+    \item Gestione delle spese ricorrenti.
+    \item Associazione di un documento digitale a una spesa.
+    \item Visualizzazione di report aggregati e statistiche.
+\end{itemize}
+
+\subsection{Vincoli espliciti e impliciti}
+\begin{itemize}
+    \item L'amministratore può consultare solo dati aggregati (COUNT/SUM) e non i dettagli finanziari degli utenti.
+    \item I documenti vengono memorizzati solo tramite il percorso file, non come BLOB nel database.
+    \item Ogni transazione deve contenere data, importo e descrizione.
+    \item Il periodo del budget è derivato dal mese/anno della transazione e viene storicizzato tramite l'entità \textsc{PERIODO}.
+    \item La spesa ricorrente è un modello astratto che genera transazioni effettive, non una transazione reale.
+\end{itemize}
+
+\section{Progettazione concettuale}
+\subsection{Criteri generali di modellazione}
+
+\subsection{Raffinamenti dello schema}
+\subsubsection{Gerarchia delle transazioni (ISA)}
+Abbiamo una specializzazione totale ed esclusiva con super-classe \textsc{TRANSAZIONE} e sotto-classi \textsc{SPESA} e \textsc{ENTRATA}. La sottoclasse SPESA è associata obbligatoriamente a una categoria, mentre la sottoclasse ENTRATA è associata obbligatoriamente a una fonte. I tag sono invece collegati alla super-entità TRANSAZIONE, in quanto rappresentano una classificazione trasversale utilizzabile sia per spese sia per entrate.
+
+\subsubsection{Modellazione ibrida (Sistema vs Personale)}
+Per \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} si applica una gerarchia ISA: elementi di sistema creati dall'admin e elementi personali creati dall'utente.
+
+\subsubsection{Reificazione del budget}
+Il budget è un'entità che mette in relazione utente e periodo, con un eventuale riferimento a una categoria. L’assenza della categoria rappresenta un budget mensile complessivo, mentre la presenza della categoria rappresenta un budget specifico. Questa progettazione consente di storicizzare i limiti di spesa e di fissare soglie per ambiti specifici. Nel capitolo di progettazione logica verrà valutata l'introduzione dell'attributo ridondante \texttt{Totale\_Speso\_Attuale} nel budget per migliorare le prestazioni di lettura nella dashboard.
+
+\subsection{Criticità rilevate}
+\begin{itemize}
+    \item La fonte deve essere legata esclusivamente a \textsc{ENTRATA}; una spesa ha una categoria di uscita.
+    \item La spesa ricorrente punta a \textsc{CATEGORIA}, non a \textsc{SPESA}, perché è un modello generatore di tuple e non una transazione già avvenuta.
+    \item L'utente viene identificato tramite un identificatore surrogato ID\_Utente. L'email viene mantenuta come attributo con vincolo UNIQUE, ma non viene usata come chiave primaria.
+\end{itemize}
+
+
+\subsection{Schema scheletro E/R}
+
+\subsection{Sviluppo delle viste o degli ambiti}
+\subsubsection{Vista Studente e portafoglio personale}
+
+\subsubsection{Vista classificazione delle transazioni}
+
+\subsubsection{Vista budget e pianificazione}
+
+\subsubsection{Vista spese ricorrenti e documenti}
+
+\subsubsection{Vista amministratore e cataloghi globali}
+
+\subsection{Raffinamenti proposti}
+
+\subsection{Gerarchie presenti nello schema}
+
+\subsection{Associazioni principali e cardinalità}
+
+\subsection{Vincoli non rappresentabili direttamente nello schema E/R}
+
+\subsection{Integrazione delle viste}
+
+\subsection{Schema E/R finale}
+
+\subsection{Dizionario di entità e associazioni}
+
+\section{Specifiche funzionali}
+\subsection{Elenco delle funzionalità richieste}
+
+\subsection{Operazioni di inserimento}
+
+\subsection{Operazioni di modifica}
+
+\subsection{Operazioni di eliminazione}
+
+\subsection{Operazioni di interrogazione}
+
+\subsection{Operazioni statistiche / amministrative}
+
+\subsection{Input, output e tabelle coinvolte per ogni operazione}
+
+\section{Progettazione logica}
+\subsection{Stima del volume dei dati}
+
+\subsection{Descrizione delle operazioni principali e frequenza}
+
+\subsection{Schemi di navigazione}
+
+\subsection{Tabelle degli accessi}
+
+\subsection{Analisi delle ridondanze}
+
+\subsection{Raffinamento dello schema}
+\subsubsection{Eliminazione delle gerarchie}
+
+\subsubsection{Soluzione logica anticipata}
+La specializzazione totale ed esclusiva delle transazioni si traduce in una struttura logica con la relazione padre \textsc{TRANSAZIONE} e le relazioni figlie \textsc{SPESA} e \textsc{ENTRATA}. Questa scelta mantiene separati gli attributi comuni da quelli specifici e rende esplicita la distinzione concettuale tra movimenti in uscita e movimenti in entrata.
+
+\subsubsection{Eliminazione degli attributi composti}
+
+\subsubsection{Gestione degli attributi multivalore}
+
+\subsubsection{Scelta delle chiavi primarie}
+
+\subsubsection{Traduzione delle associazioni}
+
+\subsection{Traduzione di entità e associazioni in relazioni}
+In questa fase si traducono le entità e le associazioni concettuali in relazioni logiche, specificando le chiavi primarie e le chiavi esterne necessarie per mantenere l'integrità referenziale.
+
+\subsection{Schema relazionale finale}
+Lo schema relazionale finale descrive le tabelle definitive, con i rispettivi attributi, tipi di dato e vincoli principali. Questa rappresentazione costituisce la base per la successiva fase di implementazione SQL.
+
+\subsection{Vincoli di integrità}
+In questa sezione si elencano i vincoli di integrità referenziali e di dominio che il database deve rispettare, come le chiavi primarie, le chiavi esterne, i vincoli UNIQUE e i controlli sui valori.
+
+\subsection{Controllo della normalizzazione}
+Qui si verifica che lo schema relazionale finale soddisfi i livelli di normalizzazione richiesti, identificando eventuali anomalie di inserimento, aggiornamento o cancellazione.
+
+\section{Implementazione SQL}
+\subsection{Script di creazione del database}
+
+\subsection{Creazione delle tabelle}
+
+\subsection{Definizione di chiavi primarie e chiavi esterne}
+
+\subsection{Vincoli NOT NULL, UNIQUE, CHECK}
+
+\subsection{Trigger, procedure o viste, se usati}
+
+\subsection{Popolamento iniziale del database}
+
+\subsection{Query SQL delle operazioni principali}
+\subsubsection{Problemi e criticità}
+Il progetto richiede di garantire l'integrità dei dati durante l'inserimento di una spesa o di un'entrata, e di gestire i budget in modo idempotente. Le principali criticità sono:
+\begin{itemize}
+    \item Pericolo di orfani: l'inserimento nel padre (\textsc{TRANSAZIONE}) deve essere atomico rispetto all'inserimento nel figlio (\textsc{SPESA} o \textsc{ENTRATA}).
+    \item Divisione per zero: nelle statistiche percentuali l'assenza di entrate potrebbe causare errori se non si utilizza una protezione adeguata.
+    \item Gestione del budget: la coppia chiave (ID\_Utente, ID\_Categoria, Mese, Anno) deve essere unica per permettere work-flow di upsert senza duplicati.
+\end{itemize}
+
+\subsubsection{Analisi}
+Il sistema utilizza una traduzione della gerarchia con una relazione per la super-entità TRANSAZIONE e una relazione per ciascuna sottoclasse, SPESA ed ENTRATA. Ogni inserimento in una sottoclasse richiede quindi la creazione preliminare della tupla nella relazione padre. Per i budget si introduce la logica di "upsert" per evitare duplicati e mantenere la coerenza del limite di spesa.
+
+\subsubsection{Soluzione SQL}
+\paragraph{U3 - Inserimento Atomico Spesa}
+\begin{lstlisting}[caption={Inserimento di una spesa con recupero ID}]
+-- Inserimento nel record padre
+INSERT INTO TRANSAZIONE (Importo, Data, Descrizione, ID_Utente)
+VALUES (?, ?, ?, ?);
+
+-- Inserimento nel record figlio (JDBC recupera l'ID appena generato)
+INSERT INTO SPESA (ID_Transazione, ID_Categoria)
+VALUES (LAST_INSERT_ID(), ?);
+\end{lstlisting}
+
+\paragraph{U8 - Definizione/Aggiornamento Budget}
+\begin{lstlisting}[caption={Upsert del budget per Categoria o Globale}]
+INSERT INTO BUDGET (Importo_Limite, ID_Utente, ID_Categoria, Mese, Anno)
+VALUES (?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE Importo_Limite = VALUES(Importo_Limite);
+\end{lstlisting}
+
+\paragraph{A3 - Analisi Percentuale (protezione divisione per zero)}
+\begin{lstlisting}[caption={Rapporto Spese/Entrate Mensile}]
+SELECT
+    (COALESCE(SUM(CASE WHEN S.ID_Transazione IS NOT NULL THEN T.Importo END), 0) /
+     NULLIF(COALESCE(SUM(CASE WHEN E.ID_Transazione IS NOT NULL THEN T.Importo END), 0), 0)) * 100
+     AS Percentuale_Incidenza
+FROM TRANSAZIONE T
+LEFT JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
+LEFT JOIN ENTRATA E ON T.ID_Transazione = E.ID_Transazione
+WHERE T.ID_Utente = ? AND MONTH(T.Data) = ? AND YEAR(T.Data) = ?;
+\end{lstlisting}
+
+\subsubsection{Query di supporto e operazioni amministrative}
+\paragraph{Eliminazione di una transazione}
+\begin{lstlisting}[caption={Eliminazione di transazione con ON DELETE CASCADE}]
+DELETE FROM TRANSAZIONE
+WHERE ID_Transazione = ? AND ID_Utente = ?;
+\end{lstlisting}
+
+\paragraph{Modifica di una transazione}
+\begin{lstlisting}[caption={Aggiornamento attributi base di una transazione}]
+UPDATE TRANSAZIONE
+SET Importo = ?, Data = ?, Descrizione = ?
+WHERE ID_Transazione = ? AND ID_Utente = ?;
+\end{lstlisting}
+
+\paragraph{Associazione tag a una spesa}
+\begin{lstlisting}[caption={Associazione Tag}]
+INSERT INTO APPARTENENZA_TAG (ID_Transazione, ID_Tag)
+VALUES (?, ?);
+\end{lstlisting}
+
+\paragraph{Budget globale e per categoria}
+\begin{lstlisting}[caption={Budget globale o specifico per categoria}]
+INSERT INTO BUDGET (Importo_Limite, ID_Utente, ID_Categoria, Mese, Anno)
+VALUES (?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE Importo_Limite = VALUES(Importo_Limite);
+\end{lstlisting}
+
+\paragraph{Riepilogo delle transazioni per periodo}
+\begin{lstlisting}[caption={Riepilogo transazioni per periodo}]
+SELECT T.ID_Transazione, T.Importo, T.Data,
+       COALESCE(C.Nome, F.Nome) AS Categoria_Fonte,
+       CASE WHEN S.ID_Transazione IS NOT NULL THEN 'Spesa' ELSE 'Entrata' END AS Tipo
+FROM TRANSAZIONE T
+LEFT JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
+LEFT JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
+LEFT JOIN ENTRATA E ON T.ID_Transazione = E.ID_Transazione
+LEFT JOIN FONTE F ON E.ID_Fonte = F.ID_Fonte
+WHERE T.ID_Utente = ? AND T.Data BETWEEN ? AND ?
+ORDER BY T.Data DESC;
+\end{lstlisting}
+
+\paragraph{Categorie di spesa più costose}
+\begin{lstlisting}[caption={Categorie più costose per periodo}]
+SELECT C.Nome, SUM(T.Importo) AS Totale_Speso
+FROM SPESA S
+JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
+JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
+WHERE T.ID_Utente = ? AND T.Data BETWEEN ? AND ?
+GROUP BY C.ID_Categoria, C.Nome
+ORDER BY Totale_Speso DESC;
+\end{lstlisting}
+
+\paragraph{Tag più utilizzati}
+\begin{lstlisting}[caption={Tag più utilizzati}]
+SELECT TA.Nome, COUNT(*) AS Numero_Utilizzi
+FROM APPARTENENZA_TAG AT
+JOIN TAG TA ON AT.ID_Tag = TA.ID_Tag
+JOIN TRANSAZIONE TR ON AT.ID_Transazione = TR.ID_Transazione
+WHERE TR.ID_Utente = ?
+GROUP BY TA.ID_Tag, TA.Nome
+ORDER BY Numero_Utilizzi DESC;
+\end{lstlisting}
+
+\paragraph{Mesi in cui il budget complessivo è stato superato}
+\begin{lstlisting}[caption={Budget mensile complessivo superato}]
+SELECT MONTH(T.Data) AS Mese, YEAR(T.Data) AS Anno, SUM(T.Importo) AS Totale
+FROM TRANSAZIONE T
+JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
+JOIN BUDGET B ON T.ID_Utente = B.ID_Utente
+    AND B.Mese = MONTH(T.Data)
+    AND B.Anno = YEAR(T.Data)
+WHERE T.ID_Utente = ? AND B.ID_Categoria IS NULL
+GROUP BY YEAR(T.Data), MONTH(T.Data), B.Importo_Limite
+HAVING SUM(T.Importo) > B.Importo_Limite;
+\end{lstlisting}
+
+\paragraph{Andamento delle spese mensili}
+\begin{lstlisting}[caption={Andamento delle spese mensili}]
+SELECT YEAR(T.Data) AS Anno, MONTH(T.Data) AS Mese, SUM(T.Importo) AS Totale
+FROM TRANSAZIONE T
+JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
+WHERE T.ID_Utente = ?
+GROUP BY YEAR(T.Data), MONTH(T.Data)
+ORDER BY Anno DESC, Mese DESC;
+\end{lstlisting}
+
+\paragraph{Categoria con maggior spesa annuale}
+\begin{lstlisting}[caption={Categoria con maggior spesa annuale}]
+SELECT C.Nome, SUM(T.Importo) AS Totale_Annuo
+FROM SPESA S
+JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
+JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
+WHERE T.ID_Utente = ? AND YEAR(T.Data) = ?
+GROUP BY C.ID_Categoria, C.Nome
+ORDER BY Totale_Annuo DESC
+LIMIT 1;
+\end{lstlisting}
+
+\paragraph{Comparazione tra due periodi}
+\begin{lstlisting}[caption={Distribuzione spese per due periodi}]
+SELECT C.Nome, SUM(T.Importo) AS Totale
+FROM SPESA S
+JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
+JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
+WHERE T.ID_Utente = ? AND T.Data BETWEEN ? AND ?
+GROUP BY C.ID_Categoria, C.Nome;
+\end{lstlisting}
+
+\paragraph{Categorie che superano più frequentemente il budget}
+\begin{lstlisting}[caption={Categorie che superano il budget più spesso}]
+SELECT C.Nome, COUNT(*) AS Volte_Sforato
+FROM (
+    SELECT S.ID_Categoria, MONTH(T.Data) AS Mese, YEAR(T.Data) AS Anno, SUM(T.Importo) AS Somma
+    FROM SPESA S JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
+    WHERE T.ID_Utente = ?
+    GROUP BY S.ID_Categoria, MONTH(T.Data), YEAR(T.Data)
+) AS Spese_Mensili
+JOIN BUDGET B ON Spese_Mensili.ID_Categoria = B.ID_Categoria
+    AND Spese_Mensili.Mese = B.Mese
+    AND Spese_Mensili.Anno = B.Anno
+    AND B.ID_Utente = ?
+JOIN CATEGORIA C ON B.ID_Categoria = C.ID_Categoria
+WHERE Spese_Mensili.Somma > B.Importo_Limite
+GROUP BY C.ID_Categoria, C.Nome
+ORDER BY Volte_Sforato DESC;
+\end{lstlisting}
+
+\subsubsection{Motivazioni}
+Atomicità applicativa: in Java, l'uso di \texttt{conn.setAutoCommit(false)} unito a queste query garantisce che la \textsc{TRANSAZIONE} esista solo se esiste anche la \textsc{SPESA} o l'\textsc{ENTRATA}.\\
+Flessibilità budget: il vincolo \texttt{UNIQUE(ID\_Utente, ID\_Categoria, Mese, Anno)} permette alla query \texttt{ON DUPLICATE KEY UPDATE} di aggiornare o creare il limite in modo efficiente.\\
+Robustezza matematica: \texttt{NULLIF} trasforma lo zero in NULL, evitando l'errore di divisione per zero nel database engine.
+
+\section{Progettazione dell’applicazione}
+\subsection{Architettura generale dell’applicazione}
+
+\subsection{Tecnologie usate}
+
+\subsection{Struttura dei package Java}
+
+\subsection{Collegamento al database tramite JDBC}
+
+\subsection{Organizzazione delle classi principali}
+
+\subsection{Gestione degli errori e validazione input}
+
+\subsection{Interfaccia grafica Java Swing}
+
+\subsection{Schermate principali}
+
+\subsection{Flussi d’uso principali}
+
+Registrazione studente\\
+Inserimento di una spesa\\
+Inserimento di una entrata\\
+Definizione di un budget\\
+Gestione di una spesa ricorrente\\
+Associazione di un documento digitale\\
+Visualizzazione statistiche amministratore
+
+\section{Test e validazione}
+\subsection{Dati di test utilizzati}
+
+\subsection{Test delle query SQL}
+
+\subsection{Test delle funzionalità applicative}
+
+\subsection{Casi limite gestiti}
+
+\subsection{Errori noti o limitazioni}
+
+\section{Conclusioni}
+\subsection{Risultato ottenuto}
+
+\subsection{Scelte progettuali principali}
+
+\subsection{Possibili sviluppi futuri}
+
+\appendix
+\section{Script SQL completo}
+
+\section{Query SQL complete}
+
+\section{Screenshot dell’applicazione}
+
+\section{Manuale utente sintetico}
+
+\section{Eventuale link al repository}
+
+\end{document}
