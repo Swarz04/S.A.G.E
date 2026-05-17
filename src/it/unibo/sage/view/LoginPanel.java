@@ -1,7 +1,11 @@
 package it.unibo.sage.view;
 
+import it.unibo.sage.controller.LoginController;
+import it.unibo.sage.model.Utente;
 import javax.swing.*;
 import java.awt.*;
+import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Pannello di login centrato: per ora raccoglie le credenziali e porta alla
@@ -9,8 +13,11 @@ import java.awt.*;
  */
 public class LoginPanel extends AppBackgroundPanel {
 
+    private final LoginController loginController;
+
     public LoginPanel(MainFrame parent) {
         super(new GridBagLayout());
+        loginController = new LoginController();
 
         JPanel card = new GlassPanel(new BorderLayout(0, 22));
         card.setPreferredSize(new Dimension(420, 430));
@@ -64,6 +71,9 @@ public class LoginPanel extends AppBackgroundPanel {
 
         JTextField userField = new JTextField();
         JPasswordField passField = new JPasswordField();
+        JLabel statusLabel = new JLabel(" ");
+        statusLabel.setForeground(AppTheme.EXPENSE);
+        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         styleTextField(userField);
         styleTextField(passField);
 
@@ -74,7 +84,7 @@ public class LoginPanel extends AppBackgroundPanel {
         loginButton.setPreferredSize(new Dimension(0, 44));
         loginButton.setArc(16);
         loginButton.addMouseListener(new ButtonHoverAdapter(loginButton, AppTheme.ACCENT, AppTheme.ACCENT_HOVER));
-        loginButton.addActionListener(e -> parent.changeView("VIEW_DASHBOARD"));
+        loginButton.addActionListener(e -> login(parent, userField, passField, loginButton, statusLabel));
 
         gbc.gridy = 0;
         form.add(createFieldGroup("Username", userField), gbc);
@@ -84,8 +94,55 @@ public class LoginPanel extends AppBackgroundPanel {
         gbc.gridy = 2;
         gbc.insets = new Insets(26, 0, 0, 0);
         form.add(loginButton, gbc);
+        gbc.gridy = 3;
+        gbc.insets = new Insets(10, 0, 0, 0);
+        form.add(statusLabel, gbc);
 
         return form;
+    }
+
+    private void login(final MainFrame parent, final JTextField userField,
+            final JPasswordField passField, final JButton loginButton,
+            final JLabel statusLabel) {
+        final String email = userField.getText().trim();
+        final char[] password = passField.getPassword();
+        if (email.isEmpty() || password.length == 0) {
+            statusLabel.setText("Inserisci email e password.");
+            Arrays.fill(password, '\0');
+            return;
+        }
+
+        loginButton.setEnabled(false);
+        statusLabel.setForeground(AppTheme.TEXT_MUTED);
+        statusLabel.setText("Accesso in corso...");
+
+        new SwingWorker<Optional<Utente>, Void>() {
+            @Override
+            protected Optional<Utente> doInBackground() throws Exception {
+                try {
+                    return loginController.login(email, new String(password));
+                } finally {
+                    Arrays.fill(password, '\0');
+                }
+            }
+
+            @Override
+            protected void done() {
+                loginButton.setEnabled(true);
+                try {
+                    Optional<Utente> user = get();
+                    if (user.isPresent()) {
+                        parent.loginSucceeded(user.get());
+                    } else {
+                        statusLabel.setForeground(AppTheme.EXPENSE);
+                        statusLabel.setText("Credenziali non valide.");
+                    }
+                } catch (Exception ex) {
+                    statusLabel.setForeground(AppTheme.EXPENSE);
+                    statusLabel.setText("Database non raggiungibile o configurazione errata.");
+                }
+            }
+        }.execute();
     }
 
     private JPanel createFieldGroup(String label, JComponent field) {

@@ -17,7 +17,19 @@ public class JdbcBudgetDAO implements BudgetDAO {
             + "VALUES (?, ?, ?, ?, ?, ?) "
             + "ON DUPLICATE KEY UPDATE "
             + "Importo_Limite = VALUES(Importo_Limite), "
-            + "Alert_Soglia = VALUES(Alert_Soglia)";
+            + "Alert_Soglia = VALUES(Alert_Soglia), "
+            + "Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale)";
+
+    private static final String CALCOLA_TOTALE_GLOBALE_SQL =
+            "SELECT COALESCE(SUM(Importo), 0) AS Totale "
+            + "FROM TRANSIZIONE "
+            + "WHERE Email = ? AND ID_Periodo = ? AND TipoTransazione = 'S'";
+
+    private static final String CALCOLA_TOTALE_CATEGORIA_SQL =
+            "SELECT COALESCE(SUM(Importo), 0) AS Totale "
+            + "FROM TRANSIZIONE "
+            + "WHERE Email = ? AND ID_Periodo = ? AND TipoTransazione = 'S' "
+            + "AND ID_Categoria = ?";
 
     private static final String UPDATE_BUDGET_GLOBALE_SQL =
             "UPDATE BUDGET "
@@ -52,6 +64,26 @@ public class JdbcBudgetDAO implements BudgetDAO {
             setNullableLong(statement, 5, budget.getIdCategoria());
             statement.setString(6, budget.getEmail());
             statement.executeUpdate();
+        }
+    }
+
+    @Override
+    public BigDecimal calcolaTotaleSpeso(final String email, final long idPeriodo,
+            final Long idCategoria) throws SQLException {
+        final String sql = idCategoria == null
+                ? CALCOLA_TOTALE_GLOBALE_SQL
+                : CALCOLA_TOTALE_CATEGORIA_SQL;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, email);
+            statement.setLong(2, idPeriodo);
+            if (idCategoria != null) {
+                statement.setLong(3, idCategoria);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getBigDecimal("Totale");
+            }
         }
     }
 

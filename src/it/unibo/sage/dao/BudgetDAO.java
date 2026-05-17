@@ -9,6 +9,9 @@ public interface BudgetDAO {
 
     void salvaOAggiorna(Budget budget) throws SQLException;
 
+    BigDecimal calcolaTotaleSpeso(String email, long idPeriodo, Long idCategoria)
+            throws SQLException;
+
     void aggiungiSpesaAiBudget(String email, long idPeriodo, long idCategoria,
             BigDecimal importo) throws SQLException;
 

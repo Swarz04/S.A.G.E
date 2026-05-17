@@ -1,12 +1,21 @@
 package it.unibo.sage.controller;
 
 import it.unibo.sage.dao.BudgetDAO;
+import it.unibo.sage.dao.CategoriaDAO;
+import it.unibo.sage.dao.FonteDAO;
+import it.unibo.sage.dao.JdbcCategoriaDAO;
 import it.unibo.sage.dao.JdbcBudgetDAO;
+import it.unibo.sage.dao.JdbcFonteDAO;
 import it.unibo.sage.dao.JdbcPeriodoDAO;
+import it.unibo.sage.dao.JdbcTagDAO;
 import it.unibo.sage.dao.JdbcTransazioneDAO;
 import it.unibo.sage.dao.PeriodoDAO;
+import it.unibo.sage.dao.TagDAO;
 import it.unibo.sage.dao.TransazioneDAO;
+import it.unibo.sage.model.Categoria;
 import it.unibo.sage.model.Documento;
+import it.unibo.sage.model.Fonte;
+import it.unibo.sage.model.Tag;
 import it.unibo.sage.model.TipoTransazione;
 import it.unibo.sage.model.Transazione;
 import it.unibo.sage.utils.DatabaseConnection;
@@ -17,6 +26,27 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class MovimentiController {
+
+    public List<Categoria> caricaCategorieDisponibili(final String email) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final CategoriaDAO categoriaDAO = new JdbcCategoriaDAO(connection);
+            return categoriaDAO.findDisponibiliPerUtente(email);
+        }
+    }
+
+    public List<Tag> caricaTagDisponibili(final String email) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final TagDAO tagDAO = new JdbcTagDAO(connection);
+            return tagDAO.findDisponibiliPerUtente(email);
+        }
+    }
+
+    public List<Fonte> caricaFontiDisponibili(final String email) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final FonteDAO fonteDAO = new JdbcFonteDAO(connection);
+            return fonteDAO.findDisponibiliPerUtente(email);
+        }
+    }
 
     public long registraSpesa(final String email, final BigDecimal importo,
             final LocalDate data, final String descrizione, final long idCategoria,

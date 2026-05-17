@@ -24,6 +24,8 @@ public class BudgetController {
             final PeriodoDAO periodoDAO = new JdbcPeriodoDAO(connection);
             final BudgetDAO budgetDAO = new JdbcBudgetDAO(connection);
             final long idPeriodo = periodoDAO.trovaOCreaPeriodo(mese, anno);
+            final BigDecimal totaleSpesoAttuale =
+                    budgetDAO.calcolaTotaleSpeso(email, idPeriodo, idCategoria);
 
             budgetDAO.salvaOAggiorna(new Budget(
                     0,
@@ -31,7 +33,7 @@ public class BudgetController {
                     idPeriodo,
                     idCategoria,
                     importoLimite,
-                    BigDecimal.ZERO,
+                    totaleSpesoAttuale,
                     alertSoglia));
             connection.commit();
         } catch (final SQLException ex) {

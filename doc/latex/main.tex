@@ -182,9 +182,11 @@ Le viste del sistema includono il portafoglio personale, il cruscotto dei budget
 \subsection{Vincoli espliciti e impliciti}
 \begin{itemize}
     \item L'amministratore può consultare solo dati aggregati (COUNT/SUM) e non i dettagli finanziari degli utenti.
+    \item Ogni studente opera sempre sul proprio portafoglio personale: l'email dell'utente autenticato viene usata come chiave di sessione e come riferimento nelle tabelle dipendenti.
     \item I documenti vengono memorizzati solo tramite il percorso file, non come BLOB nel database.
     \item Ogni transazione deve contenere data, importo e descrizione.
     \item Il periodo del budget è derivato dal mese/anno della transazione e viene storicizzato tramite l'entità \textsc{PERIODO}.
+    \item Il budget è opzionale: l'utente può registrare movimenti anche prima di aver definito una soglia di spesa.
     \item La spesa ricorrente è un modello astratto che genera transazioni effettive, non una transazione reale.
 \end{itemize}
 
@@ -193,19 +195,21 @@ Le viste del sistema includono il portafoglio personale, il cruscotto dei budget
 
 \subsection{Raffinamenti dello schema}
 \subsubsection{Gerarchia delle transazioni (ISA)}
-Abbiamo una specializzazione totale ed esclusiva con super-classe \textsc{TRANSAZIONE} e sotto-classi \textsc{SPESA} e \textsc{ENTRATA}. La sottoclasse SPESA è associata obbligatoriamente a una categoria, mentre la sottoclasse ENTRATA è associata obbligatoriamente a una fonte. I tag sono invece collegati alla super-entità TRANSAZIONE, in quanto rappresentano una classificazione trasversale utilizzabile sia per spese sia per entrate.
+Abbiamo una specializzazione totale ed esclusiva tra spese ed entrate, tradotta nello schema relazionale con la relazione \textsc{TRANSIZIONE} e l'attributo \texttt{TipoTransazione}. Una spesa è associata obbligatoriamente a una categoria, mentre un'entrata è associata obbligatoriamente a una fonte. I tag sono collegati alle spese tramite la relazione \textsc{SPESA\_TAG}, perché servono a rendere più granulare la classificazione delle uscite.
 
 \subsubsection{Modellazione ibrida (Sistema vs Personale)}
 Per \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} si applica una gerarchia ISA: elementi di sistema creati dall'admin e elementi personali creati dall'utente.
+Nella traduzione logica questa scelta viene rappresentata con il flag \texttt{is\_system} e con l'attributo \texttt{Email\_Proprietario}. Le query applicative caricano gli elementi disponibili con la condizione \texttt{is\_system = TRUE OR Email\_Proprietario = ?}, in modo da mostrare insieme il catalogo comune e le personalizzazioni dello studente autenticato.
 
 \subsubsection{Reificazione del budget}
 Il budget è un'entità che mette in relazione utente e periodo, con un eventuale riferimento a una categoria. L’assenza della categoria rappresenta un budget mensile complessivo, mentre la presenza della categoria rappresenta un budget specifico. Questa progettazione consente di storicizzare i limiti di spesa e di fissare soglie per ambiti specifici. Nel capitolo di progettazione logica verrà valutata l'introduzione dell'attributo ridondante \texttt{Totale\_Speso\_Attuale} nel budget per migliorare le prestazioni di lettura nella dashboard.
+Il sistema adotta una politica di budget opzionale: la registrazione di una spesa non richiede necessariamente l'esistenza preventiva di un budget. Se un budget è già presente, il suo \texttt{Totale\_Speso\_Attuale} viene aggiornato nella stessa transazione ACID dell'inserimento della spesa; se invece il budget viene creato in un secondo momento, il valore iniziale dell'attributo ridondante viene calcolato tramite una \texttt{SUM()} delle spese pregresse coerenti con periodo, utente ed eventuale categoria.
 
 \subsection{Criticità rilevate}
 \begin{itemize}
     \item La fonte deve essere legata esclusivamente a \textsc{ENTRATA}; una spesa ha una categoria di uscita.
     \item La spesa ricorrente punta a \textsc{CATEGORIA}, non a \textsc{SPESA}, perché è un modello generatore di tuple e non una transazione già avvenuta.
-    \item L'utente viene identificato tramite un identificatore surrogato ID\_Utente. L'email viene mantenuta come attributo con vincolo UNIQUE, ma non viene usata come chiave primaria.
+    \item L'utente viene identificato direttamente tramite \texttt{Email}, usata come chiave primaria e come chiave esterna nelle tabelle collegate. Questa scelta rende esplicito il legame tra sessione applicativa e isolamento dei dati.
 \end{itemize}
 
 
@@ -261,12 +265,21 @@ Il budget è un'entità che mette in relazione utente e periodo, con un eventual
 \subsection{Tabelle degli accessi}
 
 \subsection{Analisi delle ridondanze}
+L'attributo \texttt{Totale\_Speso\_Attuale} della relazione \textsc{BUDGET} è ridondante perché può essere ricavato sommando le spese presenti in \textsc{TRANSIZIONE}. La ridondanza viene comunque mantenuta per ridurre il costo delle letture più frequenti della dashboard, dove l'utente controlla spesso lo stato dei budget rispetto al limite impostato.
+
+La coerenza viene garantita con due regole applicative:
+\begin{itemize}
+    \item quando viene inserita una nuova spesa, l'inserimento della transazione, l'associazione di tag/documento e l'aggiornamento degli eventuali budget esistenti avvengono nella stessa transazione;
+    \item quando un budget viene creato o aggiornato dopo che alcune spese sono già state registrate, il valore iniziale di \texttt{Totale\_Speso\_Attuale} viene calcolato con una query di aggregazione sulle transazioni già presenti.
+\end{itemize}
+
+In questo modo il budget rimane opzionale senza perdere consistenza: l'assenza di un budget non blocca la registrazione della spesa, mentre l'esistenza di un budget impone la sincronizzazione del suo totale ridondante.
 
 \subsection{Raffinamento dello schema}
 \subsubsection{Eliminazione delle gerarchie}
 
 \subsubsection{Soluzione logica anticipata}
-La specializzazione totale ed esclusiva delle transazioni si traduce in una struttura logica con la relazione padre \textsc{TRANSAZIONE} e le relazioni figlie \textsc{SPESA} e \textsc{ENTRATA}. Questa scelta mantiene separati gli attributi comuni da quelli specifici e rende esplicita la distinzione concettuale tra movimenti in uscita e movimenti in entrata.
+La specializzazione totale ed esclusiva delle transazioni si traduce in una struttura logica collassata con la relazione \textsc{TRANSIZIONE}. La distinzione tra movimenti in uscita e movimenti in entrata è rappresentata da \texttt{TipoTransazione}, mentre i vincoli CHECK impongono la presenza della categoria solo per le spese e della fonte solo per le entrate.
 
 \subsubsection{Eliminazione degli attributi composti}
 
@@ -305,175 +318,107 @@ Qui si verifica che lo schema relazionale finale soddisfi i livelli di normalizz
 \subsubsection{Problemi e criticità}
 Il progetto richiede di garantire l'integrità dei dati durante l'inserimento di una spesa o di un'entrata, e di gestire i budget in modo idempotente. Le principali criticità sono:
 \begin{itemize}
-    \item Pericolo di orfani: l'inserimento nel padre (\textsc{TRANSAZIONE}) deve essere atomico rispetto all'inserimento nel figlio (\textsc{SPESA} o \textsc{ENTRATA}).
+    \item Isolamento utente: ogni query deve filtrare i dati tramite l'email dell'utente autenticato.
+    \item Atomicità: l'inserimento della spesa, l'associazione dei tag, l'eventuale documento e l'aggiornamento dei budget devono avvenire nella stessa transazione.
     \item Divisione per zero: nelle statistiche percentuali l'assenza di entrate potrebbe causare errori se non si utilizza una protezione adeguata.
-    \item Gestione del budget: la coppia chiave (ID\_Utente, ID\_Categoria, Mese, Anno) deve essere unica per permettere work-flow di upsert senza duplicati.
+    \item Gestione del budget: la coppia chiave \texttt{(Email, ID\_Periodo, ID\_Categoria\_Key)} deve essere unica per permettere work-flow di upsert senza duplicati.
 \end{itemize}
 
 \subsubsection{Analisi}
-Il sistema utilizza una traduzione della gerarchia con una relazione per la super-entità TRANSAZIONE e una relazione per ciascuna sottoclasse, SPESA ed ENTRATA. Ogni inserimento in una sottoclasse richiede quindi la creazione preliminare della tupla nella relazione padre. Per i budget si introduce la logica di "upsert" per evitare duplicati e mantenere la coerenza del limite di spesa.
+Il sistema utilizza una traduzione collassata della gerarchia: la relazione \textsc{TRANSIZIONE} contiene sia spese sia entrate, distinte dall'attributo \texttt{TipoTransazione}. Il vincolo CHECK impone che una spesa abbia una categoria e nessuna fonte, mentre un'entrata abbia una fonte e nessuna categoria. Per i budget si introduce la logica di "upsert" per evitare duplicati e mantenere coerente l'attributo ridondante \texttt{Totale\_Speso\_Attuale}.
 
 \subsubsection{Soluzione SQL}
 \paragraph{U3 - Inserimento Atomico Spesa}
-\begin{lstlisting}[caption={Inserimento di una spesa con recupero ID}]
--- Prima inserisco il record padre.
-INSERT INTO TRANSAZIONE (Importo, Data, Descrizione, ID_Utente)
-VALUES (?, ?, ?, ?);
+\begin{lstlisting}[caption={Inserimento di una spesa con tag e budget}]
+START TRANSACTION;
 
--- Poi inserisco il record figlio usando l'ID generato dal database.
-INSERT INTO SPESA (ID_Transazione, ID_Categoria)
-VALUES (LAST_INSERT_ID(), ?);
+INSERT INTO PERIODO (Mese, Anno)
+VALUES (?, ?)
+ON DUPLICATE KEY UPDATE ID_Periodo = LAST_INSERT_ID(ID_Periodo);
+
+INSERT INTO TRANSIZIONE
+(TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
+VALUES ('S', ?, ?, ?, ?, ?, LAST_INSERT_ID(), NULL);
+
+SET @id_spesa = LAST_INSERT_ID();
+
+INSERT INTO SPESA_TAG (ID_Transizione, ID_Tag)
+VALUES (@id_spesa, ?);
+
+UPDATE BUDGET
+SET Totale_Speso_Attuale = Totale_Speso_Attuale + ?
+WHERE Email = ? AND ID_Periodo = ? AND ID_Categoria IS NULL;
+
+UPDATE BUDGET
+SET Totale_Speso_Attuale = Totale_Speso_Attuale + ?
+WHERE Email = ? AND ID_Periodo = ? AND ID_Categoria = ?;
+
+COMMIT;
 \end{lstlisting}
 
 \paragraph{U8 - Definizione/Aggiornamento Budget}
-\begin{lstlisting}[caption={Upsert del budget per Categoria o Globale}]
-INSERT INTO BUDGET (Importo_Limite, ID_Utente, ID_Categoria, Mese, Anno)
-VALUES (?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE Importo_Limite = VALUES(Importo_Limite);
+\begin{lstlisting}[caption={Upsert del budget con totale iniziale coerente}]
+SELECT COALESCE(SUM(Importo), 0) AS Totale_Speso
+FROM TRANSIZIONE
+WHERE Email = ?
+  AND ID_Periodo = ?
+  AND TipoTransazione = 'S'
+  AND (? IS NULL OR ID_Categoria = ?);
+
+INSERT INTO BUDGET
+(Importo_Limite, Alert_Soglia, Totale_Speso_Attuale, ID_Periodo, ID_Categoria, Email)
+VALUES (?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE
+Importo_Limite = VALUES(Importo_Limite),
+Alert_Soglia = VALUES(Alert_Soglia),
+Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 \end{lstlisting}
 
 \paragraph{A3 - Analisi Percentuale (protezione divisione per zero)}
 \begin{lstlisting}[caption={Rapporto Spese/Entrate Mensile}]
 SELECT
-    (COALESCE(SUM(CASE WHEN S.ID_Transazione IS NOT NULL THEN T.Importo END), 0) /
-     NULLIF(COALESCE(SUM(CASE WHEN E.ID_Transazione IS NOT NULL THEN T.Importo END), 0), 0)) * 100
-     AS Percentuale_Incidenza
-FROM TRANSAZIONE T
-LEFT JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
-LEFT JOIN ENTRATA E ON T.ID_Transazione = E.ID_Transazione
-WHERE T.ID_Utente = ? AND MONTH(T.Data) = ? AND YEAR(T.Data) = ?;
+    (
+        SUM(CASE WHEN TipoTransazione = 'S' THEN Importo ELSE 0 END)
+        /
+        NULLIF(SUM(CASE WHEN TipoTransazione = 'E' THEN Importo ELSE 0 END), 0)
+    ) * 100 AS Percentuale_Spese_Su_Entrate
+FROM TRANSIZIONE
+WHERE Email = ? AND ID_Periodo = ?;
 \end{lstlisting}
 
 \subsubsection{Query di supporto e operazioni amministrative}
-\paragraph{Eliminazione di una transazione}
-\begin{lstlisting}[caption={Eliminazione di transazione con ON DELETE CASCADE}]
-DELETE FROM TRANSAZIONE
-WHERE ID_Transazione = ? AND ID_Utente = ?;
-\end{lstlisting}
-
-\paragraph{Modifica di una transazione}
-\begin{lstlisting}[caption={Aggiornamento attributi base di una transazione}]
-UPDATE TRANSAZIONE
-SET Importo = ?, Data = ?, Descrizione = ?
-WHERE ID_Transazione = ? AND ID_Utente = ?;
-\end{lstlisting}
-
-\paragraph{Associazione tag a una spesa}
-\begin{lstlisting}[caption={Associazione Tag}]
-INSERT INTO APPARTENENZA_TAG (ID_Transazione, ID_Tag)
-VALUES (?, ?);
-\end{lstlisting}
-
-\paragraph{Budget globale e per categoria}
-\begin{lstlisting}[caption={Budget globale o specifico per categoria}]
-INSERT INTO BUDGET (Importo_Limite, ID_Utente, ID_Categoria, Mese, Anno)
-VALUES (?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE Importo_Limite = VALUES(Importo_Limite);
+\paragraph{Cataloghi disponibili per utente}
+\begin{lstlisting}[caption={Categorie, fonti e tag di sistema o personali}]
+SELECT ID_Categoria, Nome, is_system
+FROM CATEGORIA
+WHERE is_system = TRUE OR Email_Proprietario = ?
+ORDER BY is_system DESC, Nome;
 \end{lstlisting}
 
 \paragraph{Riepilogo delle transazioni per periodo}
 \begin{lstlisting}[caption={Riepilogo transazioni per periodo}]
-SELECT T.ID_Transazione, T.Importo, T.Data,
+SELECT T.ID_Transizione, T.Importo, T.Data, T.Descrizione,
        COALESCE(C.Nome, F.Nome) AS Categoria_Fonte,
-       CASE WHEN S.ID_Transazione IS NOT NULL THEN 'Spesa' ELSE 'Entrata' END AS Tipo
-FROM TRANSAZIONE T
-LEFT JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
-LEFT JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
-LEFT JOIN ENTRATA E ON T.ID_Transazione = E.ID_Transazione
-LEFT JOIN FONTE F ON E.ID_Fonte = F.ID_Fonte
-WHERE T.ID_Utente = ? AND T.Data BETWEEN ? AND ?
+       CASE WHEN T.TipoTransazione = 'S' THEN 'Spesa' ELSE 'Entrata' END AS Tipo
+FROM TRANSIZIONE T
+LEFT JOIN CATEGORIA C ON T.ID_Categoria = C.ID_Categoria
+LEFT JOIN FONTE F ON T.ID_Fonte = F.ID_Fonte
+WHERE T.Email = ? AND T.Data BETWEEN ? AND ?
 ORDER BY T.Data DESC;
 \end{lstlisting}
 
-\paragraph{Categorie di spesa più costose}
-\begin{lstlisting}[caption={Categorie più costose per periodo}]
-SELECT C.Nome, SUM(T.Importo) AS Totale_Speso
-FROM SPESA S
-JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
-JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
-WHERE T.ID_Utente = ? AND T.Data BETWEEN ? AND ?
-GROUP BY C.ID_Categoria, C.Nome
-ORDER BY Totale_Speso DESC;
-\end{lstlisting}
-
-\paragraph{Tag più utilizzati}
-\begin{lstlisting}[caption={Tag più utilizzati}]
-SELECT TA.Nome, COUNT(*) AS Numero_Utilizzi
-FROM APPARTENENZA_TAG AT
-JOIN TAG TA ON AT.ID_Tag = TA.ID_Tag
-JOIN TRANSAZIONE TR ON AT.ID_Transazione = TR.ID_Transazione
-WHERE TR.ID_Utente = ?
-GROUP BY TA.ID_Tag, TA.Nome
-ORDER BY Numero_Utilizzi DESC;
-\end{lstlisting}
-
-\paragraph{Mesi in cui il budget complessivo è stato superato}
-\begin{lstlisting}[caption={Budget mensile complessivo superato}]
-SELECT MONTH(T.Data) AS Mese, YEAR(T.Data) AS Anno, SUM(T.Importo) AS Totale
-FROM TRANSAZIONE T
-JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
-JOIN BUDGET B ON T.ID_Utente = B.ID_Utente
-    AND B.Mese = MONTH(T.Data)
-    AND B.Anno = YEAR(T.Data)
-WHERE T.ID_Utente = ? AND B.ID_Categoria IS NULL
-GROUP BY YEAR(T.Data), MONTH(T.Data), B.Importo_Limite
-HAVING SUM(T.Importo) > B.Importo_Limite;
-\end{lstlisting}
-
-\paragraph{Andamento delle spese mensili}
-\begin{lstlisting}[caption={Andamento delle spese mensili}]
-SELECT YEAR(T.Data) AS Anno, MONTH(T.Data) AS Mese, SUM(T.Importo) AS Totale
-FROM TRANSAZIONE T
-JOIN SPESA S ON T.ID_Transazione = S.ID_Transazione
-WHERE T.ID_Utente = ?
-GROUP BY YEAR(T.Data), MONTH(T.Data)
-ORDER BY Anno DESC, Mese DESC;
-\end{lstlisting}
-
-\paragraph{Categoria con maggior spesa annuale}
-\begin{lstlisting}[caption={Categoria con maggior spesa annuale}]
-SELECT C.Nome, SUM(T.Importo) AS Totale_Annuo
-FROM SPESA S
-JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
-JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
-WHERE T.ID_Utente = ? AND YEAR(T.Data) = ?
-GROUP BY C.ID_Categoria, C.Nome
-ORDER BY Totale_Annuo DESC
-LIMIT 1;
-\end{lstlisting}
-
-\paragraph{Comparazione tra due periodi}
-\begin{lstlisting}[caption={Distribuzione spese per due periodi}]
-SELECT C.Nome, SUM(T.Importo) AS Totale
-FROM SPESA S
-JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
-JOIN CATEGORIA C ON S.ID_Categoria = C.ID_Categoria
-WHERE T.ID_Utente = ? AND T.Data BETWEEN ? AND ?
-GROUP BY C.ID_Categoria, C.Nome;
-\end{lstlisting}
-
-\paragraph{Categorie che superano più frequentemente il budget}
-\begin{lstlisting}[caption={Categorie che superano il budget più spesso}]
-SELECT C.Nome, COUNT(*) AS Volte_Sforato
-FROM (
-    SELECT S.ID_Categoria, MONTH(T.Data) AS Mese, YEAR(T.Data) AS Anno, SUM(T.Importo) AS Somma
-    FROM SPESA S JOIN TRANSAZIONE T ON S.ID_Transazione = T.ID_Transazione
-    WHERE T.ID_Utente = ?
-    GROUP BY S.ID_Categoria, MONTH(T.Data), YEAR(T.Data)
-) AS Spese_Mensili
-JOIN BUDGET B ON Spese_Mensili.ID_Categoria = B.ID_Categoria
-    AND Spese_Mensili.Mese = B.Mese
-    AND Spese_Mensili.Anno = B.Anno
-    AND B.ID_Utente = ?
-JOIN CATEGORIA C ON B.ID_Categoria = C.ID_Categoria
-WHERE Spese_Mensili.Somma > B.Importo_Limite
-GROUP BY C.ID_Categoria, C.Nome
-ORDER BY Volte_Sforato DESC;
+\paragraph{Stato dei budget}
+\begin{lstlisting}[caption={Budget con residuo e stato di superamento}]
+SELECT ID_Budget, Mese, Anno, Ambito,
+       Importo_Limite, Totale_Speso, Residuo, Superato
+FROM v_budget_stato
+WHERE Email = ?
+ORDER BY Anno DESC, Mese DESC, Ambito;
 \end{lstlisting}
 
 \subsubsection{Motivazioni}
-Atomicità applicativa: in Java, l'uso di \texttt{conn.setAutoCommit(false)} unito a queste query garantisce che la \textsc{TRANSAZIONE} esista solo se esiste anche la \textsc{SPESA} o l'\textsc{ENTRATA}.\\
-Flessibilità budget: il vincolo \texttt{UNIQUE(ID\_Utente, ID\_Categoria, Mese, Anno)} permette alla query \texttt{ON DUPLICATE KEY UPDATE} di aggiornare o creare il limite in modo efficiente.\\
+Atomicità applicativa: in Java, l'uso di \texttt{conn.setAutoCommit(false)} unito a queste query garantisce che spesa, tag, documento e aggiornamento budget vengano confermati o annullati insieme.\\
+Flessibilità budget: il vincolo \texttt{UNIQUE(Email, ID\_Periodo, ID\_Categoria\_Key)} permette alla query \texttt{ON DUPLICATE KEY UPDATE} di aggiornare o creare il limite in modo efficiente.\\
 Robustezza matematica: \texttt{NULLIF} trasforma lo zero in NULL, evitando l'errore di divisione per zero nel database engine.
 
 \section{Progettazione dell’applicazione}

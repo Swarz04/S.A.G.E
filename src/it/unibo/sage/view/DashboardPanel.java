@@ -1,5 +1,6 @@
 package it.unibo.sage.view;
 
+import it.unibo.sage.model.Utente;
 import javax.swing.*;
 import java.awt.*;
 
@@ -11,10 +12,12 @@ public class DashboardPanel extends AppBackgroundPanel {
 
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
+    private final Utente currentUser;
     private JButton selectedMenuButton;
 
-    public DashboardPanel() {
+    public DashboardPanel(final Utente currentUser) {
         super(new BorderLayout());
+        this.currentUser = currentUser;
 
         contentLayout = new CardLayout();
         contentPanel = new JPanel(contentLayout);
@@ -129,7 +132,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         avatar.setForeground(AppTheme.AVATAR_TEXT);
         avatar.setFont(new Font("SansSerif", Font.BOLD, 15));
 
-        JLabel name = new JLabel("Utente demo");
+        JLabel name = new JLabel(currentUser.getNome() + " " + currentUser.getCognome());
         name.setForeground(Color.WHITE);
         name.setFont(new Font("SansSerif", Font.BOLD, 13));
 
