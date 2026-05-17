@@ -582,6 +582,10 @@ L'uso di \texttt{PreparedStatement} evita concatenazioni insicure e permette di 
 
 \subsection{Interfaccia grafica Java Swing}
 
+Per l'utente standard la dashboard permette di consultare riepilogo, transazioni, budget e classificazioni. Il pulsante per la nuova transazione apre un form applicativo che consente di inserire una spesa o un'entrata scegliendo categoria o fonte tra quelle disponibili per l'utente. La sezione \textit{Categorie e Tag} consente inoltre di aggiungere, rinominare ed eliminare elementi personali, mentre gli elementi di sistema restano protetti e non modificabili dall'utente.
+
+Per l'amministratore viene mostrata una vista distinta, coerente con i requisiti di privacy: l'admin non consulta il dettaglio dei movimenti personali, ma accede a statistiche aggregate mensili e allo stato complessivo dei budget tramite viste SQL dedicate.
+
 \subsection{Schermate principali}
 
 \subsection{Flussi d’uso principali}
@@ -590,6 +594,7 @@ Registrazione studente\\
 Inserimento di una spesa\\
 Inserimento di una entrata\\
 Definizione di un budget\\
+Gestione di categorie e tag personali\\
 Gestione di una spesa ricorrente\\
 Associazione di un documento digitale\\
 Visualizzazione statistiche amministratore

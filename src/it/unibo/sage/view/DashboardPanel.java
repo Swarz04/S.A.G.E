@@ -1,7 +1,22 @@
 package it.unibo.sage.view;
 
+import it.unibo.sage.controller.BudgetController;
+import it.unibo.sage.controller.MovimentiController;
+import it.unibo.sage.model.Budget;
+import it.unibo.sage.model.Categoria;
+import it.unibo.sage.model.Fonte;
+import it.unibo.sage.model.Tag;
+import it.unibo.sage.model.TipoTransazione;
+import it.unibo.sage.model.Transazione;
 import it.unibo.sage.model.Utente;
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
 /**
@@ -10,14 +25,11 @@ import java.awt.*;
  */
 public class DashboardPanel extends AppBackgroundPanel {
 
-    private static final String CARD_OVERVIEW = "CARD_OVERVIEW";
-    private static final String CARD_SETTINGS = "CARD_SETTINGS";
-    private static final int SIDEBAR_WIDTH = 300;
-    private static final int MENU_BUTTON_HEIGHT = 56;
-
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
     private final Utente currentUser;
+    private final MovimentiController movimentiController = new MovimentiController();
+    private final BudgetController budgetController = new BudgetController();
     private JButton selectedMenuButton;
 
     public DashboardPanel(final Utente currentUser) {
@@ -32,7 +44,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         add(createMainPanel(), BorderLayout.CENTER);
 
         initContentCards();
-        contentLayout.show(contentPanel, CARD_OVERVIEW);
+        contentLayout.show(contentPanel, "CARD_OVERVIEW");
     }
 
     private JPanel createMainPanel() {
@@ -76,6 +88,7 @@ public class DashboardPanel extends AppBackgroundPanel {
             AppTheme.ACCENT,
             AppTheme.ACCENT_HOVER
         ));
+        newTransactionButton.addActionListener(e -> showNewTransactionDialog());
 
         headerPanel.add(titlePanel, BorderLayout.WEST);
         headerPanel.add(newTransactionButton, BorderLayout.EAST);
@@ -86,8 +99,8 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JPanel createMenuPanel() {
         JPanel menuPanel = new SidebarPanel();
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
-        menuPanel.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 0));
-        menuPanel.setBorder(BorderFactory.createEmptyBorder(24, 22, 24, 22));
+        menuPanel.setPreferredSize(new Dimension(245, 0));
+        menuPanel.setBorder(BorderFactory.createEmptyBorder(24, 18, 24, 18));
 
         JLabel appName = new JLabel("S.A.G.E.");
         appName.setForeground(Color.WHITE);
@@ -109,7 +122,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         menuPanel.add(Box.createVerticalStrut(28));
         menuPanel.add(sectionLabel);
         menuPanel.add(Box.createVerticalStrut(10));
-        menuPanel.add(createMenuButton("Riepilogo", CARD_OVERVIEW));
+        menuPanel.add(createMenuButton("Riepilogo", "CARD_OVERVIEW"));
         menuPanel.add(createMenuButton("Transazioni", "CARD_TRANSACTIONS"));
         menuPanel.add(createMenuButton("Budget", "CARD_BUDGET"));
         menuPanel.add(createMenuButton("Categorie e Tag", "CARD_CATEGORIES"));
@@ -125,40 +138,21 @@ public class DashboardPanel extends AppBackgroundPanel {
         JPanel userBox = new GlassPanel(
             new BorderLayout(10, 0),
             AppTheme.SIDEBAR_USER_TOP,
-            AppTheme.SIDEBAR_USER_BOTTOM,
-            false
+            AppTheme.SIDEBAR_USER_BOTTOM
         );
-        userBox.setAlignmentX(Component.LEFT_ALIGNMENT);
-        userBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
-        userBox.setMinimumSize(new Dimension(0, 66));
-        userBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        userBox.setToolTipText("Apri impostazioni");
-        userBox.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        userBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+        userBox.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));
 
         JLabel avatar = new JLabel("U", SwingConstants.CENTER);
         avatar.setOpaque(true);
-        avatar.setPreferredSize(new Dimension(38, 38));
+        avatar.setPreferredSize(new Dimension(34, 34));
         avatar.setBackground(AppTheme.AVATAR_BACKGROUND);
         avatar.setForeground(AppTheme.AVATAR_TEXT);
-        avatar.setFont(new Font("SansSerif", Font.BOLD, 16));
-        avatar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        avatar.setToolTipText("Apri impostazioni");
+        avatar.setFont(new Font("SansSerif", Font.BOLD, 15));
 
         JLabel name = new JLabel(currentUser.getNome() + " " + currentUser.getCognome());
         name.setForeground(Color.WHITE);
-        name.setFont(new Font("SansSerif", Font.BOLD, 15));
-        name.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        name.setToolTipText("Apri impostazioni");
-
-        java.awt.event.MouseAdapter settingsClick = new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent event) {
-                showSettings();
-            }
-        };
-        userBox.addMouseListener(settingsClick);
-        avatar.addMouseListener(settingsClick);
-        name.addMouseListener(settingsClick);
+        name.setFont(new Font("SansSerif", Font.BOLD, 13));
 
         userBox.add(avatar, BorderLayout.WEST);
         userBox.add(name, BorderLayout.CENTER);
@@ -169,14 +163,12 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JButton createMenuButton(String text, String cardName) {
         SoftButton button = new SoftButton(text);
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, MENU_BUTTON_HEIGHT));
-        button.setMinimumSize(new Dimension(0, MENU_BUTTON_HEIGHT));
-        button.setPreferredSize(new Dimension(0, MENU_BUTTON_HEIGHT));
-        button.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        button.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setBackground(AppTheme.SIDEBAR_BUTTON);
         button.setForeground(Color.WHITE);
-        button.setFont(new Font("SansSerif", Font.BOLD, 16));
+        button.setFont(new Font("SansSerif", Font.BOLD, 14));
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent event) {
@@ -210,49 +202,157 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
 
         selectedMenuButton = button;
-        if (selectedMenuButton != null) {
-            selectedMenuButton.setBackground(AppTheme.SIDEBAR_BUTTON_SELECTED);
-        }
-    }
-
-    private void showSettings() {
-        selectMenuButton(null);
-        contentLayout.show(contentPanel, CARD_SETTINGS);
+        selectedMenuButton.setBackground(AppTheme.SIDEBAR_BUTTON_SELECTED);
     }
 
     private void initContentCards() {
         contentPanel.add(createOverviewCard(), "CARD_OVERVIEW");
-        contentPanel.add(createPlaceholderCard(
-            "Transazioni",
-            "Entrate e spese saranno filtrabili per periodo, categoria e tag."
-        ), "CARD_TRANSACTIONS");
-        contentPanel.add(createPlaceholderCard(
-            "Budget",
-            "Budget mensili, totale speso ridondante e soglie per categoria."
-        ), "CARD_BUDGET");
-        contentPanel.add(createPlaceholderCard(
-            "Categorie e Tag",
-            "Classificazioni di sistema e personali, coerenti con le gerarchie ISA."
-        ), "CARD_CATEGORIES");
+        contentPanel.add(createTransactionsCard(), "CARD_TRANSACTIONS");
+        contentPanel.add(createBudgetCard(), "CARD_BUDGET");
+        contentPanel.add(createCategoriesCard(), "CARD_CATEGORIES");
         contentPanel.add(createPlaceholderCard(
             "Spese Ricorrenti",
             "Modelli astratti da cui generare spese effettive periodiche."
         ), "CARD_RECURRING");
         contentPanel.add(new DocumentiPanel(currentUser), "CARD_DOCUMENTS");
-        contentPanel.add(createSettingsCard(), CARD_SETTINGS);
+    }
+
+    private void refreshContent(final String cardName) {
+        contentPanel.removeAll();
+        initContentCards();
+        contentPanel.revalidate();
+        contentPanel.repaint();
+        contentLayout.show(contentPanel, cardName);
     }
 
     private JPanel createOverviewCard() {
+        final List<Transazione> transazioni = loadTransactions();
+        final List<Budget> budgets = loadBudgets();
+        final BigDecimal entrate = sumByType(transazioni, TipoTransazione.ENTRATA);
+        final BigDecimal spese = sumByType(transazioni, TipoTransazione.SPESA);
+        final BigDecimal saldo = entrate.subtract(spese);
+        final String budgetUsage = calculateBudgetUsage(budgets);
+
         JPanel panel = new JPanel(new BorderLayout(0, 18));
         panel.setOpaque(false);
 
+        JPanel metricsPanel = new JPanel(new GridLayout(1, 4, 16, 16));
+        metricsPanel.setOpaque(false);
+        metricsPanel.add(createMetricBox("Saldo demo", formatEuro(saldo), AppTheme.PRIMARY));
+        metricsPanel.add(createMetricBox("Entrate", formatEuro(entrate), AppTheme.INCOME));
+        metricsPanel.add(createMetricBox("Spese", formatEuro(spese), AppTheme.EXPENSE));
+        metricsPanel.add(createMetricBox("Budget usato", budgetUsage, AppTheme.BUDGET));
+
         JPanel lowerPanel = new JPanel(new GridLayout(1, 2, 16, 16));
         lowerPanel.setOpaque(false);
-        lowerPanel.add(new RecentTransactionsPanel());
-        lowerPanel.add(createPlaceholderBox("Budget del mese", "Nessun budget configurato."));
+        lowerPanel.add(createMiniTransactionsBox(transazioni));
+        lowerPanel.add(createMiniBudgetBox(budgets));
 
-        panel.add(new SummaryPanel(), BorderLayout.NORTH);
+        panel.add(metricsPanel, BorderLayout.NORTH);
         panel.add(lowerPanel, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JPanel createTransactionsCard() {
+        final String[] columns = {"Data", "Tipo", "Descrizione", "Importo"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        for (Transazione transazione : loadTransactions()) {
+            model.addRow(new Object[] {
+                transazione.getData(),
+                labelTipo(transazione.getTipo()),
+                transazione.getDescrizione(),
+                formatEuro(transazione.getImporto())
+            });
+        }
+        return createTableCard("Transazioni demo", "Movimenti caricati dal database per "
+                + currentUser.getEmail(), model);
+    }
+
+    private JPanel createBudgetCard() {
+        final String[] columns = {"ID", "Periodo", "Categoria", "Limite", "Speso", "Alert"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        final Map<Long, String> categoryNames = loadCategoryNames();
+        for (Budget budget : loadBudgets()) {
+            model.addRow(new Object[] {
+                budget.getId(),
+                "Periodo " + budget.getIdPeriodo(),
+                budget.getIdCategoria() == null
+                        ? "Mensile"
+                        : categoryNames.getOrDefault(budget.getIdCategoria(), "Categoria " + budget.getIdCategoria()),
+                formatEuro(budget.getImportoLimite()),
+                formatEuro(budget.getTotaleSpesoAttuale()),
+                budget.isAlertSoglia() ? "Si" : "No"
+            });
+        }
+        return createTableCard("Budget demo", "Budget mensili e per categoria caricati dal database.", model);
+    }
+
+    private JPanel createCategoriesCard() {
+        final String[] columns = {"Tipo", "ID", "Nome", "Origine"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        for (Categoria categoria : loadCategories()) {
+            model.addRow(new Object[] {
+                "Categoria",
+                categoria.getId(),
+                categoria.getNome(),
+                categoria.isSystem() ? "Sistema" : "Personale"
+            });
+        }
+        for (Tag tag : loadTags()) {
+            model.addRow(new Object[] {
+                "Tag",
+                tag.getId(),
+                tag.getNome(),
+                tag.isSystem() ? "Sistema" : "Personale"
+            });
+        }
+
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton addCategoryButton = createSmallActionButton("+ Categoria");
+        SoftButton addTagButton = createSmallActionButton("+ Tag");
+        SoftButton renameButton = createSmallActionButton("Rinomina");
+        SoftButton deleteButton = createSmallActionButton("Elimina");
+        addCategoryButton.addActionListener(e -> addPersonalCategory());
+        addTagButton.addActionListener(e -> addPersonalTag());
+        renameButton.addActionListener(e -> renameSelectedClassification(table));
+        deleteButton.addActionListener(e -> deleteSelectedClassification(table));
+        actions.add(addCategoryButton);
+        actions.add(addTagButton);
+        actions.add(renameButton);
+        actions.add(deleteButton);
+
+        return createTableCard("Categorie e Tag",
+                "Classificazioni disponibili per l'utente corrente.", table, actions);
+    }
+
+    private JPanel createMetricBox(String title, String value, Color accent) {
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setForeground(AppTheme.TEXT_MUTED);
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JLabel valueLabel = new JLabel(value);
+        valueLabel.setForeground(AppTheme.TEXT);
+        valueLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+
+        JPanel accentBar = new JPanel();
+        accentBar.setPreferredSize(new Dimension(0, 5));
+        accentBar.setBackground(accent);
+        accentBar.setOpaque(true);
+
+        panel.add(accentBar, BorderLayout.NORTH);
+        panel.add(titleLabel, BorderLayout.CENTER);
+        panel.add(valueLabel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -272,6 +372,89 @@ public class DashboardPanel extends AppBackgroundPanel {
         panel.add(descriptionLabel, BorderLayout.CENTER);
 
         return panel;
+    }
+
+    private JPanel createMiniTransactionsBox(final List<Transazione> transazioni) {
+        final StringBuilder text = new StringBuilder("<html>");
+        final int limit = Math.min(4, transazioni.size());
+        for (int i = 0; i < limit; i++) {
+            final Transazione transazione = transazioni.get(i);
+            text.append(transazione.getData())
+                    .append(" - ")
+                    .append(transazione.getDescrizione())
+                    .append(" - ")
+                    .append(formatEuro(transazione.getImporto()))
+                    .append("<br>");
+        }
+        if (limit == 0) {
+            text.append("Nessuna transazione caricata.");
+        }
+        text.append("</html>");
+        return createPlaceholderBox("Ultime transazioni", text.toString());
+    }
+
+    private JPanel createMiniBudgetBox(final List<Budget> budgets) {
+        if (budgets.isEmpty()) {
+            return createPlaceholderBox("Budget", "Nessun budget configurato.");
+        }
+        final Budget first = budgets.get(0);
+        return createPlaceholderBox("Budget", "Limite " + formatEuro(first.getImportoLimite())
+                + ", speso " + formatEuro(first.getTotaleSpesoAttuale()));
+    }
+
+    private JPanel createTableCard(final String title, final String subtitle,
+            final DefaultTableModel model) {
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        return createTableCard(title, subtitle, table, null);
+    }
+
+    private JPanel createTableCard(final String title, final String subtitle,
+            final JTable table, final JComponent actions) {
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel(new BorderLayout(12, 0));
+        header.setOpaque(false);
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel(subtitle);
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(6));
+        titlePanel.add(subtitleLabel);
+        header.add(titlePanel, BorderLayout.CENTER);
+        if (actions != null) {
+            header.add(actions, BorderLayout.EAST);
+        }
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(218, 226, 236)));
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private SoftButton createSmallActionButton(final String text) {
+        SoftButton button = new SoftButton(text);
+        button.setBackground(AppTheme.ACCENT);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("SansSerif", Font.BOLD, 12));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        button.setArc(12);
+        button.addMouseListener(new ButtonHoverAdapter(button, AppTheme.ACCENT, AppTheme.ACCENT_HOVER));
+        return button;
     }
 
     private JPanel createPlaceholderCard(String title, String description) {
@@ -300,42 +483,421 @@ public class DashboardPanel extends AppBackgroundPanel {
         return panel;
     }
 
-    private JPanel createSettingsCard() {
-        JPanel panel = new GlassPanel(new BorderLayout(0, 18));
-        panel.setBorder(BorderFactory.createEmptyBorder(26, 28, 26, 28));
+    private void showNewTransactionDialog() {
+        final List<Categoria> categories = loadCategories();
+        final List<Fonte> sources = loadSources();
+        final List<Tag> tags = loadTags();
+        if (categories.isEmpty() || sources.isEmpty() || tags.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Servono almeno una categoria, una fonte e un tag disponibili.",
+                    "Dati mancanti",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-        JLabel titleLabel = new JLabel("Impostazioni");
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
-        titleLabel.setForeground(AppTheme.TEXT);
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Nuova transazione",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(createTransactionDialogContent(dialog, categories, sources, tags));
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(520, 520));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
 
-        JPanel fieldsPanel = new JPanel(new GridLayout(4, 1, 0, 12));
-        fieldsPanel.setOpaque(false);
-        fieldsPanel.add(createSettingsRow("Nome", currentUser.getNome()));
-        fieldsPanel.add(createSettingsRow("Cognome", currentUser.getCognome()));
-        fieldsPanel.add(createSettingsRow("Email", currentUser.getEmail()));
-        fieldsPanel.add(createSettingsRow("Ruolo", currentUser.getRuolo().name()));
+    private JPanel createTransactionDialogContent(final JDialog dialog,
+            final List<Categoria> categories, final List<Fonte> sources, final List<Tag> tags) {
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+        root.setBackground(Color.WHITE);
 
-        panel.add(titleLabel, BorderLayout.NORTH);
-        panel.add(fieldsPanel, BorderLayout.CENTER);
+        JTabbedPane tabs = new JTabbedPane();
 
+        JTextField expenseAmount = createDialogTextField();
+        JTextField expenseDate = createDialogTextField(LocalDate.now().toString());
+        JTextField expenseDescription = createDialogTextField();
+        JComboBox<Categoria> expenseCategory = createCategoryCombo(categories);
+        JList<Tag> expenseTags = createTagList(tags);
+
+        JTextField incomeAmount = createDialogTextField();
+        JTextField incomeDate = createDialogTextField(LocalDate.now().toString());
+        JTextField incomeDescription = createDialogTextField();
+        JComboBox<Fonte> incomeSource = createSourceCombo(sources);
+
+        tabs.addTab("Spesa", createExpenseForm(expenseAmount, expenseDate,
+                expenseDescription, expenseCategory, expenseTags));
+        tabs.addTab("Entrata", createIncomeForm(incomeAmount, incomeDate,
+                incomeDescription, incomeSource));
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton cancelButton = createDialogButton("Annulla", AppTheme.SIDEBAR_BUTTON);
+        SoftButton saveButton = createDialogButton("Salva", AppTheme.ACCENT);
+        cancelButton.addActionListener(e -> dialog.dispose());
+        saveButton.addActionListener(e -> {
+            if (tabs.getSelectedIndex() == 0) {
+                saveExpense(dialog, expenseAmount, expenseDate, expenseDescription,
+                        expenseCategory, expenseTags);
+            } else {
+                saveIncome(dialog, incomeAmount, incomeDate, incomeDescription, incomeSource);
+            }
+        });
+        actions.add(cancelButton);
+        actions.add(saveButton);
+
+        root.add(tabs, BorderLayout.CENTER);
+        root.add(actions, BorderLayout.SOUTH);
+        return root;
+    }
+
+    private JPanel createExpenseForm(final JTextField amountField, final JTextField dateField,
+            final JTextField descriptionField, final JComboBox<Categoria> categoryField,
+            final JList<Tag> tagList) {
+        JPanel panel = createDialogFormPanel();
+        addFormRow(panel, "Importo", amountField);
+        addFormRow(panel, "Data", dateField);
+        addFormRow(panel, "Descrizione", descriptionField);
+        addFormRow(panel, "Categoria", categoryField);
+        JScrollPane tagScroll = new JScrollPane(tagList);
+        tagScroll.setPreferredSize(new Dimension(0, 110));
+        addFormRow(panel, "Tag", tagScroll);
         return panel;
     }
 
-    private JPanel createSettingsRow(String label, String value) {
-        JPanel row = new JPanel(new BorderLayout());
-        row.setOpaque(false);
+    private JPanel createIncomeForm(final JTextField amountField, final JTextField dateField,
+            final JTextField descriptionField, final JComboBox<Fonte> sourceField) {
+        JPanel panel = createDialogFormPanel();
+        addFormRow(panel, "Importo", amountField);
+        addFormRow(panel, "Data", dateField);
+        addFormRow(panel, "Descrizione", descriptionField);
+        addFormRow(panel, "Fonte entrata", sourceField);
+        return panel;
+    }
+
+    private JPanel createDialogFormPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(18, 10, 10, 10));
+        return panel;
+    }
+
+    private void addFormRow(final JPanel panel, final String label, final JComponent field) {
+        GridBagConstraints labelConstraints = new GridBagConstraints();
+        labelConstraints.gridx = 0;
+        labelConstraints.gridy = panel.getComponentCount() / 2;
+        labelConstraints.anchor = GridBagConstraints.WEST;
+        labelConstraints.insets = new Insets(0, 0, 12, 14);
 
         JLabel labelComponent = new JLabel(label);
-        labelComponent.setForeground(AppTheme.TEXT_MUTED);
         labelComponent.setFont(new Font("SansSerif", Font.BOLD, 13));
+        labelComponent.setForeground(AppTheme.TEXT);
+        panel.add(labelComponent, labelConstraints);
 
-        JLabel valueComponent = new JLabel(value);
-        valueComponent.setForeground(AppTheme.TEXT);
-        valueComponent.setFont(new Font("SansSerif", Font.BOLD, 16));
+        GridBagConstraints fieldConstraints = new GridBagConstraints();
+        fieldConstraints.gridx = 1;
+        fieldConstraints.gridy = labelConstraints.gridy;
+        fieldConstraints.weightx = 1;
+        fieldConstraints.fill = GridBagConstraints.HORIZONTAL;
+        fieldConstraints.insets = new Insets(0, 0, 12, 0);
+        panel.add(field, fieldConstraints);
+    }
 
-        row.add(labelComponent, BorderLayout.WEST);
-        row.add(valueComponent, BorderLayout.EAST);
+    private JTextField createDialogTextField() {
+        return createDialogTextField("");
+    }
 
-        return row;
+    private JTextField createDialogTextField(final String value) {
+        JTextField field = new JTextField(value);
+        field.setPreferredSize(new Dimension(260, 36));
+        field.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppTheme.BORDER),
+                BorderFactory.createEmptyBorder(7, 10, 7, 10)));
+        return field;
+    }
+
+    private JComboBox<Categoria> createCategoryCombo(final List<Categoria> categories) {
+        JComboBox<Categoria> combo = new JComboBox<>(categories.toArray(new Categoria[0]));
+        combo.setRenderer((list, value, index, selected, focus) ->
+                new JLabel(value == null ? "" : value.getNome()));
+        combo.setPreferredSize(new Dimension(260, 36));
+        return combo;
+    }
+
+    private JComboBox<Fonte> createSourceCombo(final List<Fonte> sources) {
+        JComboBox<Fonte> combo = new JComboBox<>(sources.toArray(new Fonte[0]));
+        combo.setRenderer((list, value, index, selected, focus) ->
+                new JLabel(value == null ? "" : value.getNome()));
+        combo.setPreferredSize(new Dimension(260, 36));
+        return combo;
+    }
+
+    private JList<Tag> createTagList(final List<Tag> tags) {
+        JList<Tag> list = new JList<>(tags.toArray(new Tag[0]));
+        list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        list.setVisibleRowCount(5);
+        list.setSelectedIndex(0);
+        list.setCellRenderer((tagList, value, index, selected, focus) -> {
+            JLabel label = new JLabel(value == null ? "" : value.getNome());
+            label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+            label.setBackground(selected ? AppTheme.ACCENT : Color.WHITE);
+            label.setForeground(selected ? Color.WHITE : AppTheme.TEXT);
+            return label;
+        });
+        return list;
+    }
+
+    private SoftButton createDialogButton(final String text, final Color color) {
+        SoftButton button = new SoftButton(text);
+        button.setBackground(color);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("SansSerif", Font.BOLD, 13));
+        button.setBorder(BorderFactory.createEmptyBorder(9, 16, 9, 16));
+        button.setArc(12);
+        return button;
+    }
+
+    private void saveExpense(final JDialog dialog, final JTextField amountField,
+            final JTextField dateField, final JTextField descriptionField,
+            final JComboBox<Categoria> categoryField, final JList<Tag> tagList) {
+        try {
+            final BigDecimal amount = parseAmount(amountField);
+            final LocalDate date = LocalDate.parse(dateField.getText().trim());
+            final String description = requireDescription(descriptionField);
+            final Categoria category = (Categoria) categoryField.getSelectedItem();
+            final List<Tag> selectedTags = tagList.getSelectedValuesList();
+            if (selectedTags.isEmpty()) {
+                throw new IllegalArgumentException("Seleziona almeno un tag.");
+            }
+            movimentiController.registraSpesa(currentUser.getEmail(), amount, date,
+                    description, category.getId(), selectedTags.stream().map(Tag::getId).toList(), "");
+            dialog.dispose();
+            refreshContent("CARD_OVERVIEW");
+        } catch (final Exception ex) {
+            showTransactionError(ex);
+        }
+    }
+
+    private void saveIncome(final JDialog dialog, final JTextField amountField,
+            final JTextField dateField, final JTextField descriptionField,
+            final JComboBox<Fonte> sourceField) {
+        try {
+            final BigDecimal amount = parseAmount(amountField);
+            final LocalDate date = LocalDate.parse(dateField.getText().trim());
+            final String description = requireDescription(descriptionField);
+            final Fonte source = (Fonte) sourceField.getSelectedItem();
+            movimentiController.registraEntrata(currentUser.getEmail(), amount, date,
+                    description, source.getId());
+            dialog.dispose();
+            refreshContent("CARD_OVERVIEW");
+        } catch (final Exception ex) {
+            showTransactionError(ex);
+        }
+    }
+
+    private BigDecimal parseAmount(final JTextField amountField) {
+        final BigDecimal amount = new BigDecimal(amountField.getText().trim().replace(",", "."));
+        if (amount.signum() <= 0) {
+            throw new IllegalArgumentException("L'importo deve essere positivo.");
+        }
+        return amount;
+    }
+
+    private String requireDescription(final JTextField descriptionField) {
+        final String description = descriptionField.getText().trim();
+        if (description.isEmpty()) {
+            throw new IllegalArgumentException("La descrizione e' obbligatoria.");
+        }
+        return description;
+    }
+
+    private void showTransactionError(final Exception ex) {
+        JOptionPane.showMessageDialog(this,
+                "Transazione non salvata: " + ex.getMessage(),
+                "Errore",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void addPersonalCategory() {
+        final String name = JOptionPane.showInputDialog(this, "Nome nuova categoria personale:");
+        if (name == null || name.trim().isEmpty()) {
+            return;
+        }
+        try {
+            movimentiController.aggiungiCategoriaPersonale(currentUser.getEmail(), name.trim());
+            refreshContent("CARD_CATEGORIES");
+        } catch (final SQLException ex) {
+            showLoadError("categorie", ex);
+        }
+    }
+
+    private void addPersonalTag() {
+        final String name = JOptionPane.showInputDialog(this, "Nome nuovo tag personale:");
+        if (name == null || name.trim().isEmpty()) {
+            return;
+        }
+        try {
+            movimentiController.aggiungiTagPersonale(currentUser.getEmail(), name.trim());
+            refreshContent("CARD_CATEGORIES");
+        } catch (final SQLException ex) {
+            showLoadError("tag", ex);
+        }
+    }
+
+    private void renameSelectedClassification(final JTable table) {
+        final int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleziona una categoria o un tag personale.");
+            return;
+        }
+        final String origin = String.valueOf(table.getValueAt(selectedRow, 3));
+        if (!"Personale".equals(origin)) {
+            JOptionPane.showMessageDialog(this, "Gli elementi di sistema non si modificano.");
+            return;
+        }
+        final String type = String.valueOf(table.getValueAt(selectedRow, 0));
+        final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 1)));
+        final String oldName = String.valueOf(table.getValueAt(selectedRow, 2));
+        final String newName = JOptionPane.showInputDialog(this, "Nuovo nome:", oldName);
+        if (newName == null || newName.trim().isEmpty()) {
+            return;
+        }
+        try {
+            if ("Categoria".equals(type)) {
+                movimentiController.rinominaCategoriaPersonale(currentUser.getEmail(), id, newName.trim());
+            } else {
+                movimentiController.rinominaTagPersonale(currentUser.getEmail(), id, newName.trim());
+            }
+            refreshContent("CARD_CATEGORIES");
+        } catch (final SQLException ex) {
+            showLoadError("classificazione", ex);
+        }
+    }
+
+    private void deleteSelectedClassification(final JTable table) {
+        final int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleziona una categoria o un tag personale.");
+            return;
+        }
+        final String origin = String.valueOf(table.getValueAt(selectedRow, 3));
+        if (!"Personale".equals(origin)) {
+            JOptionPane.showMessageDialog(this, "Gli elementi di sistema non si eliminano.");
+            return;
+        }
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare l'elemento selezionato?",
+                "Conferma eliminazione",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        final String type = String.valueOf(table.getValueAt(selectedRow, 0));
+        final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 1)));
+        try {
+            if ("Categoria".equals(type)) {
+                movimentiController.eliminaCategoriaPersonale(currentUser.getEmail(), id);
+            } else {
+                movimentiController.eliminaTagPersonale(currentUser.getEmail(), id);
+            }
+            refreshContent("CARD_CATEGORIES");
+        } catch (final SQLException ex) {
+            showLoadError("classificazione", ex);
+        }
+    }
+
+    private List<Transazione> loadTransactions() {
+        try {
+            return movimentiController.caricaTransazioni(
+                    currentUser.getEmail(),
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31));
+        } catch (final SQLException ex) {
+            showLoadError("transazioni", ex);
+            return List.of();
+        }
+    }
+
+    private List<Budget> loadBudgets() {
+        try {
+            return budgetController.caricaBudget(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("budget", ex);
+            return List.of();
+        }
+    }
+
+    private List<Categoria> loadCategories() {
+        try {
+            return movimentiController.caricaCategorieDisponibili(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("categorie", ex);
+            return List.of();
+        }
+    }
+
+    private Map<Long, String> loadCategoryNames() {
+        final Map<Long, String> names = new HashMap<>();
+        for (Categoria categoria : loadCategories()) {
+            names.put(categoria.getId(), categoria.getNome());
+        }
+        return names;
+    }
+
+    private List<Tag> loadTags() {
+        try {
+            return movimentiController.caricaTagDisponibili(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("tag", ex);
+            return List.of();
+        }
+    }
+
+    private List<Fonte> loadSources() {
+        try {
+            return movimentiController.caricaFontiDisponibili(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("fonti", ex);
+            return List.of();
+        }
+    }
+
+    private BigDecimal sumByType(final List<Transazione> transazioni, final TipoTransazione tipo) {
+        BigDecimal totale = BigDecimal.ZERO;
+        for (Transazione transazione : transazioni) {
+            if (transazione.getTipo() == tipo) {
+                totale = totale.add(transazione.getImporto());
+            }
+        }
+        return totale;
+    }
+
+    private String calculateBudgetUsage(final List<Budget> budgets) {
+        for (Budget budget : budgets) {
+            if (budget.getIdCategoria() == null && budget.getImportoLimite().signum() > 0) {
+                return budget.getTotaleSpesoAttuale()
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(budget.getImportoLimite(), 0, java.math.RoundingMode.HALF_UP)
+                        + "%";
+            }
+        }
+        return "0%";
+    }
+
+    private String formatEuro(final BigDecimal value) {
+        return String.format("%.2f euro", value);
+    }
+
+    private String labelTipo(final TipoTransazione tipo) {
+        return tipo == TipoTransazione.SPESA ? "Spesa" : "Entrata";
+    }
+
+    private void showLoadError(final String dataType, final SQLException ex) {
+        JOptionPane.showMessageDialog(this,
+                "Errore durante il caricamento di " + dataType + ": " + ex.getMessage(),
+                "Errore database",
+                JOptionPane.ERROR_MESSAGE);
     }
 }

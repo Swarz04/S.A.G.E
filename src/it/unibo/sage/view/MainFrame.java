@@ -1,5 +1,6 @@
 package it.unibo.sage.view;
 
+import it.unibo.sage.model.Ruolo;
 import it.unibo.sage.model.Utente;
 import javax.swing.*;
 import java.awt.*;
@@ -16,7 +17,7 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout;
     private final JPanel mainContainer;
     private Utente currentUser;
-    private DashboardPanel dashboardPanel;
+    private JComponent dashboardPanel;
 
     public MainFrame() {
         setTitle("S.A.G.E. - Gestione Spese Personali");
@@ -42,7 +43,9 @@ public class MainFrame extends JFrame {
         if (dashboardPanel != null) {
             mainContainer.remove(dashboardPanel);
         }
-        dashboardPanel = new DashboardPanel(currentUser);
+        dashboardPanel = currentUser.getRuolo() == Ruolo.ADMIN
+                ? new AdminDashboardPanel(currentUser)
+                : new DashboardPanel(currentUser);
         mainContainer.add(dashboardPanel, VIEW_DASHBOARD);
         mainContainer.revalidate();
         mainContainer.repaint();

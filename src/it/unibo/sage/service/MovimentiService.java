@@ -21,11 +21,34 @@ import it.unibo.sage.model.Transazione;
 import it.unibo.sage.utils.DatabaseConnection;
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
 public class MovimentiService {
+
+    private static final String INSERT_CATEGORIA_SQL =
+            "INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario) VALUES (?, FALSE, ?)";
+
+    private static final String INSERT_TAG_SQL =
+            "INSERT INTO TAG (Nome, is_system, Email_Proprietario) VALUES (?, FALSE, ?)";
+
+    private static final String UPDATE_CATEGORIA_PERSONALE_SQL =
+            "UPDATE CATEGORIA SET Nome = ? "
+            + "WHERE ID_Categoria = ? AND is_system = FALSE AND Email_Proprietario = ?";
+
+    private static final String DELETE_CATEGORIA_PERSONALE_SQL =
+            "DELETE FROM CATEGORIA "
+            + "WHERE ID_Categoria = ? AND is_system = FALSE AND Email_Proprietario = ?";
+
+    private static final String UPDATE_TAG_PERSONALE_SQL =
+            "UPDATE TAG SET Nome = ? "
+            + "WHERE ID_Tag = ? AND is_system = FALSE AND Email_Proprietario = ?";
+
+    private static final String DELETE_TAG_PERSONALE_SQL =
+            "DELETE FROM TAG "
+            + "WHERE ID_Tag = ? AND is_system = FALSE AND Email_Proprietario = ?";
 
     public List<Categoria> caricaCategorieDisponibili(final String email) throws SQLException {
         try (Connection connection = DatabaseConnection.getConnection()) {
@@ -45,6 +68,68 @@ public class MovimentiService {
         try (Connection connection = DatabaseConnection.getConnection()) {
             final FonteDAO fonteDAO = new JdbcFonteDAO(connection);
             return fonteDAO.findDisponibiliPerUtente(email);
+        }
+    }
+
+    public void aggiungiCategoriaPersonale(final String email, final String nome) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(INSERT_CATEGORIA_SQL)) {
+            statement.setString(1, nome);
+            statement.setString(2, email);
+            statement.executeUpdate();
+        }
+    }
+
+    public void aggiungiTagPersonale(final String email, final String nome) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(INSERT_TAG_SQL)) {
+            statement.setString(1, nome);
+            statement.setString(2, email);
+            statement.executeUpdate();
+        }
+    }
+
+    public void rinominaCategoriaPersonale(final String email, final long idCategoria,
+            final String nome) throws SQLException {
+        executePersonalUpdate(UPDATE_CATEGORIA_PERSONALE_SQL, nome, idCategoria, email);
+    }
+
+    public void eliminaCategoriaPersonale(final String email, final long idCategoria)
+            throws SQLException {
+        executePersonalDelete(DELETE_CATEGORIA_PERSONALE_SQL, idCategoria, email);
+    }
+
+    public void rinominaTagPersonale(final String email, final long idTag,
+            final String nome) throws SQLException {
+        executePersonalUpdate(UPDATE_TAG_PERSONALE_SQL, nome, idTag, email);
+    }
+
+    public void eliminaTagPersonale(final String email, final long idTag) throws SQLException {
+        executePersonalDelete(DELETE_TAG_PERSONALE_SQL, idTag, email);
+    }
+
+    private void executePersonalUpdate(final String sql, final String nome, final long id,
+            final String email) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nome);
+            statement.setLong(2, id);
+            statement.setString(3, email);
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Elemento non personale o inesistente");
+            }
+        }
+    }
+
+    private void executePersonalDelete(final String sql, final long id, final String email)
+            throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            statement.setString(2, email);
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Elemento non personale o inesistente");
+            }
         }
     }
 

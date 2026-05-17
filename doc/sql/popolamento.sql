@@ -105,7 +105,8 @@ VALUES
 INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
 VALUES
 ('Borsa di studio', FALSE, 'studente1@mail.com'),
-('Ripetizioni private', FALSE, 'studente1@mail.com');
+('Ripetizioni private', FALSE, 'studente1@mail.com'),
+('Lavoretto weekend', FALSE, 'studente2@mail.com');
 
 -- ID della borsa di studio, usato per l'entrata principale.
 SET @fonte_borsa = (
@@ -121,6 +122,14 @@ SET @fonte_ripetizioni = (
     FROM FONTE
     WHERE Nome = 'Ripetizioni private'
       AND Email_Proprietario = 'studente1@mail.com'
+);
+
+-- Fonte personale dello studente2, utile per provare un secondo portafoglio.
+SET @fonte_lavoretto = (
+    SELECT ID_Fonte
+    FROM FONTE
+    WHERE Nome = 'Lavoretto weekend'
+      AND Email_Proprietario = 'studente2@mail.com'
 );
 
 -- Fonte di sistema usata per un'entrata occasionale.
@@ -283,8 +292,70 @@ Importo_Limite = VALUES(Importo_Limite),
 Alert_Soglia = VALUES(Alert_Soglia),
 Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 
+-- Dati demo dello studente2: servono a mostrare l'isolamento dei portafogli.
+INSERT INTO TRANSIZIONE
+(TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
+VALUES
+('S', 35.00, '2026-05-09', 'Abbonamento palestra', 'studente2@mail.com', @cat_palestra, @periodo_maggio, NULL);
+
+SET @spesa_palestra = LAST_INSERT_ID();
+
+INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
+VALUES
+(@spesa_palestra, @tag_essenziale);
+
+INSERT INTO TRANSIZIONE
+(TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
+VALUES
+('S', 18.00, '2026-05-11', 'Spesa alimentare', 'studente2@mail.com', @cat_alimentari, @periodo_maggio, NULL);
+
+INSERT INTO TRANSIZIONE
+(TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
+VALUES
+('E', 180.00, '2026-05-22', 'Pagamento lavoretto weekend', 'studente2@mail.com', NULL, @periodo_maggio, @fonte_lavoretto);
+
+INSERT INTO BUDGET
+(Importo_Limite, Alert_Soglia, Totale_Speso_Attuale, ID_Periodo, ID_Categoria, Email)
+VALUES
+(150.00, TRUE, (
+    SELECT COALESCE(SUM(Importo), 0)
+    FROM TRANSIZIONE
+    WHERE Email = 'studente2@mail.com'
+      AND ID_Periodo = @periodo_maggio
+      AND TipoTransazione = 'S'
+), @periodo_maggio, NULL, 'studente2@mail.com')
+ON DUPLICATE KEY UPDATE
+Importo_Limite = VALUES(Importo_Limite),
+Alert_Soglia = VALUES(Alert_Soglia),
+Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
+
+INSERT INTO BUDGET
+(Importo_Limite, Alert_Soglia, Totale_Speso_Attuale, ID_Periodo, ID_Categoria, Email)
+VALUES
+(50.00, TRUE, (
+    SELECT COALESCE(SUM(Importo), 0)
+    FROM TRANSIZIONE
+    WHERE Email = 'studente2@mail.com'
+      AND ID_Periodo = @periodo_maggio
+      AND TipoTransazione = 'S'
+      AND ID_Categoria = @cat_palestra
+), @periodo_maggio, @cat_palestra, 'studente2@mail.com')
+ON DUPLICATE KEY UPDATE
+Importo_Limite = VALUES(Importo_Limite),
+Alert_Soglia = VALUES(Alert_Soglia),
+Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
+
 -- Spesa ricorrente demo per rappresentare l'abbonamento mensile ai trasporti.
 INSERT INTO SPESA_RICORRENTE
-(Importo_Previsto, Frequenza_Giorni, Data_Inizio, Scadenza, ID_Categoria, Email)
+(Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza,
+ Scadenza, ID_Categoria, Email)
 VALUES
-(25.00, 30, '2026-05-01', '2026-12-31', @cat_trasporti, 'studente1@mail.com');
+(25.00, 30, '2026-05-01', '2026-06-01', '2026-12-31',
+ @cat_trasporti, 'studente1@mail.com');
+
+INSERT INTO SPESA_RICORRENTE
+(Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza,
+ Scadenza, ID_Categoria, Email)
+VALUES
+(35.00, 30, '2026-05-01', '2026-06-01', '2026-12-31',
+ @cat_palestra, 'studente2@mail.com');
