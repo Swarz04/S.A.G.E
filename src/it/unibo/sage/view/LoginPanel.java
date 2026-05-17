@@ -6,13 +6,12 @@ import java.awt.*;
 /**
  * Componente LoginPanel centrato.
  */
-public class LoginPanel extends JPanel {
+public class LoginPanel extends AppBackgroundPanel {
 
     public LoginPanel(MainFrame parent) {
-        setLayout(new GridBagLayout());
-        setBackground(AppTheme.BACKGROUND);
+        super(new GridBagLayout());
 
-        JPanel card = new RoundedPanel(new BorderLayout(0, 22), AppTheme.SURFACE);
+        JPanel card = new GlassPanel(new BorderLayout(0, 22));
         card.setPreferredSize(new Dimension(420, 430));
         card.setBorder(BorderFactory.createEmptyBorder(34, 38, 34, 38));
 
@@ -29,8 +28,8 @@ public class LoginPanel extends JPanel {
 
         JLabel badge = new JLabel("S.A.G.E.");
         badge.setOpaque(true);
-        badge.setBackground(AppTheme.SURFACE_MUTED);
-        badge.setForeground(AppTheme.PRIMARY_DARK);
+        badge.setBackground(AppTheme.BADGE_BACKGROUND);
+        badge.setForeground(AppTheme.BADGE_TEXT);
         badge.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
         badge.setAlignmentX(Component.CENTER_ALIGNMENT);
         badge.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -67,15 +66,13 @@ public class LoginPanel extends JPanel {
         styleTextField(userField);
         styleTextField(passField);
 
-        JButton loginButton = new JButton("Accedi");
-        loginButton.setFocusPainted(false);
-        loginButton.setBackground(AppTheme.PRIMARY);
+        SoftButton loginButton = new SoftButton("Accedi");
+        loginButton.setBackground(AppTheme.ACCENT);
         loginButton.setForeground(Color.WHITE);
-        loginButton.setOpaque(true);
-        loginButton.setBorderPainted(false);
         loginButton.setFont(new Font("SansSerif", Font.BOLD, 15));
         loginButton.setPreferredSize(new Dimension(0, 44));
-        loginButton.addMouseListener(new ButtonHoverAdapter(loginButton, AppTheme.PRIMARY, AppTheme.PRIMARY_HOVER));
+        loginButton.setArc(16);
+        loginButton.addMouseListener(new ButtonHoverAdapter(loginButton, AppTheme.ACCENT, AppTheme.ACCENT_HOVER));
         loginButton.addActionListener(e -> parent.changeView("VIEW_DASHBOARD"));
 
         gbc.gridy = 0;
