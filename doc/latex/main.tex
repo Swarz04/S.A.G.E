@@ -275,6 +275,8 @@ La coerenza viene garantita con due regole applicative:
 
 In questo modo il budget rimane opzionale senza perdere consistenza: l'assenza di un budget non blocca la registrazione della spesa, mentre l'esistenza di un budget impone la sincronizzazione del suo totale ridondante.
 
+Per evitare che la ridondanza diventi una fonte di incoerenza, il progetto affianca al valore memorizzato anche la vista \texttt{v\_budget\_stato}, che calcola lo stato effettivo del budget tramite aggregazione sulle transazioni. Questa vista viene usata come riferimento logico per verificare il valore reale di spesa, residuo e superamento della soglia. Anche lo script di popolamento iniziale calcola \texttt{Totale\_Speso\_Attuale} con una \texttt{SUM()} sulle transazioni già inserite, in modo che i dati dimostrativi risultino coerenti anche se osservati direttamente da MySQL Workbench.
+
 \subsection{Raffinamento dello schema}
 \subsubsection{Eliminazione delle gerarchie}
 
@@ -313,6 +315,7 @@ Qui si verifica che lo schema relazionale finale soddisfi i livelli di normalizz
 \subsection{Trigger, procedure o viste, se usati}
 
 \subsection{Popolamento iniziale del database}
+Il popolamento iniziale inserisce utenti demo, periodi, categorie, tag, fonti, transazioni, documenti, budget e spese ricorrenti. Per i budget dimostrativi, il valore ridondante \texttt{Totale\_Speso\_Attuale} non viene lasciato al valore di default, ma viene inizializzato tramite query di aggregazione sulle transazioni già presenti. In questo modo la base dati di prova è coerente sia nella visualizzazione applicativa sia nella consultazione diretta delle tabelle.
 
 \subsection{Query SQL delle operazioni principali}
 \subsubsection{Problemi e criticità}
@@ -423,20 +426,46 @@ Robustezza matematica: \texttt{NULLIF} trasforma lo zero in NULL, evitando l'err
 
 \section{Progettazione dell’applicazione}
 \subsection{Architettura generale dell’applicazione}
+L'applicazione è organizzata secondo una struttura a livelli ispirata al modello MVC, integrata con il pattern DAO per l'accesso ai dati. Le classi della vista gestiscono l'interfaccia Swing, i controller raccolgono gli eventi e coordinano le richieste, i service contengono la logica applicativa e transazionale, mentre i DAO incapsulano le operazioni effettive sul database tramite JDBC.
+
+Il flusso principale è quindi:
+\[
+\texttt{view} \rightarrow \texttt{controller} \rightarrow \texttt{service} \rightarrow \texttt{dao} \rightarrow \texttt{database}
+\]
+Questa separazione evita che l'interfaccia grafica dipenda direttamente dal database e rende più semplice modificare o testare le singole parti dell'applicazione.
 
 \subsection{Tecnologie usate}
+L'applicazione è sviluppata in Java e utilizza Swing per l'interfaccia grafica. La comunicazione con MySQL avviene tramite JDBC, con connessioni centralizzate nella classe di utilità dedicata. Gli script SQL di creazione, popolamento, viste, trigger e interrogazioni principali sono raccolti nella cartella \texttt{doc/sql}, separata dagli schemi concettuali e logici presenti in \texttt{doc/schemes}.
 
 \subsection{Struttura dei package Java}
+Il codice sorgente è collocato nel package \texttt{it.unibo.sage} ed è suddiviso nei seguenti sottopackage:
+\begin{itemize}
+    \item \texttt{model}: classi che rappresentano gli oggetti principali del dominio applicativo, come \texttt{Utente}, \texttt{Transazione}, \texttt{Budget}, \texttt{Categoria}, \texttt{Tag}, \texttt{Fonte} e \texttt{Documento};
+    \item \texttt{dao}: interfacce DAO e implementazioni JDBC per separare le operazioni logiche sui dati dalla loro realizzazione sul DBMS;
+    \item \texttt{service}: logica applicativa, gestione delle transazioni JDBC e coordinamento tra più DAO;
+    \item \texttt{controller}: classi che collegano la vista ai service e mantengono stabile l'API usata dall'interfaccia;
+    \item \texttt{view}: pannelli, frame e componenti grafici Java Swing;
+    \item \texttt{utils}: classi di supporto, tra cui la gestione della connessione al database.
+\end{itemize}
 
 \subsection{Collegamento al database tramite JDBC}
+La classe \texttt{DatabaseConnection} centralizza la creazione delle connessioni JDBC. I service aprono le connessioni necessarie e, quando una funzionalità coinvolge più tabelle, disattivano l'autocommit per garantire atomicità. Ad esempio, l'inserimento di una spesa, l'associazione dei tag, l'eventuale salvataggio del documento e l'aggiornamento dei budget avvengono nella stessa transazione applicativa.
+
+Per la schermata dei budget, il service ricalcola lo stato di avanzamento partendo dalle transazioni effettive, così la vista applicativa resta allineata ai movimenti registrati anche quando un budget viene creato dopo l'inserimento di alcune spese.
 
 \subsection{Organizzazione delle classi principali}
+Le classi del package \texttt{model} rappresentano gli oggetti principali del dominio applicativo e vengono utilizzate per trasferire i dati tra DAO, service, controller e interfaccia grafica. La classe \texttt{Documento} rappresenta un file associato a una transazione, come ricevuta, fattura o prova di pagamento; nel database viene memorizzato il percorso del file e non il contenuto binario.
+
+Per l'accesso ai dati è stato adottato il pattern DAO, separando le operazioni logiche sulle entità dalla loro implementazione concreta tramite JDBC. In questo modo i controller e i service non dipendono da query sparse nell'interfaccia, ma comunicano con classi dedicate alla persistenza.
 
 \subsection{Gestione degli errori e validazione input}
+Gli errori SQL vengono propagati verso i controller e gestiti dalla vista con messaggi all'utente. Le operazioni composte usano rollback in caso di eccezione, così da evitare stati parziali del database. Le validazioni di base, come campi obbligatori e importi non validi, sono gestite prima dell'invio dei dati ai service.
 
 \subsection{Interfaccia grafica Java Swing}
+L'interfaccia grafica è realizzata con Java Swing e organizzata in pannelli dedicati alle funzionalità principali: autenticazione, dashboard, movimenti, budget e navigazione laterale. I componenti grafici non eseguono query direttamente, ma invocano i controller, mantenendo separata la logica di presentazione dalla logica applicativa.
 
 \subsection{Schermate principali}
+Le schermate principali dell'applicazione sono raccolte nella cartella \texttt{doc/screenshots} e documentano i flussi più importanti: login, dashboard, registrazione dei movimenti, gestione dei budget e spese ricorrenti.
 
 \subsection{Flussi d’uso principali}
 

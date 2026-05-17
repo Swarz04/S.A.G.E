@@ -20,7 +20,7 @@
 \contentsline {subsection}{\numberline {3.2}Raffinamenti dello schema}{3}{subsection.3.2}%
 \contentsline {subsubsection}{\numberline {3.2.1}Gerarchia delle transazioni (ISA)}{3}{subsubsection.3.2.1}%
 \contentsline {subsubsection}{\numberline {3.2.2}Modellazione ibrida (Sistema vs Personale)}{3}{subsubsection.3.2.2}%
-\contentsline {subsubsection}{\numberline {3.2.3}Reificazione del budget}{3}{subsubsection.3.2.3}%
+\contentsline {subsubsection}{\numberline {3.2.3}Reificazione del budget}{4}{subsubsection.3.2.3}%
 \contentsline {subsection}{\numberline {3.3}Criticità rilevate}{4}{subsection.3.3}%
 \contentsline {subsection}{\numberline {3.4}Schema scheletro E/R}{5}{subsection.3.4}%
 \contentsline {subsection}{\numberline {3.5}Sviluppo delle viste o degli ambiti}{5}{subsection.3.5}%
@@ -50,9 +50,9 @@
 \contentsline {subsection}{\numberline {5.3}Schemi di navigazione}{5}{subsection.5.3}%
 \contentsline {subsection}{\numberline {5.4}Tabelle degli accessi}{5}{subsection.5.4}%
 \contentsline {subsection}{\numberline {5.5}Analisi delle ridondanze}{5}{subsection.5.5}%
-\contentsline {subsection}{\numberline {5.6}Raffinamento dello schema}{5}{subsection.5.6}%
-\contentsline {subsubsection}{\numberline {5.6.1}Eliminazione delle gerarchie}{5}{subsubsection.5.6.1}%
-\contentsline {subsubsection}{\numberline {5.6.2}Soluzione logica anticipata}{5}{subsubsection.5.6.2}%
+\contentsline {subsection}{\numberline {5.6}Raffinamento dello schema}{6}{subsection.5.6}%
+\contentsline {subsubsection}{\numberline {5.6.1}Eliminazione delle gerarchie}{6}{subsubsection.5.6.1}%
+\contentsline {subsubsection}{\numberline {5.6.2}Soluzione logica anticipata}{6}{subsubsection.5.6.2}%
 \contentsline {subsubsection}{\numberline {5.6.3}Eliminazione degli attributi composti}{6}{subsubsection.5.6.3}%
 \contentsline {subsubsection}{\numberline {5.6.4}Gestione degli attributi multivalore}{6}{subsubsection.5.6.4}%
 \contentsline {subsubsection}{\numberline {5.6.5}Scelta delle chiavi primarie}{6}{subsubsection.5.6.5}%
@@ -61,28 +61,28 @@
 \contentsline {subsection}{\numberline {5.8}Schema relazionale finale}{6}{subsection.5.8}%
 \contentsline {subsection}{\numberline {5.9}Vincoli di integrità}{6}{subsection.5.9}%
 \contentsline {subsection}{\numberline {5.10}Controllo della normalizzazione}{6}{subsection.5.10}%
-\contentsline {section}{\numberline {6}Implementazione SQL}{6}{section.6}%
-\contentsline {subsection}{\numberline {6.1}Script di creazione del database}{6}{subsection.6.1}%
-\contentsline {subsection}{\numberline {6.2}Creazione delle tabelle}{6}{subsection.6.2}%
-\contentsline {subsection}{\numberline {6.3}Definizione di chiavi primarie e chiavi esterne}{6}{subsection.6.3}%
-\contentsline {subsection}{\numberline {6.4}Vincoli NOT NULL, UNIQUE, CHECK}{6}{subsection.6.4}%
-\contentsline {subsection}{\numberline {6.5}Trigger, procedure o viste, se usati}{6}{subsection.6.5}%
-\contentsline {subsection}{\numberline {6.6}Popolamento iniziale del database}{6}{subsection.6.6}%
-\contentsline {subsection}{\numberline {6.7}Query SQL delle operazioni principali}{6}{subsection.6.7}%
-\contentsline {subsubsection}{\numberline {6.7.1}Problemi e criticità}{6}{subsubsection.6.7.1}%
+\contentsline {section}{\numberline {6}Implementazione SQL}{7}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Script di creazione del database}{7}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Creazione delle tabelle}{7}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Definizione di chiavi primarie e chiavi esterne}{7}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Vincoli NOT NULL, UNIQUE, CHECK}{7}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Trigger, procedure o viste, se usati}{7}{subsection.6.5}%
+\contentsline {subsection}{\numberline {6.6}Popolamento iniziale del database}{7}{subsection.6.6}%
+\contentsline {subsection}{\numberline {6.7}Query SQL delle operazioni principali}{7}{subsection.6.7}%
+\contentsline {subsubsection}{\numberline {6.7.1}Problemi e criticità}{7}{subsubsection.6.7.1}%
 \contentsline {subsubsection}{\numberline {6.7.2}Analisi}{7}{subsubsection.6.7.2}%
 \contentsline {subsubsection}{\numberline {6.7.3}Soluzione SQL}{7}{subsubsection.6.7.3}%
-\contentsline {subsubsection}{\numberline {6.7.4}Query di supporto e operazioni amministrative}{7}{subsubsection.6.7.4}%
-\contentsline {subsubsection}{\numberline {6.7.5}Motivazioni}{10}{subsubsection.6.7.5}%
-\contentsline {section}{\numberline {7}Progettazione dell’applicazione}{10}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Architettura generale dell’applicazione}{10}{subsection.7.1}%
+\contentsline {subsubsection}{\numberline {6.7.4}Query di supporto e operazioni amministrative}{8}{subsubsection.6.7.4}%
+\contentsline {subsubsection}{\numberline {6.7.5}Motivazioni}{9}{subsubsection.6.7.5}%
+\contentsline {section}{\numberline {7}Progettazione dell’applicazione}{9}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Architettura generale dell’applicazione}{9}{subsection.7.1}%
 \contentsline {subsection}{\numberline {7.2}Tecnologie usate}{10}{subsection.7.2}%
 \contentsline {subsection}{\numberline {7.3}Struttura dei package Java}{10}{subsection.7.3}%
 \contentsline {subsection}{\numberline {7.4}Collegamento al database tramite JDBC}{10}{subsection.7.4}%
 \contentsline {subsection}{\numberline {7.5}Organizzazione delle classi principali}{10}{subsection.7.5}%
 \contentsline {subsection}{\numberline {7.6}Gestione degli errori e validazione input}{10}{subsection.7.6}%
-\contentsline {subsection}{\numberline {7.7}Interfaccia grafica Java Swing}{10}{subsection.7.7}%
-\contentsline {subsection}{\numberline {7.8}Schermate principali}{10}{subsection.7.8}%
+\contentsline {subsection}{\numberline {7.7}Interfaccia grafica Java Swing}{11}{subsection.7.7}%
+\contentsline {subsection}{\numberline {7.8}Schermate principali}{11}{subsection.7.8}%
 \contentsline {subsection}{\numberline {7.9}Flussi d’uso principali}{11}{subsection.7.9}%
 \contentsline {section}{\numberline {8}Test e validazione}{11}{section.8}%
 \contentsline {subsection}{\numberline {8.1}Dati di test utilizzati}{11}{subsection.8.1}%
@@ -94,8 +94,8 @@
 \contentsline {subsection}{\numberline {9.1}Risultato ottenuto}{11}{subsection.9.1}%
 \contentsline {subsection}{\numberline {9.2}Scelte progettuali principali}{11}{subsection.9.2}%
 \contentsline {subsection}{\numberline {9.3}Possibili sviluppi futuri}{11}{subsection.9.3}%
-\contentsline {section}{\numberline {A}Script SQL completo}{11}{appendix.Alph1}%
-\contentsline {section}{\numberline {B}Query SQL complete}{11}{appendix.Alph2}%
-\contentsline {section}{\numberline {C}Screenshot dell’applicazione}{11}{appendix.Alph3}%
-\contentsline {section}{\numberline {D}Manuale utente sintetico}{11}{appendix.Alph4}%
+\contentsline {section}{\numberline {A}Script SQL completo}{12}{appendix.Alph1}%
+\contentsline {section}{\numberline {B}Query SQL complete}{12}{appendix.Alph2}%
+\contentsline {section}{\numberline {C}Screenshot dell’applicazione}{12}{appendix.Alph3}%
+\contentsline {section}{\numberline {D}Manuale utente sintetico}{12}{appendix.Alph4}%
 \contentsline {section}{\numberline {E}Eventuale link al repository}{12}{appendix.Alph5}%

@@ -235,30 +235,53 @@ VALUES
 
 -- Budget globale per maggio: limite complessivo del mese.
 INSERT INTO BUDGET
-(Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
+(Importo_Limite, Alert_Soglia, Totale_Speso_Attuale, ID_Periodo, ID_Categoria, Email)
 VALUES
-(300.00, TRUE, @periodo_maggio, NULL, 'studente1@mail.com')
+(300.00, TRUE, (
+    SELECT COALESCE(SUM(Importo), 0)
+    FROM TRANSIZIONE
+    WHERE Email = 'studente1@mail.com'
+      AND ID_Periodo = @periodo_maggio
+      AND TipoTransazione = 'S'
+), @periodo_maggio, NULL, 'studente1@mail.com')
 ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
-Alert_Soglia = VALUES(Alert_Soglia);
+Alert_Soglia = VALUES(Alert_Soglia),
+Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 
 -- Budget specifico per tenere sotto controllo la mensa.
 INSERT INTO BUDGET
-(Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
+(Importo_Limite, Alert_Soglia, Totale_Speso_Attuale, ID_Periodo, ID_Categoria, Email)
 VALUES
-(120.00, TRUE, @periodo_maggio, @cat_mensa, 'studente1@mail.com')
+(120.00, TRUE, (
+    SELECT COALESCE(SUM(Importo), 0)
+    FROM TRANSIZIONE
+    WHERE Email = 'studente1@mail.com'
+      AND ID_Periodo = @periodo_maggio
+      AND TipoTransazione = 'S'
+      AND ID_Categoria = @cat_mensa
+), @periodo_maggio, @cat_mensa, 'studente1@mail.com')
 ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
-Alert_Soglia = VALUES(Alert_Soglia);
+Alert_Soglia = VALUES(Alert_Soglia),
+Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 
 -- Budget dedicato ai libri universitari.
 INSERT INTO BUDGET
-(Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
+(Importo_Limite, Alert_Soglia, Totale_Speso_Attuale, ID_Periodo, ID_Categoria, Email)
 VALUES
-(60.00, TRUE, @periodo_maggio, @cat_libri, 'studente1@mail.com')
+(60.00, TRUE, (
+    SELECT COALESCE(SUM(Importo), 0)
+    FROM TRANSIZIONE
+    WHERE Email = 'studente1@mail.com'
+      AND ID_Periodo = @periodo_maggio
+      AND TipoTransazione = 'S'
+      AND ID_Categoria = @cat_libri
+), @periodo_maggio, @cat_libri, 'studente1@mail.com')
 ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
-Alert_Soglia = VALUES(Alert_Soglia);
+Alert_Soglia = VALUES(Alert_Soglia),
+Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 
 -- Spesa ricorrente demo per rappresentare l'abbonamento mensile ai trasporti.
 INSERT INTO SPESA_RICORRENTE

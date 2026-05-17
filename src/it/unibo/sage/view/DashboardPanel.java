@@ -1,7 +1,21 @@
 package it.unibo.sage.view;
 
+import it.unibo.sage.controller.BudgetController;
+import it.unibo.sage.controller.MovimentiController;
+import it.unibo.sage.model.Budget;
+import it.unibo.sage.model.Categoria;
+import it.unibo.sage.model.Tag;
+import it.unibo.sage.model.TipoTransazione;
+import it.unibo.sage.model.Transazione;
 import it.unibo.sage.model.Utente;
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
 /**
@@ -13,6 +27,8 @@ public class DashboardPanel extends AppBackgroundPanel {
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
     private final Utente currentUser;
+    private final MovimentiController movimentiController = new MovimentiController();
+    private final BudgetController budgetController = new BudgetController();
     private JButton selectedMenuButton;
 
     public DashboardPanel(final Utente currentUser) {
@@ -189,18 +205,9 @@ public class DashboardPanel extends AppBackgroundPanel {
 
     private void initContentCards() {
         contentPanel.add(createOverviewCard(), "CARD_OVERVIEW");
-        contentPanel.add(createPlaceholderCard(
-            "Transazioni",
-            "Entrate e spese saranno filtrabili per periodo, categoria e tag."
-        ), "CARD_TRANSACTIONS");
-        contentPanel.add(createPlaceholderCard(
-            "Budget",
-            "Budget mensili, totale speso ridondante e soglie per categoria."
-        ), "CARD_BUDGET");
-        contentPanel.add(createPlaceholderCard(
-            "Categorie e Tag",
-            "Classificazioni di sistema e personali, coerenti con le gerarchie ISA."
-        ), "CARD_CATEGORIES");
+        contentPanel.add(createTransactionsCard(), "CARD_TRANSACTIONS");
+        contentPanel.add(createBudgetCard(), "CARD_BUDGET");
+        contentPanel.add(createCategoriesCard(), "CARD_CATEGORIES");
         contentPanel.add(createPlaceholderCard(
             "Spese Ricorrenti",
             "Modelli astratti da cui generare spese effettive periodiche."
@@ -212,25 +219,88 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private JPanel createOverviewCard() {
+        final List<Transazione> transazioni = loadTransactions();
+        final List<Budget> budgets = loadBudgets();
+        final BigDecimal entrate = sumByType(transazioni, TipoTransazione.ENTRATA);
+        final BigDecimal spese = sumByType(transazioni, TipoTransazione.SPESA);
+        final BigDecimal saldo = entrate.subtract(spese);
+        final String budgetUsage = calculateBudgetUsage(budgets);
+
         JPanel panel = new JPanel(new BorderLayout(0, 18));
         panel.setOpaque(false);
 
         JPanel metricsPanel = new JPanel(new GridLayout(1, 4, 16, 16));
         metricsPanel.setOpaque(false);
-        metricsPanel.add(createMetricBox("Saldo attuale", "0,00 euro", AppTheme.PRIMARY));
-        metricsPanel.add(createMetricBox("Entrate mese", "0,00 euro", AppTheme.INCOME));
-        metricsPanel.add(createMetricBox("Spese mese", "0,00 euro", AppTheme.EXPENSE));
-        metricsPanel.add(createMetricBox("Budget usato", "0%", AppTheme.BUDGET));
+        metricsPanel.add(createMetricBox("Saldo demo", formatEuro(saldo), AppTheme.PRIMARY));
+        metricsPanel.add(createMetricBox("Entrate", formatEuro(entrate), AppTheme.INCOME));
+        metricsPanel.add(createMetricBox("Spese", formatEuro(spese), AppTheme.EXPENSE));
+        metricsPanel.add(createMetricBox("Budget usato", budgetUsage, AppTheme.BUDGET));
 
         JPanel lowerPanel = new JPanel(new GridLayout(1, 2, 16, 16));
         lowerPanel.setOpaque(false);
-        lowerPanel.add(createPlaceholderBox("Ultime transazioni", "Nessuna transazione registrata."));
-        lowerPanel.add(createPlaceholderBox("Budget del mese", "Nessun budget configurato."));
+        lowerPanel.add(createMiniTransactionsBox(transazioni));
+        lowerPanel.add(createMiniBudgetBox(budgets));
 
         panel.add(metricsPanel, BorderLayout.NORTH);
         panel.add(lowerPanel, BorderLayout.CENTER);
 
         return panel;
+    }
+
+    private JPanel createTransactionsCard() {
+        final String[] columns = {"Data", "Tipo", "Descrizione", "Importo"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        for (Transazione transazione : loadTransactions()) {
+            model.addRow(new Object[] {
+                transazione.getData(),
+                labelTipo(transazione.getTipo()),
+                transazione.getDescrizione(),
+                formatEuro(transazione.getImporto())
+            });
+        }
+        return createTableCard("Transazioni demo", "Movimenti caricati dal database per "
+                + currentUser.getEmail(), model);
+    }
+
+    private JPanel createBudgetCard() {
+        final String[] columns = {"ID", "Periodo", "Categoria", "Limite", "Speso", "Alert"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        final Map<Long, String> categoryNames = loadCategoryNames();
+        for (Budget budget : loadBudgets()) {
+            model.addRow(new Object[] {
+                budget.getId(),
+                "Periodo " + budget.getIdPeriodo(),
+                budget.getIdCategoria() == null
+                        ? "Mensile"
+                        : categoryNames.getOrDefault(budget.getIdCategoria(), "Categoria " + budget.getIdCategoria()),
+                formatEuro(budget.getImportoLimite()),
+                formatEuro(budget.getTotaleSpesoAttuale()),
+                budget.isAlertSoglia() ? "Si" : "No"
+            });
+        }
+        return createTableCard("Budget demo", "Budget mensili e per categoria caricati dal database.", model);
+    }
+
+    private JPanel createCategoriesCard() {
+        final String[] columns = {"Tipo", "ID", "Nome", "Origine"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        for (Categoria categoria : loadCategories()) {
+            model.addRow(new Object[] {
+                "Categoria",
+                categoria.getId(),
+                categoria.getNome(),
+                categoria.isSystem() ? "Sistema" : "Personale"
+            });
+        }
+        for (Tag tag : loadTags()) {
+            model.addRow(new Object[] {
+                "Tag",
+                tag.getId(),
+                tag.getNome(),
+                tag.isSystem() ? "Sistema" : "Personale"
+            });
+        }
+        return createTableCard("Categorie e Tag", "Classificazioni disponibili per l'utente corrente.", model);
     }
 
     private JPanel createMetricBox(String title, String value, Color accent) {
@@ -274,6 +344,67 @@ public class DashboardPanel extends AppBackgroundPanel {
         return panel;
     }
 
+    private JPanel createMiniTransactionsBox(final List<Transazione> transazioni) {
+        final StringBuilder text = new StringBuilder("<html>");
+        final int limit = Math.min(4, transazioni.size());
+        for (int i = 0; i < limit; i++) {
+            final Transazione transazione = transazioni.get(i);
+            text.append(transazione.getData())
+                    .append(" - ")
+                    .append(transazione.getDescrizione())
+                    .append(" - ")
+                    .append(formatEuro(transazione.getImporto()))
+                    .append("<br>");
+        }
+        if (limit == 0) {
+            text.append("Nessuna transazione caricata.");
+        }
+        text.append("</html>");
+        return createPlaceholderBox("Ultime transazioni", text.toString());
+    }
+
+    private JPanel createMiniBudgetBox(final List<Budget> budgets) {
+        if (budgets.isEmpty()) {
+            return createPlaceholderBox("Budget", "Nessun budget configurato.");
+        }
+        final Budget first = budgets.get(0);
+        return createPlaceholderBox("Budget", "Limite " + formatEuro(first.getImportoLimite())
+                + ", speso " + formatEuro(first.getTotaleSpesoAttuale()));
+    }
+
+    private JPanel createTableCard(final String title, final String subtitle,
+            final DefaultTableModel model) {
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel();
+        header.setOpaque(false);
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel(subtitle);
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        header.add(titleLabel);
+        header.add(Box.createVerticalStrut(6));
+        header.add(subtitleLabel);
+
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(218, 226, 236)));
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
     private JPanel createPlaceholderCard(String title, String description) {
         JPanel panel = new GlassPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
@@ -298,5 +429,89 @@ public class DashboardPanel extends AppBackgroundPanel {
         panel.add(textPanel);
 
         return panel;
+    }
+
+    private List<Transazione> loadTransactions() {
+        try {
+            return movimentiController.caricaTransazioni(
+                    currentUser.getEmail(),
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31));
+        } catch (final SQLException ex) {
+            showLoadError("transazioni", ex);
+            return List.of();
+        }
+    }
+
+    private List<Budget> loadBudgets() {
+        try {
+            return budgetController.caricaBudget(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("budget", ex);
+            return List.of();
+        }
+    }
+
+    private List<Categoria> loadCategories() {
+        try {
+            return movimentiController.caricaCategorieDisponibili(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("categorie", ex);
+            return List.of();
+        }
+    }
+
+    private Map<Long, String> loadCategoryNames() {
+        final Map<Long, String> names = new HashMap<>();
+        for (Categoria categoria : loadCategories()) {
+            names.put(categoria.getId(), categoria.getNome());
+        }
+        return names;
+    }
+
+    private List<Tag> loadTags() {
+        try {
+            return movimentiController.caricaTagDisponibili(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("tag", ex);
+            return List.of();
+        }
+    }
+
+    private BigDecimal sumByType(final List<Transazione> transazioni, final TipoTransazione tipo) {
+        BigDecimal totale = BigDecimal.ZERO;
+        for (Transazione transazione : transazioni) {
+            if (transazione.getTipo() == tipo) {
+                totale = totale.add(transazione.getImporto());
+            }
+        }
+        return totale;
+    }
+
+    private String calculateBudgetUsage(final List<Budget> budgets) {
+        for (Budget budget : budgets) {
+            if (budget.getIdCategoria() == null && budget.getImportoLimite().signum() > 0) {
+                return budget.getTotaleSpesoAttuale()
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(budget.getImportoLimite(), 0, java.math.RoundingMode.HALF_UP)
+                        + "%";
+            }
+        }
+        return "0%";
+    }
+
+    private String formatEuro(final BigDecimal value) {
+        return String.format("%.2f euro", value);
+    }
+
+    private String labelTipo(final TipoTransazione tipo) {
+        return tipo == TipoTransazione.SPESA ? "Spesa" : "Entrata";
+    }
+
+    private void showLoadError(final String dataType, final SQLException ex) {
+        JOptionPane.showMessageDialog(this,
+                "Errore durante il caricamento di " + dataType + ": " + ex.getMessage(),
+                "Errore database",
+                JOptionPane.ERROR_MESSAGE);
     }
 }
