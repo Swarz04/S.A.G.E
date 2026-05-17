@@ -1,12 +1,11 @@
--- *****
--- * Standard SQL generation - fixed for MySQL
--- *****
+-- Script generato dal modello concettuale e ritoccato per MySQL.
+-- Lo tengo come traccia della prima trasformazione verso lo schema relazionale.
 
 DROP DATABASE IF EXISTS Concettuale_Sistema_di_Analisi_e_Gestione_delle_spese_personali;
 CREATE DATABASE Concettuale_Sistema_di_Analisi_e_Gestione_delle_spese_personali;
 USE Concettuale_Sistema_di_Analisi_e_Gestione_delle_spese_personali;
 
--- Tables Section
+-- Creazione delle tabelle principali individuate in fase di progettazione.
 
 CREATE TABLE BUDGETMENSILE (
      ID_BUD NUMERIC(10) NOT NULL,
@@ -89,7 +88,7 @@ CREATE TABLE HA (
      CONSTRAINT ID_HA_ID PRIMARY KEY (nome, email, importo, data)
 );
 
--- Constraints Section
+-- Aggiungo qui i vincoli di riferimento tra le tabelle.
 
 ALTER TABLE BUDGETMENSILE ADD CONSTRAINT REF_BUDGE_PERIO_FK
      FOREIGN KEY (mese, anno)
@@ -151,7 +150,7 @@ ALTER TABLE HA ADD CONSTRAINT REF_HA_SPESA_FK
      FOREIGN KEY (email, importo, data)
      REFERENCES SPESA (email, importo, data);
 
--- Index Section
+-- Indici usati per rendere piu' immediate le ricerche sulle chiavi.
 
 CREATE INDEX REF_BUDGE_CATEG_IND
      ON BUDGETCATEGORIA (nome);

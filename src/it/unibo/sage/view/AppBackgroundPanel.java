@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Sfondo morbido per far risaltare le superfici glass senza immagini esterne.
+ * Sfondo disegnato a mano per dare profondita' alle schermate senza dipendere
+ * da immagini esterne.
  */
 public class AppBackgroundPanel extends JPanel {
 

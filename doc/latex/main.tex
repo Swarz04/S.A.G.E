@@ -1,5 +1,5 @@
-% main.tex - Struttura del report di progetto per S.A.G.E.
-% Compilare con: pdflatex main.tex oppure latexmk -pdf main.tex
+% Report del progetto S.A.G.E.: tengo qui struttura, sezioni e configurazioni.
+% Per rigenerare il PDF basta compilare con pdflatex o latexmk -pdf.
 
 \documentclass[11pt,a4paper]{article}
 \usepackage[T1]{fontenc}
@@ -19,7 +19,7 @@
 \usepackage{xcolor}
 \usepackage{enumitem}
 
-% Stile "Viola Professionale" per SQL
+% Stile dei blocchi SQL nel report: colori leggibili e numeri di riga.
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -47,7 +47,7 @@
 }
 \setlist{nosep, leftmargin=*}
 
-% Dati del frontespizio
+% Dati del frontespizio, separati in comandi per modificarli in fretta.
 \newcommand{\ProjectTitle}{S.A.G.E. - Sistema di Analisi e Gestione Economica}
 \newcommand{\CourseName}{Corso: Basi di Dati}
 \newcommand{\AcademicYear}{Anno accademico 2025/2026}
@@ -74,7 +74,7 @@
     {\large\bfseries Email universitarie}\\
     \Emails\\[1.5em]
     {\large \Supervisor}\\[2em]
-    % Inserire il logo Unibo nella stessa cartella del file .tex o aggiornare il percorso
+    % Logo opzionale: basta mettere il file nella cartella o aggiornare il percorso.
     % \includegraphics[height=3cm]{\UniversityLogo}
     \vfill
     {\large \today}
@@ -316,11 +316,11 @@ Il sistema utilizza una traduzione della gerarchia con una relazione per la supe
 \subsubsection{Soluzione SQL}
 \paragraph{U3 - Inserimento Atomico Spesa}
 \begin{lstlisting}[caption={Inserimento di una spesa con recupero ID}]
--- Inserimento nel record padre
+-- Prima inserisco il record padre.
 INSERT INTO TRANSAZIONE (Importo, Data, Descrizione, ID_Utente)
 VALUES (?, ?, ?, ?);
 
--- Inserimento nel record figlio (JDBC recupera l'ID appena generato)
+-- Poi inserisco il record figlio usando l'ID generato dal database.
 INSERT INTO SPESA (ID_Transazione, ID_Categoria)
 VALUES (LAST_INSERT_ID(), ?);
 \end{lstlisting}

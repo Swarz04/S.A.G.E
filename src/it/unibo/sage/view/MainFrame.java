@@ -4,8 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * S.A.G.E. Main Entry Point.
- * La GUI resta indipendente da DAO e Controller: per ora gestisce solo le card.
+ * Finestra principale dell'applicazione. In questa fase tiene insieme le viste
+ * Swing senza collegarsi direttamente a DAO e controller.
  */
 public class MainFrame extends JFrame {
 

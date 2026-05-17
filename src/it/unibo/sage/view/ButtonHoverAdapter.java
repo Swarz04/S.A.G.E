@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Piccolo effetto hover per rendere i JButton piu visibili anche senza FlatLaf.
+ * Gestisce l'hover dei bottoni: e' una cosa piccola, ma rende l'interfaccia piu'
+ * leggibile quando l'utente passa con il mouse.
  */
 public class ButtonHoverAdapter extends java.awt.event.MouseAdapter {
 

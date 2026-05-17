@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Superficie arrotondata con trasparenza, bordo luminoso e ombra morbida.
+ * Pannello "glass" usato come contenitore leggero: bordo chiaro, trasparenza e
+ * una piccola ombra per staccarlo dallo sfondo.
  */
 public class GlassPanel extends JPanel {
 

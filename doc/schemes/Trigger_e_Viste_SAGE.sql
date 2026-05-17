@@ -1,16 +1,14 @@
--- =====================================================
--- SEGMENTO 02: TRIGGER E VISTE
--- =====================================================
+-- Seconda parte dello schema: trigger di controllo e viste di supporto.
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
 
--- ======================
--- TRIGGER
--- ======================
+-- Trigger: sposto nel database alcuni controlli che devono valere sempre,
+-- anche se in futuro cambia la parte applicativa.
 
 DELIMITER $$
 
--- Controllo categoria/fonte nelle transazioni in inserimento
+-- Quando inserisco una transazione, verifico che categoria o fonte appartengano
+-- all'utente oppure siano elementi di sistema.
 CREATE TRIGGER trg_transizione_insert_check
 BEFORE INSERT ON TRANSIZIONE
 FOR EACH ROW
@@ -46,7 +44,8 @@ BEGIN
     END IF;
 END$$
 
--- Controllo categoria/fonte nelle transazioni in modifica
+-- Ripeto lo stesso controllo anche in modifica, per evitare incoerenze dopo
+-- un aggiornamento.
 CREATE TRIGGER trg_transizione_update_check
 BEFORE UPDATE ON TRANSIZIONE
 FOR EACH ROW
@@ -82,7 +81,7 @@ BEGIN
     END IF;
 END$$
 
--- Controllo validità dei tag associati alle spese in inserimento
+-- I tag possono essere collegati solo a spese valide e visibili all'utente.
 CREATE TRIGGER trg_spesatag_insert_check
 BEFORE INSERT ON spesa_tag
 FOR EACH ROW
@@ -103,7 +102,8 @@ BEGIN
     END IF;
 END$$
 
--- Controllo validità dei tag associati alle spese in modifica
+-- Anche cambiando un'associazione, il tag deve rimanere compatibile con la
+-- spesa scelta.
 CREATE TRIGGER trg_spesatag_update_check
 BEFORE UPDATE ON spesa_tag
 FOR EACH ROW
@@ -124,7 +124,8 @@ BEGIN
     END IF;
 END$$
 
--- Controllo documento associabile solo a una spesa in inserimento
+-- Un documento ha senso solo per una spesa, quindi blocco l'inserimento su
+-- entrate o transazioni inesistenti.
 CREATE TRIGGER trg_documento_solo_spese_insert
 BEFORE INSERT ON DOCUMENTO
 FOR EACH ROW
@@ -140,7 +141,7 @@ BEGIN
     END IF;
 END$$
 
--- Controllo documento associabile solo a una spesa in modifica
+-- Lo stesso vincolo vale se qualcuno prova a modificare il documento dopo.
 CREATE TRIGGER trg_documento_solo_spese_update
 BEFORE UPDATE ON DOCUMENTO
 FOR EACH ROW
@@ -156,7 +157,8 @@ BEGIN
     END IF;
 END$$
 
--- Controllo categoria valida nei budget in inserimento
+-- Per un budget con categoria specifica controllo che la categoria sia
+-- utilizzabile dall'utente.
 CREATE TRIGGER trg_budget_insert_check
 BEFORE INSERT ON BUDGET
 FOR EACH ROW
@@ -177,7 +179,7 @@ BEGIN
     END IF;
 END$$
 
--- Controllo categoria valida nei budget in modifica
+-- In aggiornamento mantengo lo stesso controllo sui budget per categoria.
 CREATE TRIGGER trg_budget_update_check
 BEFORE UPDATE ON BUDGET
 FOR EACH ROW
@@ -198,7 +200,8 @@ BEGIN
     END IF;
 END$$
 
--- Controllo categoria valida nelle spese ricorrenti in inserimento
+-- Una spesa ricorrente deve puntare a una categoria effettivamente disponibile
+-- per quell'utente.
 CREATE TRIGGER trg_spesa_ricorrente_insert_check
 BEFORE INSERT ON SPESA_RICORRENTE
 FOR EACH ROW
@@ -217,7 +220,8 @@ BEGIN
     END IF;
 END$$
 
--- Controllo categoria valida nelle spese ricorrenti in modifica
+-- Se cambio una ricorrenza, ricontrollo la categoria per non lasciare dati
+-- non coerenti.
 CREATE TRIGGER trg_spesa_ricorrente_update_check
 BEFORE UPDATE ON SPESA_RICORRENTE
 FOR EACH ROW
@@ -238,11 +242,10 @@ END$$
 
 DELIMITER ;
 
--- ======================
--- VISTE
--- ======================
+-- Viste: preparo alcune letture gia' pronte per dashboard, report e query demo.
 
--- Vista dettagliata delle transizioni
+-- Vista comoda per leggere una transazione con periodo, categoria/fonte e
+-- documento in un unico risultato.
 CREATE VIEW v_transizioni_dettaglio AS
 SELECT
     T.ID_Transizione,
@@ -265,7 +268,8 @@ LEFT JOIN CATEGORIA C ON T.ID_Categoria = C.ID_Categoria
 LEFT JOIN FONTE F ON T.ID_Fonte = F.ID_Fonte
 LEFT JOIN DOCUMENTO D ON T.ID_Transizione = D.ID_Transizione;
 
--- Vista statistiche aggregate per amministratore
+-- Statistiche aggregate per l'amministratore, senza esporre i dettagli personali
+-- dei singoli utenti.
 CREATE VIEW v_statistiche_aggregate_admin AS
 SELECT
     P.Anno,
@@ -277,7 +281,8 @@ FROM TRANSIZIONE T
 JOIN PERIODO P ON T.ID_Periodo = P.ID_Periodo
 GROUP BY P.Anno, P.Mese;
 
--- Vista stato dei budget
+-- Stato dei budget: confronto limite, speso e residuo per capire subito se un
+-- budget e' stato superato.
 CREATE VIEW v_budget_stato AS
 SELECT
     B.ID_Budget,

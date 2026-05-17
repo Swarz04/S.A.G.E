@@ -7,8 +7,8 @@ import java.util.logging.Logger;
 import javax.swing.UIManager;
 
 /**
- * Tema visuale centralizzato.
- * Se FlatLaf e' presente in lib/, viene usato automaticamente.
+ * Raccolgo qui colori, font e look and feel, cosi' la grafica resta coerente
+ * anche quando cambio piu' schermate.
  */
 public final class AppTheme {
 

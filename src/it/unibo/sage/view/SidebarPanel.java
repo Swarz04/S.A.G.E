@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Barra laterale con gradiente scuro e accenti freddi.
+ * Barra laterale della dashboard, disegnata con un gradiente scuro per
+ * separare bene la navigazione dal contenuto principale.
  */
 public class SidebarPanel extends JPanel {
 

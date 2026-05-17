@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Componente LoginPanel centrato.
+ * Pannello di login centrato: per ora raccoglie le credenziali e porta alla
+ * dashboard demo.
  */
 public class LoginPanel extends AppBackgroundPanel {
 

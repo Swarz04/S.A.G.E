@@ -3,13 +3,6 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Main",
-            "request": "launch",
-            "mainClass": "it.unibo.sage.Main",
-            "projectName": "S.A.G.E-local_eb7fd845"
-        },
-        {
-            "type": "java",
             "name": "Run S.A.G.E.",
             "request": "launch",
             "mainClass": "it.unibo.sage.Main",

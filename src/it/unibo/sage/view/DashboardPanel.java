@@ -4,8 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Schermata principale dopo il login.
- * Il menu laterale cambia le card dell'area centrale senza accedere al database.
+ * Schermata principale dopo il login: il menu laterale cambia le card centrali
+ * e prepara la struttura per le funzioni vere dell'app.
  */
 public class DashboardPanel extends AppBackgroundPanel {
 

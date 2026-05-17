@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Bottone arrotondato coerente anche senza FlatLaf.
+ * JButton personalizzato: mi serve per avere bottoni arrotondati e uniformi
+ * anche se FlatLaf non viene caricato.
  */
 public class SoftButton extends JButton {
 

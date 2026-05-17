@@ -1,49 +1,46 @@
--- =====================================================
--- SEGMENTO 03: POPOLAMENTO INIZIALE DEL DATABASE
--- =====================================================
+-- Dati iniziali per provare S.A.G.E. con utenti, categorie e movimenti demo.
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
 
--- ======================
--- POPOLAMENTO INIZIALE
--- ======================
+-- Popolamento di base: creo prima le entita' principali e poi salvo gli ID
+-- che servono nelle associazioni successive.
 
--- Inserimento utenti
+-- Utenti di prova: due studenti normali e un amministratore.
 INSERT INTO UTENTE (Email, Password, Nome, Cognome, Ruolo)
 VALUES
 ('studente1@mail.com', SHA2('password1', 512), 'Mario', 'Rossi', 'UTENTE'),
 ('studente2@mail.com', SHA2('password2', 512), 'Luca', 'Bianchi', 'UTENTE'),
 ('admin@sage.com', SHA2('admin123', 512), 'Admin', 'Sistema', 'ADMIN');
 
--- Inserimento periodi
+-- Periodi usati negli esempi del report e nelle query operative.
 INSERT INTO PERIODO (Mese, Anno)
 VALUES 
 (5, 2026),
 (6, 2026),
 (7, 2026);
 
--- Recupero identificativo periodo maggio 2026
+-- Salvo l'ID di maggio 2026 per riusarlo senza scrivere numeri fissi.
 SET @periodo_maggio = (
     SELECT ID_Periodo 
     FROM PERIODO 
     WHERE Mese = 5 AND Anno = 2026
 );
 
--- Recupero identificativo periodo giugno 2026
+-- Stessa cosa per giugno 2026.
 SET @periodo_giugno = (
     SELECT ID_Periodo 
     FROM PERIODO 
     WHERE Mese = 6 AND Anno = 2026
 );
 
--- Recupero identificativo periodo luglio 2026
+-- Tengo pronto anche luglio 2026 per eventuali prove successive.
 SET @periodo_luglio = (
     SELECT ID_Periodo 
     FROM PERIODO 
     WHERE Mese = 7 AND Anno = 2026
 );
 
--- Inserimento categorie di sistema
+-- Categorie comuni, disponibili per tutti gli utenti.
 INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario)
 VALUES
 ('Trasporti', TRUE, NULL),
@@ -52,28 +49,28 @@ VALUES
 ('Salute', TRUE, NULL),
 ('Svago', TRUE, NULL);
 
--- Inserimento categorie personali
+-- Categorie personali: appartengono a un solo studente.
 INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario)
 VALUES
 ('Mensa universitaria', FALSE, 'studente1@mail.com'),
 ('Libri universitari', FALSE, 'studente1@mail.com'),
 ('Palestra', FALSE, 'studente2@mail.com');
 
--- Recupero identificativo categoria Trasporti
+-- Recupero la categoria Trasporti creata come categoria di sistema.
 SET @cat_trasporti = (
     SELECT ID_Categoria 
     FROM CATEGORIA 
     WHERE Nome = 'Trasporti' AND is_system = TRUE
 );
 
--- Recupero identificativo categoria Alimentari
+-- Recupero anche Alimentari per usarla nelle prove.
 SET @cat_alimentari = (
     SELECT ID_Categoria 
     FROM CATEGORIA 
     WHERE Nome = 'Alimentari' AND is_system = TRUE
 );
 
--- Recupero identificativo categoria Mensa universitaria
+-- Categoria personale di studente1 dedicata alle spese in mensa.
 SET @cat_mensa = (
     SELECT ID_Categoria 
     FROM CATEGORIA 
@@ -81,7 +78,7 @@ SET @cat_mensa = (
       AND Email_Proprietario = 'studente1@mail.com'
 );
 
--- Recupero identificativo categoria Libri universitari
+-- Categoria personale di studente1 per il materiale universitario.
 SET @cat_libri = (
     SELECT ID_Categoria 
     FROM CATEGORIA 
@@ -89,7 +86,7 @@ SET @cat_libri = (
       AND Email_Proprietario = 'studente1@mail.com'
 );
 
--- Recupero identificativo categoria Palestra
+-- Categoria personale di studente2, utile per verificare la separazione utenti.
 SET @cat_palestra = (
     SELECT ID_Categoria 
     FROM CATEGORIA 
@@ -97,20 +94,20 @@ SET @cat_palestra = (
       AND Email_Proprietario = 'studente2@mail.com'
 );
 
--- Inserimento fonti di sistema
+-- Fonti di entrata generali, valide per tutti.
 INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
 VALUES
 ('Stipendio', TRUE, NULL),
 ('Regalo', TRUE, NULL),
 ('Rimborso', TRUE, NULL);
 
--- Inserimento fonti personali
+-- Fonti personali dello studente demo.
 INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
 VALUES
 ('Borsa di studio', FALSE, 'studente1@mail.com'),
 ('Ripetizioni private', FALSE, 'studente1@mail.com');
 
--- Recupero identificativo fonte Borsa di studio
+-- ID della borsa di studio, usato per l'entrata principale.
 SET @fonte_borsa = (
     SELECT ID_Fonte
     FROM FONTE
@@ -118,7 +115,7 @@ SET @fonte_borsa = (
       AND Email_Proprietario = 'studente1@mail.com'
 );
 
--- Recupero identificativo fonte Ripetizioni private
+-- ID della fonte legata alle ripetizioni private.
 SET @fonte_ripetizioni = (
     SELECT ID_Fonte
     FROM FONTE
@@ -126,7 +123,7 @@ SET @fonte_ripetizioni = (
       AND Email_Proprietario = 'studente1@mail.com'
 );
 
--- Recupero identificativo fonte Regalo
+-- Fonte di sistema usata per un'entrata occasionale.
 SET @fonte_regalo = (
     SELECT ID_Fonte
     FROM FONTE
@@ -134,20 +131,20 @@ SET @fonte_regalo = (
       AND is_system = TRUE
 );
 
--- Inserimento tag di sistema
+-- Tag comuni per classificare velocemente le spese.
 INSERT INTO TAG (Nome, is_system, Email_Proprietario)
 VALUES
 ('Essenziale', TRUE, NULL),
 ('Università', TRUE, NULL),
 ('Extra', TRUE, NULL);
 
--- Inserimento tag personali
+-- Tag personali che rendono piu' flessibile la classificazione dello studente.
 INSERT INTO TAG (Nome, is_system, Email_Proprietario)
 VALUES
 ('Esame', FALSE, 'studente1@mail.com'),
 ('Weekend', FALSE, 'studente1@mail.com');
 
--- Recupero identificativo tag Essenziale
+-- Tag per distinguere le spese davvero necessarie.
 SET @tag_essenziale = (
     SELECT ID_Tag
     FROM TAG
@@ -155,7 +152,7 @@ SET @tag_essenziale = (
       AND is_system = TRUE
 );
 
--- Recupero identificativo tag Università
+-- Tag legato al contesto universitario.
 SET @tag_universita = (
     SELECT ID_Tag
     FROM TAG
@@ -163,7 +160,7 @@ SET @tag_universita = (
       AND is_system = TRUE
 );
 
--- Recupero identificativo tag Esame
+-- Tag personale usato per le spese collegate agli esami.
 SET @tag_esame = (
     SELECT ID_Tag
     FROM TAG
@@ -171,7 +168,7 @@ SET @tag_esame = (
       AND Email_Proprietario = 'studente1@mail.com'
 );
 
--- Inserimento spesa: pranzo in mensa
+-- Prima spesa demo: un pranzo in mensa universitaria.
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
@@ -179,19 +176,19 @@ VALUES
 
 SET @spesa_mensa = LAST_INSERT_ID();
 
--- Associazione tag alla spesa mensa
+-- La spesa in mensa e' sia universitaria sia essenziale.
 INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
 VALUES
 (@spesa_mensa, @tag_universita),
 (@spesa_mensa, @tag_essenziale);
 
--- Associazione documento alla spesa mensa
+-- Associo uno scontrino demo alla spesa in mensa.
 INSERT INTO DOCUMENTO
 (ID_Transizione, Path_File, Tipo_File, Data_Acquisizione_Documento)
 VALUES
 (@spesa_mensa, '/documenti/scontrino_mensa.pdf', 'PDF', '2026-05-13');
 
--- Inserimento spesa: acquisto libro universitario
+-- Seconda spesa demo: acquisto di un libro per l'universita'.
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
@@ -199,13 +196,13 @@ VALUES
 
 SET @spesa_libro = LAST_INSERT_ID();
 
--- Associazione tag alla spesa libro
+-- Il libro viene marcato come spesa universitaria e collegata a un esame.
 INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
 VALUES
 (@spesa_libro, @tag_universita),
 (@spesa_libro, @tag_esame);
 
--- Inserimento spesa: abbonamento autobus
+-- Terza spesa demo: abbonamento ai trasporti.
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
@@ -213,30 +210,30 @@ VALUES
 
 SET @spesa_autobus = LAST_INSERT_ID();
 
--- Associazione tag alla spesa autobus
+-- L'abbonamento viene considerato una spesa essenziale.
 INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
 VALUES
 (@spesa_autobus, @tag_essenziale);
 
--- Inserimento entrata: borsa di studio
+-- Entrata principale dello studente: accredito della borsa di studio.
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
 ('E', 500.00, '2026-05-01', 'Accredito borsa di studio', 'studente1@mail.com', NULL, @periodo_maggio, @fonte_borsa);
 
--- Inserimento entrata: ripetizioni private
+-- Entrata extra ottenuta con ripetizioni private.
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
 ('E', 120.00, '2026-05-20', 'Pagamento ripetizioni private', 'studente1@mail.com', NULL, @periodo_maggio, @fonte_ripetizioni);
 
--- Inserimento entrata: regalo famiglia
+-- Entrata occasionale inserita nel mese successivo.
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
 ('E', 50.00, '2026-06-02', 'Regalo famiglia', 'studente1@mail.com', NULL, @periodo_giugno, @fonte_regalo);
 
--- Inserimento budget globale mensile
+-- Budget globale per maggio: limite complessivo del mese.
 INSERT INTO BUDGET
 (Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
 VALUES
@@ -245,7 +242,7 @@ ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
 Alert_Soglia = VALUES(Alert_Soglia);
 
--- Inserimento budget specifico per mensa
+-- Budget specifico per tenere sotto controllo la mensa.
 INSERT INTO BUDGET
 (Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
 VALUES
@@ -254,7 +251,7 @@ ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
 Alert_Soglia = VALUES(Alert_Soglia);
 
--- Inserimento budget specifico per libri universitari
+-- Budget dedicato ai libri universitari.
 INSERT INTO BUDGET
 (Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
 VALUES
@@ -263,7 +260,7 @@ ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
 Alert_Soglia = VALUES(Alert_Soglia);
 
--- Inserimento spesa ricorrente
+-- Spesa ricorrente demo per rappresentare l'abbonamento mensile ai trasporti.
 INSERT INTO SPESA_RICORRENTE
 (Importo_Previsto, Frequenza_Giorni, Data_Inizio, Scadenza, ID_Categoria, Email)
 VALUES

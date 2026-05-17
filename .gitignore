@@ -1,0 +1,31 @@
+# Output prodotti dalla compilazione Java
+bin/
+build/
+out/
+target/
+*.class
+
+# File temporanei locali: utili durante le prove, ma non da versionare
+*.tmp
+*.bak
+
+# File generati da LaTeX durante la compilazione del report
+doc/latex/*.aux
+doc/latex/*.fdb_latexmk
+doc/latex/*.fls
+doc/latex/*.log
+doc/latex/*.out
+doc/latex/*.toc
+doc/latex/*.synctex.gz
+
+# Lock file creati da LibreOffice quando gli schemi sono aperti
+.~lock.*#
+doc/schemes/.~lock.*#
+
+# File automatici di IDE e sistema operativo
+.DS_Store
+Thumbs.db
+
+# Configurazioni locali e credenziali del database
+.env
+*.local
