@@ -15,15 +15,22 @@ public class GlassPanel extends JPanel {
 
     private final Color topColor;
     private final Color bottomColor;
+    private final boolean highlightVisible;
 
     public GlassPanel(LayoutManager layout) {
         this(layout, AppTheme.GLASS_TOP, AppTheme.GLASS_BOTTOM);
     }
 
     public GlassPanel(LayoutManager layout, Color topColor, Color bottomColor) {
+        this(layout, topColor, bottomColor, true);
+    }
+
+    public GlassPanel(LayoutManager layout, Color topColor, Color bottomColor,
+            boolean highlightVisible) {
         super(layout);
         this.topColor = topColor;
         this.bottomColor = bottomColor;
+        this.highlightVisible = highlightVisible;
         setOpaque(false);
     }
 
@@ -51,8 +58,11 @@ public class GlassPanel extends JPanel {
         graphics2D.setColor(AppTheme.GLASS_BORDER);
         graphics2D.drawRoundRect(x, y, width - 1, height - 1, ARC, ARC);
 
-        graphics2D.setColor(AppTheme.GLASS_HIGHLIGHT);
-        graphics2D.drawRoundRect(x + 1, y + 1, width - 3, Math.max(18, height / 2), ARC - 4, ARC - 4);
+        if (highlightVisible) {
+            graphics2D.setColor(AppTheme.GLASS_HIGHLIGHT);
+            graphics2D.drawRoundRect(x + 1, y + 1, width - 3,
+                    Math.max(18, height / 2), ARC - 4, ARC - 4);
+        }
 
         graphics2D.dispose();
         super.paintComponent(graphics);

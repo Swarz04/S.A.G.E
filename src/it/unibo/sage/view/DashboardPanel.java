@@ -10,6 +10,11 @@ import java.awt.*;
  */
 public class DashboardPanel extends AppBackgroundPanel {
 
+    private static final String CARD_OVERVIEW = "CARD_OVERVIEW";
+    private static final String CARD_SETTINGS = "CARD_SETTINGS";
+    private static final int SIDEBAR_WIDTH = 300;
+    private static final int MENU_BUTTON_HEIGHT = 56;
+
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
     private final Utente currentUser;
@@ -27,7 +32,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         add(createMainPanel(), BorderLayout.CENTER);
 
         initContentCards();
-        contentLayout.show(contentPanel, "CARD_OVERVIEW");
+        contentLayout.show(contentPanel, CARD_OVERVIEW);
     }
 
     private JPanel createMainPanel() {
@@ -81,8 +86,8 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JPanel createMenuPanel() {
         JPanel menuPanel = new SidebarPanel();
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
-        menuPanel.setPreferredSize(new Dimension(245, 0));
-        menuPanel.setBorder(BorderFactory.createEmptyBorder(24, 18, 24, 18));
+        menuPanel.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 0));
+        menuPanel.setBorder(BorderFactory.createEmptyBorder(24, 22, 24, 22));
 
         JLabel appName = new JLabel("S.A.G.E.");
         appName.setForeground(Color.WHITE);
@@ -104,7 +109,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         menuPanel.add(Box.createVerticalStrut(28));
         menuPanel.add(sectionLabel);
         menuPanel.add(Box.createVerticalStrut(10));
-        menuPanel.add(createMenuButton("Riepilogo", "CARD_OVERVIEW"));
+        menuPanel.add(createMenuButton("Riepilogo", CARD_OVERVIEW));
         menuPanel.add(createMenuButton("Transazioni", "CARD_TRANSACTIONS"));
         menuPanel.add(createMenuButton("Budget", "CARD_BUDGET"));
         menuPanel.add(createMenuButton("Categorie e Tag", "CARD_CATEGORIES"));
@@ -120,21 +125,40 @@ public class DashboardPanel extends AppBackgroundPanel {
         JPanel userBox = new GlassPanel(
             new BorderLayout(10, 0),
             AppTheme.SIDEBAR_USER_TOP,
-            AppTheme.SIDEBAR_USER_BOTTOM
+            AppTheme.SIDEBAR_USER_BOTTOM,
+            false
         );
-        userBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
-        userBox.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));
+        userBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        userBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
+        userBox.setMinimumSize(new Dimension(0, 66));
+        userBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        userBox.setToolTipText("Apri impostazioni");
+        userBox.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JLabel avatar = new JLabel("U", SwingConstants.CENTER);
         avatar.setOpaque(true);
-        avatar.setPreferredSize(new Dimension(34, 34));
+        avatar.setPreferredSize(new Dimension(38, 38));
         avatar.setBackground(AppTheme.AVATAR_BACKGROUND);
         avatar.setForeground(AppTheme.AVATAR_TEXT);
-        avatar.setFont(new Font("SansSerif", Font.BOLD, 15));
+        avatar.setFont(new Font("SansSerif", Font.BOLD, 16));
+        avatar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        avatar.setToolTipText("Apri impostazioni");
 
         JLabel name = new JLabel(currentUser.getNome() + " " + currentUser.getCognome());
         name.setForeground(Color.WHITE);
-        name.setFont(new Font("SansSerif", Font.BOLD, 13));
+        name.setFont(new Font("SansSerif", Font.BOLD, 15));
+        name.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        name.setToolTipText("Apri impostazioni");
+
+        java.awt.event.MouseAdapter settingsClick = new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent event) {
+                showSettings();
+            }
+        };
+        userBox.addMouseListener(settingsClick);
+        avatar.addMouseListener(settingsClick);
+        name.addMouseListener(settingsClick);
 
         userBox.add(avatar, BorderLayout.WEST);
         userBox.add(name, BorderLayout.CENTER);
@@ -145,12 +169,14 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JButton createMenuButton(String text, String cardName) {
         SoftButton button = new SoftButton(text);
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        button.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, MENU_BUTTON_HEIGHT));
+        button.setMinimumSize(new Dimension(0, MENU_BUTTON_HEIGHT));
+        button.setPreferredSize(new Dimension(0, MENU_BUTTON_HEIGHT));
+        button.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setBackground(AppTheme.SIDEBAR_BUTTON);
         button.setForeground(Color.WHITE);
-        button.setFont(new Font("SansSerif", Font.BOLD, 14));
+        button.setFont(new Font("SansSerif", Font.BOLD, 16));
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent event) {
@@ -184,11 +210,18 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
 
         selectedMenuButton = button;
-        selectedMenuButton.setBackground(AppTheme.SIDEBAR_BUTTON_SELECTED);
+        if (selectedMenuButton != null) {
+            selectedMenuButton.setBackground(AppTheme.SIDEBAR_BUTTON_SELECTED);
+        }
+    }
+
+    private void showSettings() {
+        selectMenuButton(null);
+        contentLayout.show(contentPanel, CARD_SETTINGS);
     }
 
     private void initContentCards() {
-        contentPanel.add(createOverviewCard(), "CARD_OVERVIEW");
+        contentPanel.add(createOverviewCard(), CARD_OVERVIEW);
         contentPanel.add(createPlaceholderCard(
             "Transazioni",
             "Entrate e spese saranno filtrabili per periodo, categoria e tag."
@@ -205,54 +238,21 @@ public class DashboardPanel extends AppBackgroundPanel {
             "Spese Ricorrenti",
             "Modelli astratti da cui generare spese effettive periodiche."
         ), "CARD_RECURRING");
-        contentPanel.add(createPlaceholderCard(
-            "Documenti Digitali",
-            "Path di scontrini e documenti associati alle spese."
-        ), "CARD_DOCUMENTS");
+        contentPanel.add(new DocumentiPanel(currentUser), "CARD_DOCUMENTS");
+        contentPanel.add(createSettingsCard(), CARD_SETTINGS);
     }
 
     private JPanel createOverviewCard() {
         JPanel panel = new JPanel(new BorderLayout(0, 18));
         panel.setOpaque(false);
 
-        JPanel metricsPanel = new JPanel(new GridLayout(1, 4, 16, 16));
-        metricsPanel.setOpaque(false);
-        metricsPanel.add(createMetricBox("Saldo attuale", "0,00 euro", AppTheme.PRIMARY));
-        metricsPanel.add(createMetricBox("Entrate mese", "0,00 euro", AppTheme.INCOME));
-        metricsPanel.add(createMetricBox("Spese mese", "0,00 euro", AppTheme.EXPENSE));
-        metricsPanel.add(createMetricBox("Budget usato", "0%", AppTheme.BUDGET));
-
         JPanel lowerPanel = new JPanel(new GridLayout(1, 2, 16, 16));
         lowerPanel.setOpaque(false);
-        lowerPanel.add(createPlaceholderBox("Ultime transazioni", "Nessuna transazione registrata."));
+        lowerPanel.add(new RecentTransactionsPanel());
         lowerPanel.add(createPlaceholderBox("Budget del mese", "Nessun budget configurato."));
 
-        panel.add(metricsPanel, BorderLayout.NORTH);
+        panel.add(new SummaryPanel(), BorderLayout.NORTH);
         panel.add(lowerPanel, BorderLayout.CENTER);
-
-        return panel;
-    }
-
-    private JPanel createMetricBox(String title, String value, Color accent) {
-        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
-        panel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
-
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setForeground(AppTheme.TEXT_MUTED);
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
-
-        JLabel valueLabel = new JLabel(value);
-        valueLabel.setForeground(AppTheme.TEXT);
-        valueLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-
-        JPanel accentBar = new JPanel();
-        accentBar.setPreferredSize(new Dimension(0, 5));
-        accentBar.setBackground(accent);
-        accentBar.setOpaque(true);
-
-        panel.add(accentBar, BorderLayout.NORTH);
-        panel.add(titleLabel, BorderLayout.CENTER);
-        panel.add(valueLabel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -298,5 +298,44 @@ public class DashboardPanel extends AppBackgroundPanel {
         panel.add(textPanel);
 
         return panel;
+    }
+
+    private JPanel createSettingsCard() {
+        JPanel panel = new GlassPanel(new BorderLayout(0, 18));
+        panel.setBorder(BorderFactory.createEmptyBorder(26, 28, 26, 28));
+
+        JLabel titleLabel = new JLabel("Impostazioni");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JPanel fieldsPanel = new JPanel(new GridLayout(4, 1, 0, 12));
+        fieldsPanel.setOpaque(false);
+        fieldsPanel.add(createSettingsRow("Nome", currentUser.getNome()));
+        fieldsPanel.add(createSettingsRow("Cognome", currentUser.getCognome()));
+        fieldsPanel.add(createSettingsRow("Email", currentUser.getEmail()));
+        fieldsPanel.add(createSettingsRow("Ruolo", currentUser.getRuolo().name()));
+
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(fieldsPanel, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JPanel createSettingsRow(String label, String value) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+
+        JLabel labelComponent = new JLabel(label);
+        labelComponent.setForeground(AppTheme.TEXT_MUTED);
+        labelComponent.setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JLabel valueComponent = new JLabel(value);
+        valueComponent.setForeground(AppTheme.TEXT);
+        valueComponent.setFont(new Font("SansSerif", Font.BOLD, 16));
+
+        row.add(labelComponent, BorderLayout.WEST);
+        row.add(valueComponent, BorderLayout.EAST);
+
+        return row;
     }
 }

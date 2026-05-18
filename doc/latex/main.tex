@@ -1,4 +1,4 @@
-% Report del progetto S.A.G.E.: tengo qui struttura, sezioni e configurazioni.
+% Report del progetto S.A.G.E.: struttura, analisi, progettazione e implementazione.
 % Per rigenerare il PDF basta compilare con pdflatex o latexmk -pdf.
 
 \documentclass[11pt,a4paper]{article}
@@ -43,7 +43,7 @@
     showstringspaces=false,
     showtabs=false,
     tabsize=2,
-    morekeywords={LAST_INSERT_ID, ON, DUPLICATE, KEY, UPDATE, LIMIT, COALESCE, NULLIF}
+    morekeywords={LAST_INSERT_ID, ON, DUPLICATE, KEY, UPDATE, LIMIT, COALESCE, NULLIF, BOOLEAN, TRUE, FALSE}
 }
 \setlist{nosep, leftmargin=*}
 
@@ -59,6 +59,7 @@
 
 \begin{document}
 
+\hypersetup{pageanchor=false}
 \begin{titlepage}
     \centering
     \vspace*{1.5cm}
@@ -80,6 +81,8 @@
     {\large \today}
 \end{titlepage}
 
+\clearpage
+\hypersetup{pageanchor=true}
 \pagenumbering{roman}
 \tableofcontents
 \newpage
@@ -87,249 +90,374 @@
 
 \section{Introduzione}
 \subsection{Obiettivo del progetto}
-La proposta iniziale di S.A.G.E. è la realizzazione di un sistema per la gestione e l'analisi delle finanze personali universitarie. L'obiettivo è supportare lo studente nella registrazione, organizzazione e analisi delle proprie transazioni economiche, offrendo strumenti per classificazione, pianificazione e monitoraggio nel tempo.
+S.A.G.E. (Sistema di Analisi e Gestione Economica) è un'applicazione desktop per la gestione delle finanze personali di uno studente universitario. Il sistema supporta la registrazione di entrate e spese, la classificazione dei movimenti, la definizione di budget e la consultazione di riepiloghi utili per monitorare l'andamento economico nel tempo.
+
+L'obiettivo del progetto non è soltanto realizzare un'applicazione funzionante, ma documentare l'intero ciclo di progettazione di una base di dati: analisi dei requisiti, modellazione concettuale, traduzione logica, implementazione SQL e collegamento a un programma Java tramite JDBC.
 
 \subsection{Descrizione generale del sistema}
-S.A.G.E. è progettato come un'applicazione multiutente in cui ogni studente dispone di un portafoglio finanziario personale isolato. Il sistema consente la registrazione di spese e entrate, la categorizzazione tramite categorie e tag, la definizione di budget temporali e la gestione di documenti digitali associati alle transazioni.
+S.A.G.E. è progettato come sistema multiutente. Ogni studente accede con le proprie credenziali e visualizza soltanto i dati collegati alla propria email. Il portafoglio personale comprende transazioni, categorie, fonti, tag, budget, documenti digitali e modelli di spese ricorrenti.
+
+L'applicazione è realizzata in Java Swing e comunica con un database MySQL tramite JDBC. La logica applicativa è organizzata in livelli: le classi del package \texttt{model} rappresentano il dominio, i DAO incapsulano le query SQL, i controller coordinano i casi d'uso e le classi del package \texttt{view} compongono l'interfaccia grafica.
 
 \subsection{Ambito del sistema}
 L'ambito del progetto comprende:
 \begin{itemize}
     \item gestione individuale del portafoglio economico personale;
-    \item classificazione delle transazioni tramite categorie gerarchiche e tag trasversali;
-    \item gestione dei budget mensili e per categoria;
-    \item supporto per spese ricorrenti come modelli astratti;
+    \item registrazione di spese ed entrate;
+    \item classificazione delle spese tramite categorie e tag;
+    \item classificazione delle entrate tramite fonti;
+    \item definizione di budget mensili e budget specifici per categoria;
+    \item gestione di spese ricorrenti come modelli astratti;
     \item associazione di documenti digitali alle spese;
-    \item analisi e reportistica aggregata.
+    \item visualizzazione di riepiloghi e statistiche.
 \end{itemize}
-Non sono previste funzionalità di condivisione di spese o conti comuni tra utenti.
+Non rientrano nell'ambito del sistema la condivisione di conti tra utenti, la sincronizzazione cloud dei file allegati e l'integrazione con servizi bancari esterni.
 
 \subsection{Utenti e ruoli previsti}
-Il sistema prevede due ruoli principali:
+Il sistema prevede due ruoli:
 \begin{itemize}
-    \item \textbf{Utente}: gestisce le proprie transazioni, categorie e tag personali, definisce budget, registra documenti e visualizza report finanziari.
-    \item \textbf{Amministratore}: gestisce gli elementi globali del sistema (categorie, tag, fonti) e analizza dati aggregati anonimi senza accedere ai dettagli finanziari personali degli utenti.
+    \item \textbf{Utente}: registra transazioni, consulta il proprio portafoglio, gestisce categorie personali, definisce budget e associa documenti alle spese.
+    \item \textbf{Amministratore}: gestisce elementi di sistema, come categorie, fonti e tag globali. L'amministratore può accedere solo a statistiche aggregate e non ai dettagli finanziari personali degli utenti.
 \end{itemize}
 
 \subsection{Tecnologie utilizzate}
-DBMS: MySQL\\
-Linguaggio applicativo: Java\\
-Interfaccia: Java Swing\\
-Connessione DB: JDBC
+\begin{itemize}
+    \item \textbf{DBMS}: MySQL.
+    \item \textbf{Linguaggio applicativo}: Java.
+    \item \textbf{Interfaccia}: Java Swing.
+    \item \textbf{Connessione al database}: JDBC con MySQL Connector/J.
+    \item \textbf{Architettura}: applicazione desktop 2-tier con accesso diretto al DBMS.
+\end{itemize}
 
 \subsection{Scelte progettuali preliminari}
-Fin dalla fase iniziale sono state adottate alcune scelte progettuali rilevanti: l'isolamento dei dati finanziari tra utenti, la distinzione tra elementi di classificazione globali e personali e la memorizzazione dei documenti digitali tramite percorso file anziché tramite BLOB nel database. Tali decisioni mirano a garantire privacy, personalizzazione e maggiore semplicità di gestione del DBMS.
+Le scelte iniziali più rilevanti sono:
+\begin{itemize}
+    \item isolamento dei dati tramite email dell'utente autenticato;
+    \item distinzione tra elementi globali di sistema ed elementi personali;
+    \item gestione opzionale del budget, che non blocca l'inserimento di nuove spese;
+    \item memorizzazione dei documenti digitali tramite percorso file, evitando di salvare il contenuto binario direttamente nel database.
+\end{itemize}
+La scelta sui documenti riduce il peso del DBMS e semplifica le operazioni JDBC. Presenta però un limite noto: se l'applicazione viene usata da un altro dispositivo collegato allo stesso database, un percorso locale potrebbe non essere più valido. Questa criticità viene considerata tra i possibili sviluppi futuri.
 
 \section{Analisi dei requisiti}
 \subsection{Requisiti in linguaggio naturale}
-Il sistema deve supportare la registrazione e il monitoraggio dei movimenti finanziari personali di uno studente universitario, distinguendo tra spese ed entrate. Ogni transazione deve avere importo, data e descrizione. Le spese devono essere associate a una categoria, mentre le entrate devono essere associate a una fonte. Il sistema deve permettere la definizione di budget mensili e per categoria, nonché la gestione di spese ricorrenti tramite un modello astratto. Deve inoltre conservare il percorso dei documenti associati alle spese senza memorizzare i file nel database.
+Il sistema deve permettere a uno studente di registrare e monitorare i propri movimenti economici. Ogni transazione deve avere data, importo e descrizione. Una spesa deve essere associata a una categoria e può avere tag e documenti digitali; un'entrata deve essere associata a una fonte. L'utente deve poter definire budget per periodo e, opzionalmente, per categoria. Il sistema deve inoltre supportare spese ricorrenti come modelli da cui generare movimenti effettivi.
 
 \subsection{Analisi delle ambiguità e decisioni progettuali}
 \begin{longtable}{p{3.5cm} p{5cm} p{6cm}}
 \toprule
-\textbf{Termine/Concetto} & \textbf{Criticità/Ambiguità} & \textbf{Decisione progettuale} \\
+\textbf{Concetto} & \textbf{Ambiguità} & \textbf{Decisione progettuale} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{Termine/Concetto} & \textbf{Criticità/Ambiguità} & \textbf{Decisione progettuale} \\
+\textbf{Concetto} & \textbf{Ambiguità} & \textbf{Decisione progettuale} \\
 \midrule
 \endhead
-Periodo temporale & Come associare una spesa a un budget mensile? & Il periodo è derivato dalla data della transazione. L'entità \textsc{PERIODO} serve per la storicizzazione dei budget. \\
-Spesa ricorrente & Generazione dei record nel DB? & È un modello astratto; la logica Java crea nuove \textsc{SPESE} a partire dai parametri del modello. \\
-Privacy/Admin & L'admin vede i dati degli utenti? & Vincolo applicativo: l'admin accede solo a viste aggregate (COUNT/SUM), non ai dati granulari. \\
-Documenti & Dove salvare i file? & Si salva solo il percorso sul file system; il DB non gestisce BLOB per evitare overhead. \\
+Periodo temporale & Come collegare transazioni e budget mensili? & Il periodo è derivato dalla data della transazione e storicizzato nella tabella \textsc{PERIODO}. \\
+Transazione & Separare fisicamente spese ed entrate? & Si usa una relazione unica \textsc{TRANSIZIONE} con attributo \texttt{TipoTransazione}. \\
+Classificazione & Come distinguere catalogo comune e personalizzazioni? & \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} usano \texttt{is\_system} ed eventuale \texttt{Email\_Proprietario}. \\
+Spesa ricorrente & È una transazione già avvenuta? & No: è un modello generatore che può produrre transazioni future. \\
+Documenti & Salvare file o riferimento? & Il DB salva percorso, tipo e data acquisizione. Il file resta nel file system, non in un BLOB. \\
+Privacy & L'admin vede i movimenti personali? & No: l'accesso amministrativo è limitato a dati aggregati. \\
 \bottomrule
 \end{longtable}
 
 \subsection{Specifiche ristrutturate}
 \begin{itemize}
-    \item R1: Gestione delle transazioni finanziarie (spese/entrate) con dettagli minimi obbligatori.
-    \item R2: Classificazione delle spese tramite categorie e classificazione trasversale delle transazioni tramite tag.
-    \item R3: Definizione e storico dei budget mensili e dei budget per categoria.
-    \item R4: Supporto per spese ricorrenti come modello di generazione automatica.
-    \item R5: Salvare solo il percorso dei documenti digitali associati alle spese, senza memorizzare i file nel database.
-    \item R6: Accesso amministrativo limitato a statistiche aggregate, senza visibilità sui dati finanziari personali.
+    \item R1: autenticare utenti e amministratori.
+    \item R2: registrare spese ed entrate con data, importo e descrizione.
+    \item R3: associare ogni spesa a una categoria e ogni entrata a una fonte.
+    \item R4: associare tag e documenti digitali alle spese.
+    \item R5: gestire budget mensili e budget per categoria.
+    \item R6: gestire spese ricorrenti come modelli astratti.
+    \item R7: filtrare ogni dato operativo tramite l'email dell'utente autenticato.
+    \item R8: consentire all'amministratore solo operazioni su cataloghi globali e statistiche aggregate.
 \end{itemize}
 
 \subsection{Glossario dei termini essenziali}
 \begin{itemize}
-    \item \textbf{Transazione}: entità astratta che rappresenta un movimento monetario con ID, data, importo e descrizione.
-    \item \textbf{Budget}: reificazione della soglia di spesa legata a Utente, Categoria e Periodo.
-    \item \textbf{Tag}: etichetta trasversale associabile a una o più transazioni, utile per analisi granulari non limitate alla sola categoria.
-    \item \textbf{Categoria}: classificazione gerarchica 1:N applicata alle spese.
-    \item \textbf{Fonte}: origine finanziaria obbligatoria per le entrate.
+    \item \textbf{Utente}: studente identificato da email, nome, cognome, password e ruolo.
+    \item \textbf{Transazione}: movimento economico generico, distinto in spesa o entrata.
+    \item \textbf{Categoria}: classificazione principale di una spesa.
+    \item \textbf{Fonte}: origine di un'entrata.
+    \item \textbf{Tag}: etichetta trasversale che consente classificazioni aggiuntive.
+    \item \textbf{Budget}: limite di spesa collegato a utente, periodo ed eventuale categoria.
+    \item \textbf{Documento}: riferimento digitale a uno scontrino o a una fattura associata a una spesa.
+    \item \textbf{Spesa ricorrente}: modello da cui generare spese periodiche.
 \end{itemize}
 
-\subsection{Classi di utenza / viste del sistema}
+\subsection{Classi di utenza e viste del sistema}
 \begin{itemize}
-    \item \textbf{Utente/Studente}: accede al proprio portafoglio, registra transazioni, gestisce categorie personali e visualizza report.
-    \item \textbf{Amministratore}: gestisce categorie/tag di sistema e visualizza statistiche aggregate.
+    \item \textbf{Studente}: utilizza dashboard, transazioni, budget, documenti, categorie personali e report.
+    \item \textbf{Amministratore}: gestisce cataloghi globali e consulta indicatori aggregati.
 \end{itemize}
-Le viste del sistema includono il portafoglio personale, il cruscotto dei budget e la dashboard degli andamenti finanziari.
+La vista studente è centrata sul portafoglio personale. Ogni schermata applicativa riceve l'utente corrente e usa la sua email come chiave di sessione.
 
 \subsection{Elenco delle operazioni principali}
 \begin{itemize}
-    \item Inserimento di una nuova spesa.
-    \item Inserimento di una nuova entrata.
-    \item Creazione/modifica/eliminazione di categorie personali.
-    \item Creazione/modifica/eliminazione di tag personali.
-    \item Definizione e aggiornamento dei budget mensili e per categoria.
-    \item Gestione delle spese ricorrenti.
-    \item Associazione di un documento digitale a una spesa.
-    \item Visualizzazione di report aggregati e statistiche.
+    \item Login e apertura della dashboard personale.
+    \item Inserimento di una spesa con categoria, tag opzionali e documento opzionale.
+    \item Inserimento di una entrata con fonte.
+    \item Consultazione dei movimenti per periodo.
+    \item Definizione o aggiornamento di un budget.
+    \item Associazione e apertura di un documento digitale.
+    \item Creazione di categorie, fonti e tag personali.
+    \item Consultazione di riepiloghi e statistiche aggregate.
 \end{itemize}
 
 \subsection{Vincoli espliciti e impliciti}
 \begin{itemize}
-    \item L'amministratore può consultare solo dati aggregati (COUNT/SUM) e non i dettagli finanziari degli utenti.
-    \item Ogni studente opera sempre sul proprio portafoglio personale: l'email dell'utente autenticato viene usata come chiave di sessione e come riferimento nelle tabelle dipendenti.
-    \item I documenti vengono memorizzati solo tramite il percorso file, non come BLOB nel database.
-    \item Ogni transazione deve contenere data, importo e descrizione.
-    \item Il periodo del budget è derivato dal mese/anno della transazione e viene storicizzato tramite l'entità \textsc{PERIODO}.
-    \item Il budget è opzionale: l'utente può registrare movimenti anche prima di aver definito una soglia di spesa.
-    \item La spesa ricorrente è un modello astratto che genera transazioni effettive, non una transazione reale.
+    \item Ogni query sui dati personali deve filtrare per email dell'utente autenticato.
+    \item Una spesa deve avere una categoria e non deve avere una fonte.
+    \item Una entrata deve avere una fonte e non deve avere una categoria.
+    \item I tag sono associabili solo alle spese.
+    \item I documenti sono associabili solo alle spese.
+    \item Il budget è opzionale e non impedisce l'inserimento di movimenti.
+    \item Il contenuto dei documenti non è salvato nel database; viene salvato solo il riferimento al file.
 \end{itemize}
 
 \section{Progettazione concettuale}
 \subsection{Criteri generali di modellazione}
+La progettazione concettuale privilegia un modello chiaro, con entità separate per gli oggetti persistenti principali e associazioni esplicite per i legami molti-a-molti. Le scelte sono guidate da tre criteri: isolamento dei dati per utente, semplicità di interrogazione e coerenza con l'applicazione Java.
+
+\subsection{Entità principali}
+\begin{longtable}{p{3.8cm} p{11cm}}
+\toprule
+\textbf{Entità} & \textbf{Ruolo nel sistema} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Entità} & \textbf{Ruolo nel sistema} \\
+\midrule
+\endhead
+\textsc{UTENTE} & Identifica studenti e amministratori. L'email è chiave primaria e riferimento per i dati personali. \\
+\textsc{TRANSIZIONE} & Rappresenta movimenti economici, sia spese sia entrate, tramite \texttt{TipoTransazione}. \\
+\textsc{CATEGORIA} & Classifica le spese; può essere di sistema o personale. \\
+\textsc{FONTE} & Classifica le entrate; può essere di sistema o personale. \\
+\textsc{TAG} & Aggiunge classificazioni trasversali alle spese. \\
+\textsc{PERIODO} & Storicizza mese e anno usati dai budget. \\
+\textsc{BUDGET} & Definisce una soglia di spesa per periodo, con eventuale categoria. \\
+\textsc{DOCUMENTO} & Conserva percorso, tipo e data di acquisizione del file associato a una spesa. \\
+\textsc{SPESA\_RICORRENTE} & Modello astratto per spese periodiche future. \\
+\bottomrule
+\end{longtable}
 
 \subsection{Raffinamenti dello schema}
-\subsubsection{Gerarchia delle transazioni (ISA)}
-Abbiamo una specializzazione totale ed esclusiva tra spese ed entrate, tradotta nello schema relazionale con la relazione \textsc{TRANSIZIONE} e l'attributo \texttt{TipoTransazione}. Una spesa è associata obbligatoriamente a una categoria, mentre un'entrata è associata obbligatoriamente a una fonte. I tag sono collegati alle spese tramite la relazione \textsc{SPESA\_TAG}, perché servono a rendere più granulare la classificazione delle uscite.
+\subsubsection{Gerarchia delle transazioni}
+Nel dominio esistono due sottotipi di transazione: spesa ed entrata. La specializzazione è totale ed esclusiva: ogni transazione è necessariamente una spesa o una entrata, e non può essere entrambe. Nel modello logico questa gerarchia è collassata in \textsc{TRANSIZIONE}, con l'attributo \texttt{TipoTransazione}. I vincoli CHECK garantiscono la coerenza: una spesa richiede \texttt{ID\_Categoria}, una entrata richiede \texttt{ID\_Fonte}.
 
-\subsubsection{Modellazione ibrida (Sistema vs Personale)}
-Per \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} si applica una gerarchia ISA: elementi di sistema creati dall'admin e elementi personali creati dall'utente.
-Nella traduzione logica questa scelta viene rappresentata con il flag \texttt{is\_system} e con l'attributo \texttt{Email\_Proprietario}. Le query applicative caricano gli elementi disponibili con la condizione \texttt{is\_system = TRUE OR Email\_Proprietario = ?}, in modo da mostrare insieme il catalogo comune e le personalizzazioni dello studente autenticato.
+\subsubsection{Elementi di sistema e personali}
+\textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} sono modellati con una soluzione ibrida. Gli elementi globali hanno \texttt{is\_system = TRUE} e nessun proprietario; gli elementi personali hanno \texttt{is\_system = FALSE} e sono collegati a un utente. Le query applicative mostrano a uno studente sia gli elementi globali sia quelli personali.
 
 \subsubsection{Reificazione del budget}
-Il budget è un'entità che mette in relazione utente e periodo, con un eventuale riferimento a una categoria. L’assenza della categoria rappresenta un budget mensile complessivo, mentre la presenza della categoria rappresenta un budget specifico. Questa progettazione consente di storicizzare i limiti di spesa e di fissare soglie per ambiti specifici. Nel capitolo di progettazione logica verrà valutata l'introduzione dell'attributo ridondante \texttt{Totale\_Speso\_Attuale} nel budget per migliorare le prestazioni di lettura nella dashboard.
-Il sistema adotta una politica di budget opzionale: la registrazione di una spesa non richiede necessariamente l'esistenza preventiva di un budget. Se un budget è già presente, il suo \texttt{Totale\_Speso\_Attuale} viene aggiornato nella stessa transazione ACID dell'inserimento della spesa; se invece il budget viene creato in un secondo momento, il valore iniziale dell'attributo ridondante viene calcolato tramite una \texttt{SUM()} delle spese pregresse coerenti con periodo, utente ed eventuale categoria.
+Il budget è modellato come entità autonoma collegata a utente e periodo. L'eventuale categoria distingue un budget specifico da un budget mensile complessivo. L'attributo \texttt{Totale\_Speso\_Attuale} è ridondante, ma serve a rendere efficiente la dashboard.
 
-\subsection{Criticità rilevate}
-\begin{itemize}
-    \item La fonte deve essere legata esclusivamente a \textsc{ENTRATA}; una spesa ha una categoria di uscita.
-    \item La spesa ricorrente punta a \textsc{CATEGORIA}, non a \textsc{SPESA}, perché è un modello generatore di tuple e non una transazione già avvenuta.
-    \item L'utente viene identificato direttamente tramite \texttt{Email}, usata come chiave primaria e come chiave esterna nelle tabelle collegate. Questa scelta rende esplicito il legame tra sessione applicativa e isolamento dei dati.
-\end{itemize}
+\subsubsection{Documenti digitali}
+Il documento digitale è collegato a una spesa e contiene \texttt{Path\_File}, \texttt{Tipo\_File} e \texttt{Data\_Acquisizione\_Documento}. Il contenuto binario del file non è salvato nel DBMS.
 
-
-\subsection{Schema scheletro E/R}
-
-\subsection{Sviluppo delle viste o degli ambiti}
-\subsubsection{Vista Studente e portafoglio personale}
-
-\subsubsection{Vista classificazione delle transazioni}
-
-\subsubsection{Vista budget e pianificazione}
-
-\subsubsection{Vista spese ricorrenti e documenti}
-
-\subsubsection{Vista amministratore e cataloghi globali}
-
-\subsection{Raffinamenti proposti}
-
-\subsection{Gerarchie presenti nello schema}
+Questa scelta riduce il peso del database e semplifica backup, query e codice JDBC. Il limite principale è la portabilità: spostandosi su un altro dispositivo, il percorso locale potrebbe non esistere. Una futura versione potrebbe usare path relativi sincronizzati oppure un attributo \texttt{LONGBLOB}, qualora la portabilità completa del documento attraverso il solo database diventasse un requisito prioritario.
 
 \subsection{Associazioni principali e cardinalità}
+\begin{longtable}{p{4.2cm} p{3cm} p{7.2cm}}
+\toprule
+\textbf{Associazione} & \textbf{Cardinalità} & \textbf{Motivazione} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Associazione} & \textbf{Cardinalità} & \textbf{Motivazione} \\
+\midrule
+\endhead
+Utente--Transazione & 1:N & Un utente può registrare molte transazioni; ogni transazione appartiene a un solo utente. \\
+Transazione--Categoria & N:1 opzionale & Solo le spese hanno una categoria. \\
+Transazione--Fonte & N:1 opzionale & Solo le entrate hanno una fonte. \\
+Spesa--Tag & N:M & Una spesa può avere più tag e un tag può essere riutilizzato. \\
+Spesa--Documento & 1:N logico & Una spesa può avere documenti; nella UI corrente si limita a un documento per semplicità. \\
+Utente--Budget & 1:N & Ogni utente può definire più budget nel tempo. \\
+Periodo--Budget & 1:N & Un periodo può essere condiviso da budget di utenti diversi. \\
+\bottomrule
+\end{longtable}
 
 \subsection{Vincoli non rappresentabili direttamente nello schema E/R}
-
-\subsection{Integrazione delle viste}
-
-\subsection{Schema E/R finale}
+Alcune regole richiedono vincoli SQL o controlli applicativi:
+\begin{itemize}
+    \item una categoria personale è visibile solo al proprietario;
+    \item una spesa può usare solo categorie di sistema o categorie personali dell'utente;
+    \item un documento può essere collegato solo a una spesa, non a una entrata;
+    \item l'amministratore non deve visualizzare dettagli finanziari personali;
+    \item l'inserimento di spesa, tag, documento e aggiornamento budget deve essere atomico.
+\end{itemize}
 
 \subsection{Dizionario di entità e associazioni}
+Il dizionario riassume gli attributi principali:
+\begin{itemize}
+    \item \textsc{UTENTE}: Email, Password, Nome, Cognome, Ruolo.
+    \item \textsc{TRANSIZIONE}: ID, TipoTransazione, Importo, Data, Descrizione, Email, Categoria/Fonte.
+    \item \textsc{BUDGET}: ID, Importo\_Limite, Alert\_Soglia, Totale\_Speso\_Attuale, Periodo, Categoria, Email.
+    \item \textsc{DOCUMENTO}: ID, ID\_Transizione, Path\_File, Tipo\_File, Data\_Acquisizione\_Documento.
+    \item \textsc{SPESA\_TAG}: associazione molti-a-molti tra spesa e tag.
+\end{itemize}
 
 \section{Specifiche funzionali}
 \subsection{Elenco delle funzionalità richieste}
+Le funzionalità principali sono organizzate in operazioni utente e operazioni amministrative. Le prime lavorano sempre sul portafoglio dello studente autenticato; le seconde riguardano cataloghi e statistiche aggregate.
 
 \subsection{Operazioni di inserimento}
+\begin{longtable}{p{3cm} p{5cm} p{6.5cm}}
+\toprule
+\textbf{Operazione} & \textbf{Input} & \textbf{Tabelle coinvolte} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Operazione} & \textbf{Input} & \textbf{Tabelle coinvolte} \\
+\midrule
+\endhead
+Login & Email, password & \textsc{UTENTE} \\
+Nuova spesa & Importo, data, descrizione, categoria, tag, documento opzionale & \textsc{PERIODO}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} \\
+Nuova entrata & Importo, data, descrizione, fonte & \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
+Nuovo budget & Periodo, importo limite, categoria opzionale & \textsc{BUDGET}, \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
+Nuovo documento & Spesa, percorso file, tipo file & \textsc{DOCUMENTO}, \textsc{TRANSIZIONE} \\
+\bottomrule
+\end{longtable}
 
-\subsection{Operazioni di modifica}
-
-\subsection{Operazioni di eliminazione}
+\subsection{Operazioni di modifica ed eliminazione}
+Le modifiche riguardano principalmente budget, categorie personali, fonti personali e tag personali. Le eliminazioni devono rispettare i vincoli referenziali: ad esempio una categoria personale eliminata non deve lasciare riferimenti incoerenti nelle spese già registrate. La cancellazione di transazioni o documenti sfrutta le regole di integrità definite nello schema SQL.
 
 \subsection{Operazioni di interrogazione}
+\begin{itemize}
+    \item elenco delle transazioni dell'utente per periodo;
+    \item elenco di categorie, fonti e tag disponibili;
+    \item elenco dei budget e relativo stato di superamento;
+    \item elenco dei documenti associati alle spese dell'utente;
+    \item elenco delle spese ancora prive di documento.
+\end{itemize}
 
-\subsection{Operazioni statistiche / amministrative}
-
-\subsection{Input, output e tabelle coinvolte per ogni operazione}
+\subsection{Operazioni statistiche e amministrative}
+Le statistiche includono totali mensili di spese ed entrate, rapporto percentuale tra spese ed entrate, budget superati e aggregazioni per categoria. L'amministratore deve utilizzare viste aggregate, evitando l'accesso a descrizioni, documenti o movimenti granulari degli utenti.
 
 \section{Progettazione logica}
 \subsection{Stima del volume dei dati}
+Per un utilizzo universitario individuale si stimano volumi contenuti ma crescenti nel tempo:
+\begin{itemize}
+    \item poche decine di utenti demo nel contesto del progetto;
+    \item circa 50--150 transazioni annue per utente;
+    \item 5--20 categorie personali per utente;
+    \item un numero di documenti inferiore o uguale al numero di spese;
+    \item pochi budget per mese e per utente.
+\end{itemize}
+Questi volumi giustificano un modello relazionale normalizzato e indici mirati sulle chiavi esterne e sui campi più filtrati.
 
 \subsection{Descrizione delle operazioni principali e frequenza}
+\begin{longtable}{p{4cm} p{3cm} p{7cm}}
+\toprule
+\textbf{Operazione} & \textbf{Frequenza stimata} & \textbf{Osservazioni} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Operazione} & \textbf{Frequenza stimata} & \textbf{Osservazioni} \\
+\midrule
+\endhead
+Login & Alta & Prima operazione di ogni sessione. \\
+Inserimento transazione & Media & Deve essere atomico con periodo, documento e budget. \\
+Consultazione dashboard & Alta & Motiva la ridondanza sul totale speso del budget. \\
+Gestione documenti & Media & Lettura frequente, inserimento occasionale. \\
+Report aggregati & Bassa/Media & Usati per analisi periodica. \\
+\bottomrule
+\end{longtable}
 
 \subsection{Schemi di navigazione}
+La navigazione principale parte da \textsc{UTENTE}, identificato dalla sessione. Da esso si raggiungono le transazioni, i budget, gli elementi personali e le spese ricorrenti. Le transazioni permettono di navigare verso categorie, fonti, tag e documenti. Questo schema conferma la centralità dell'email come chiave di isolamento.
 
 \subsection{Tabelle degli accessi}
+\begin{longtable}{p{4cm} p{5cm} p{5.5cm}}
+\toprule
+\textbf{Funzione} & \textbf{Tabelle lette} & \textbf{Tabelle scritte} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Funzione} & \textbf{Tabelle lette} & \textbf{Tabelle scritte} \\
+\midrule
+\endhead
+Login & \textsc{UTENTE} & -- \\
+Nuova spesa & \textsc{PERIODO}, \textsc{BUDGET} & \textsc{PERIODO}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} \\
+Nuova entrata & \textsc{PERIODO} & \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
+Documenti & \textsc{DOCUMENTO}, \textsc{TRANSIZIONE} & \textsc{DOCUMENTO} \\
+Dashboard budget & \textsc{BUDGET}, \textsc{PERIODO}, \textsc{CATEGORIA} & -- \\
+\bottomrule
+\end{longtable}
 
 \subsection{Analisi delle ridondanze}
-L'attributo \texttt{Totale\_Speso\_Attuale} della relazione \textsc{BUDGET} è ridondante perché può essere ricavato sommando le spese presenti in \textsc{TRANSIZIONE}. La ridondanza viene comunque mantenuta per ridurre il costo delle letture più frequenti della dashboard, dove l'utente controlla spesso lo stato dei budget rispetto al limite impostato.
+L'attributo \texttt{Totale\_Speso\_Attuale} della relazione \textsc{BUDGET} è ridondante perché può essere ricavato sommando le spese presenti in \textsc{TRANSIZIONE}. La ridondanza viene mantenuta per ridurre il costo delle letture più frequenti della dashboard.
 
 La coerenza viene garantita con due regole applicative:
 \begin{itemize}
-    \item quando viene inserita una nuova spesa, l'inserimento della transazione, l'associazione di tag/documento e l'aggiornamento degli eventuali budget esistenti avvengono nella stessa transazione;
-    \item quando un budget viene creato o aggiornato dopo che alcune spese sono già state registrate, il valore iniziale di \texttt{Totale\_Speso\_Attuale} viene calcolato con una query di aggregazione sulle transazioni già presenti.
+    \item quando viene inserita una spesa, l'inserimento della transazione, l'associazione di tag/documento e l'aggiornamento degli eventuali budget avvengono nella stessa transazione JDBC;
+    \item quando un budget viene creato o aggiornato dopo spese già registrate, il valore iniziale viene calcolato con una query di aggregazione sulle transazioni esistenti.
 \end{itemize}
-
-In questo modo il budget rimane opzionale senza perdere consistenza: l'assenza di un budget non blocca la registrazione della spesa, mentre l'esistenza di un budget impone la sincronizzazione del suo totale ridondante.
 
 \subsection{Raffinamento dello schema}
 \subsubsection{Eliminazione delle gerarchie}
-
-\subsubsection{Soluzione logica anticipata}
-La specializzazione totale ed esclusiva delle transazioni si traduce in una struttura logica collassata con la relazione \textsc{TRANSIZIONE}. La distinzione tra movimenti in uscita e movimenti in entrata è rappresentata da \texttt{TipoTransazione}, mentre i vincoli CHECK impongono la presenza della categoria solo per le spese e della fonte solo per le entrate.
+La gerarchia spesa/entrata viene eliminata collassando i sottotipi in \textsc{TRANSIZIONE}. La distinzione rimane espressa da \texttt{TipoTransazione}, mentre i vincoli CHECK controllano la presenza corretta di categoria o fonte.
 
 \subsubsection{Eliminazione degli attributi composti}
+Non sono presenti attributi composti significativi da scomporre ulteriormente. Nome e cognome dell'utente sono già separati; il periodo è rappresentato da mese e anno nella tabella \textsc{PERIODO}.
 
 \subsubsection{Gestione degli attributi multivalore}
+I tag associati a una spesa rappresentano un attributo multivalore. Vengono tradotti nella relazione \textsc{SPESA\_TAG}, con chiave primaria composta da \texttt{ID\_Transizione} e \texttt{ID\_Tag}.
 
 \subsubsection{Scelta delle chiavi primarie}
+L'email è scelta come chiave primaria di \textsc{UTENTE}, perché identifica direttamente la sessione applicativa. Le altre entità principali utilizzano identificatori numerici auto-incrementali per semplificare riferimenti e join.
 
 \subsubsection{Traduzione delle associazioni}
-
-\subsection{Traduzione di entità e associazioni in relazioni}
-In questa fase si traducono le entità e le associazioni concettuali in relazioni logiche, specificando le chiavi primarie e le chiavi esterne necessarie per mantenere l'integrità referenziale.
+Le associazioni 1:N sono tradotte tramite chiavi esterne. Le associazioni N:M, come quella tra spese e tag, sono tradotte tramite tabella ponte. I vincoli applicativi più specifici sono rafforzati tramite trigger e controlli SQL.
 
 \subsection{Schema relazionale finale}
-Lo schema relazionale finale descrive le tabelle definitive, con i rispettivi attributi, tipi di dato e vincoli principali. Questa rappresentazione costituisce la base per la successiva fase di implementazione SQL.
+Lo schema relazionale finale comprende le relazioni \textsc{UTENTE}, \textsc{PERIODO}, \textsc{CATEGORIA}, \textsc{FONTE}, \textsc{TAG}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} e \textsc{SPESA\_RICORRENTE}. La struttura è coerente con lo script \texttt{schema.sql}, che definisce chiavi primarie, chiavi esterne, vincoli CHECK e indici.
 
 \subsection{Vincoli di integrità}
-In questa sezione si elencano i vincoli di integrità referenziali e di dominio che il database deve rispettare, come le chiavi primarie, le chiavi esterne, i vincoli UNIQUE e i controlli sui valori.
+I vincoli principali sono:
+\begin{itemize}
+    \item integrità referenziale tra transazioni e utenti;
+    \item vincoli CHECK su ruolo, mese, anno, importo e tipo transazione;
+    \item vincolo UNIQUE su \textsc{PERIODO} per la coppia mese/anno;
+    \item vincolo UNIQUE su \textsc{BUDGET} per evitare duplicati sullo stesso ambito;
+    \item vincoli di proprietà sugli elementi personali.
+\end{itemize}
 
 \subsection{Controllo della normalizzazione}
-Qui si verifica che lo schema relazionale finale soddisfi i livelli di normalizzazione richiesti, identificando eventuali anomalie di inserimento, aggiornamento o cancellazione.
+Le relazioni principali rispettano la terza forma normale: gli attributi dipendono dalla chiave, da tutta la chiave e non da attributi non chiave. L'unica ridondanza intenzionale è \texttt{Totale\_Speso\_Attuale} in \textsc{BUDGET}, documentata e controllata tramite logica applicativa.
 
 \section{Implementazione SQL}
 \subsection{Script di creazione del database}
+Lo script principale crea il database MySQL, definisce le tabelle, imposta chiavi primarie e chiavi esterne e aggiunge vincoli CHECK. Gli script separati gestiscono popolamento iniziale, trigger, viste e query operative.
 
 \subsection{Creazione delle tabelle}
+Le tabelle sono create partendo dalle entità indipendenti, come \textsc{UTENTE} e \textsc{PERIODO}, per poi introdurre le tabelle dipendenti. Questa sequenza evita problemi con chiavi esterne non ancora disponibili.
 
 \subsection{Definizione di chiavi primarie e chiavi esterne}
+Ogni tabella ha una chiave primaria esplicita. Le chiavi esterne usano azioni coerenti con il dominio: ad esempio la cancellazione di un utente elimina i suoi dati personali, mentre l'eliminazione di un periodo già usato è limitata per preservare la storia dei budget.
 
 \subsection{Vincoli NOT NULL, UNIQUE, CHECK}
+I vincoli NOT NULL garantiscono la presenza degli attributi essenziali. I vincoli UNIQUE evitano duplicati su periodo e budget. I vincoli CHECK formalizzano regole di dominio come tipo transazione, mese valido, importo positivo e coerenza tra categoria/fonte.
 
-\subsection{Trigger, procedure o viste, se usati}
+\subsection{Trigger, procedure o viste}
+I trigger presenti negli script rafforzano vincoli che non sono esprimibili interamente con semplici CHECK, come la validità di categorie, fonti, tag e documenti rispetto all'utente proprietario e al tipo della transazione. Le viste semplificano interrogazioni frequenti, come il riepilogo dei movimenti e lo stato dei budget.
 
 \subsection{Popolamento iniziale del database}
+Il popolamento iniziale inserisce utenti dimostrativi, categorie, fonti, tag, transazioni, documenti e budget. In particolare sono presenti utenti come \texttt{studente1@mail.com} e \texttt{studente2@mail.com}, utili per verificare l'isolamento dei dati tra studenti.
 
 \subsection{Query SQL delle operazioni principali}
 \subsubsection{Problemi e criticità}
-Il progetto richiede di garantire l'integrità dei dati durante l'inserimento di una spesa o di un'entrata, e di gestire i budget in modo idempotente. Le principali criticità sono:
+Le query devono garantire:
 \begin{itemize}
-    \item Isolamento utente: ogni query deve filtrare i dati tramite l'email dell'utente autenticato.
-    \item Atomicità: l'inserimento della spesa, l'associazione dei tag, l'eventuale documento e l'aggiornamento dei budget devono avvenire nella stessa transazione.
-    \item Divisione per zero: nelle statistiche percentuali l'assenza di entrate potrebbe causare errori se non si utilizza una protezione adeguata.
-    \item Gestione del budget: la coppia chiave \texttt{(Email, ID\_Periodo, ID\_Categoria\_Key)} deve essere unica per permettere work-flow di upsert senza duplicati.
+    \item isolamento utente tramite filtro sull'email;
+    \item atomicità delle operazioni complesse;
+    \item aggiornamento coerente delle ridondanze;
+    \item protezione dalla divisione per zero nelle statistiche;
+    \item validità dei documenti rispetto alle sole spese dell'utente.
 \end{itemize}
 
-\subsubsection{Analisi}
-Il sistema utilizza una traduzione collassata della gerarchia: la relazione \textsc{TRANSIZIONE} contiene sia spese sia entrate, distinte dall'attributo \texttt{TipoTransazione}. Il vincolo CHECK impone che una spesa abbia una categoria e nessuna fonte, mentre un'entrata abbia una fonte e nessuna categoria. Per i budget si introduce la logica di "upsert" per evitare duplicati e mantenere coerente l'attributo ridondante \texttt{Totale\_Speso\_Attuale}.
-
-\subsubsection{Soluzione SQL}
-\paragraph{U3 - Inserimento Atomico Spesa}
-\begin{lstlisting}[caption={Inserimento di una spesa con tag e budget}]
+\subsubsection{Inserimento atomico di una spesa}
+\begin{lstlisting}[caption={Inserimento di una spesa con periodo, tag e budget}]
 START TRANSACTION;
 
 INSERT INTO PERIODO (Mese, Anno)
@@ -356,7 +484,7 @@ WHERE Email = ? AND ID_Periodo = ? AND ID_Categoria = ?;
 COMMIT;
 \end{lstlisting}
 
-\paragraph{U8 - Definizione/Aggiornamento Budget}
+\subsubsection{Upsert del budget}
 \begin{lstlisting}[caption={Upsert del budget con totale iniziale coerente}]
 SELECT COALESCE(SUM(Importo), 0) AS Totale_Speso
 FROM TRANSIZIONE
@@ -374,8 +502,30 @@ Alert_Soglia = VALUES(Alert_Soglia),
 Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 \end{lstlisting}
 
-\paragraph{A3 - Analisi Percentuale (protezione divisione per zero)}
-\begin{lstlisting}[caption={Rapporto Spese/Entrate Mensile}]
+\subsubsection{Documenti dell'utente}
+\begin{lstlisting}[caption={Documenti associati alle spese dell'utente}]
+SELECT D.ID_Documento, D.ID_Transizione, D.Path_File, D.Tipo_File,
+       D.Data_Acquisizione_Documento,
+       T.Data, T.Importo, T.Descrizione
+FROM DOCUMENTO D
+JOIN TRANSIZIONE T ON D.ID_Transizione = T.ID_Transizione
+WHERE T.Email = ?
+  AND T.TipoTransazione = 'S'
+ORDER BY T.Data DESC, D.ID_Documento DESC;
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Spese dell'utente ancora prive di documento}]
+SELECT T.ID_Transizione, T.Data, T.Importo, T.Descrizione
+FROM TRANSIZIONE T
+LEFT JOIN DOCUMENTO D ON D.ID_Transizione = T.ID_Transizione
+WHERE T.Email = ?
+  AND T.TipoTransazione = 'S'
+  AND D.ID_Documento IS NULL
+ORDER BY T.Data DESC, T.ID_Transizione DESC;
+\end{lstlisting}
+
+\subsubsection{Analisi percentuale}
+\begin{lstlisting}[caption={Rapporto spese/entrate mensile}]
 SELECT
     (
         SUM(CASE WHEN TipoTransazione = 'S' THEN Importo ELSE 0 END)
@@ -386,16 +536,14 @@ FROM TRANSIZIONE
 WHERE Email = ? AND ID_Periodo = ?;
 \end{lstlisting}
 
-\subsubsection{Query di supporto e operazioni amministrative}
-\paragraph{Cataloghi disponibili per utente}
-\begin{lstlisting}[caption={Categorie, fonti e tag di sistema o personali}]
+\subsubsection{Query di supporto}
+\begin{lstlisting}[caption={Categorie disponibili per utente}]
 SELECT ID_Categoria, Nome, is_system
 FROM CATEGORIA
 WHERE is_system = TRUE OR Email_Proprietario = ?
 ORDER BY is_system DESC, Nome;
 \end{lstlisting}
 
-\paragraph{Riepilogo delle transazioni per periodo}
 \begin{lstlisting}[caption={Riepilogo transazioni per periodo}]
 SELECT T.ID_Transizione, T.Importo, T.Data, T.Descrizione,
        COALESCE(C.Nome, F.Nome) AS Categoria_Fonte,
@@ -407,7 +555,6 @@ WHERE T.Email = ? AND T.Data BETWEEN ? AND ?
 ORDER BY T.Data DESC;
 \end{lstlisting}
 
-\paragraph{Stato dei budget}
 \begin{lstlisting}[caption={Budget con residuo e stato di superamento}]
 SELECT ID_Budget, Mese, Anno, Ambito,
        Importo_Limite, Totale_Speso, Residuo, Superato
@@ -417,64 +564,126 @@ ORDER BY Anno DESC, Mese DESC, Ambito;
 \end{lstlisting}
 
 \subsubsection{Motivazioni}
-Atomicità applicativa: in Java, l'uso di \texttt{conn.setAutoCommit(false)} unito a queste query garantisce che spesa, tag, documento e aggiornamento budget vengano confermati o annullati insieme.\\
-Flessibilità budget: il vincolo \texttt{UNIQUE(Email, ID\_Periodo, ID\_Categoria\_Key)} permette alla query \texttt{ON DUPLICATE KEY UPDATE} di aggiornare o creare il limite in modo efficiente.\\
-Robustezza matematica: \texttt{NULLIF} trasforma lo zero in NULL, evitando l'errore di divisione per zero nel database engine.
+L'uso di \texttt{PreparedStatement} evita concatenazioni insicure e permette di parametrizzare email, date e importi. L'uso di transazioni JDBC garantisce atomicità sulle operazioni che coinvolgono più tabelle. Le query sui documenti attraversano sempre \textsc{TRANSIZIONE}, così il filtro sull'utente rimane centralizzato.
 
-\section{Progettazione dell’applicazione}
-\subsection{Architettura generale dell’applicazione}
-
-\subsection{Tecnologie usate}
+\section{Progettazione dell'applicazione}
+\subsection{Architettura generale}
+L'applicazione segue una struttura 2-tier: la UI Swing comunica con controller Java, che a loro volta utilizzano DAO JDBC per accedere direttamente a MySQL. Non è presente un application server intermedio.
 
 \subsection{Struttura dei package Java}
+\begin{itemize}
+    \item \texttt{model}: classi di dominio come \texttt{Utente}, \texttt{Transazione}, \texttt{Budget}, \texttt{Documento}.
+    \item \texttt{dao}: interfacce e implementazioni JDBC per le query.
+    \item \texttt{controller}: coordinamento delle operazioni applicative.
+    \item \texttt{view}: pannelli Swing, frame principale e componenti grafici.
+    \item \texttt{utils}: configurazione condivisa, in particolare la connessione al database.
+\end{itemize}
 
 \subsection{Collegamento al database tramite JDBC}
+La classe \texttt{DatabaseConnection} legge URL, utente e password da proprietà di sistema o variabili d'ambiente, con valori di default per lo sviluppo locale. Ogni controller apre una connessione quando deve eseguire operazioni persistenti e la chiude tramite \texttt{try-with-resources} o blocchi \texttt{finally}.
+
+\subsection{Gestione della sessione utente}
+Dopo il login, \texttt{MainFrame} conserva l'oggetto \texttt{Utente} corrente e lo passa alla dashboard. Le schermate usano \texttt{currentUser.getEmail()} per filtrare i dati. Questo evita che un utente possa visualizzare o modificare informazioni di altri studenti.
 
 \subsection{Organizzazione delle classi principali}
+Il login è gestito da \texttt{LoginController} e \texttt{JdbcUtenteDAO}. Le operazioni su movimenti e budget usano controller dedicati. La sezione documenti usa un \texttt{DocumentiController} e un \texttt{DocumentoDAO}, separando la visualizzazione dei documenti dalla logica di inserimento delle transazioni.
 
 \subsection{Gestione degli errori e validazione input}
+Gli errori SQL vengono intercettati dai controller o dalle view e mostrati tramite messaggi Swing. Per i documenti, il path viene validato prima dell'apertura: se il file non esiste o il sistema operativo non supporta l'apertura tramite \texttt{Desktop}, l'applicazione mostra un messaggio invece di terminare con eccezione non gestita.
 
 \subsection{Interfaccia grafica Java Swing}
+L'interfaccia usa un \texttt{MainFrame} con \texttt{CardLayout}. Dopo l'accesso, la dashboard presenta un menu laterale con le sezioni principali: riepilogo, transazioni, budget, categorie/tag, ricorrenze e documenti. I pannelli usano componenti Swing standard e componenti personalizzati per mantenere coerenza visiva.
 
-\subsection{Schermate principali}
+\subsection{Schermata Documenti}
+La schermata documenti mostra le spese che hanno un documento associato. Ogni elemento visualizza data, importo, descrizione, tipo file, path e data di acquisizione. L'anteprima a sinistra permette di aprire il file con il programma predefinito del sistema operativo. Se il file è un'immagine disponibile localmente, la UI può mostrare una miniatura; altrimenti mostra il tipo file.
 
-\subsection{Flussi d’uso principali}
-
-Registrazione studente\\
-Inserimento di una spesa\\
-Inserimento di una entrata\\
-Definizione di un budget\\
-Gestione di una spesa ricorrente\\
-Associazione di un documento digitale\\
-Visualizzazione statistiche amministratore
+\subsection{Flussi d'uso principali}
+\begin{enumerate}
+    \item L'utente avvia l'applicazione e inserisce email e password.
+    \item Il sistema autentica l'utente e apre la dashboard personale.
+    \item L'utente registra una spesa o una entrata.
+    \item L'utente consulta i budget e i riepiloghi.
+    \item L'utente associa un documento a una spesa priva di allegato.
+    \item L'utente apre un documento dalla schermata dedicata.
+\end{enumerate}
 
 \section{Test e validazione}
 \subsection{Dati di test utilizzati}
+I dati di test includono due studenti normali e un amministratore. Lo studente \texttt{studente1@mail.com} ha transazioni, categorie personali, fonti, tag, budget e almeno un documento dimostrativo. Lo studente \texttt{studente2@mail.com} consente di verificare l'isolamento dei dati.
 
 \subsection{Test delle query SQL}
+\begin{longtable}{p{4.5cm} p{5cm} p{5cm}}
+\toprule
+\textbf{Test} & \textbf{Input} & \textbf{Risultato atteso} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Test} & \textbf{Input} & \textbf{Risultato atteso} \\
+\midrule
+\endhead
+Login valido & \texttt{studente1@mail.com}, \texttt{password1} & Utente trovato. \\
+Login non valido & Password errata & Nessun utente trovato. \\
+Documenti utente & Email studente 1 & Solo documenti delle sue spese. \\
+Spese senza documento & Email studente 1 & Solo spese prive di documento. \\
+Budget stato & Email studente 1 & Budget ordinati per periodo e ambito. \\
+Isolamento utenti & Email studente 2 & Nessun dato personale dello studente 1. \\
+\bottomrule
+\end{longtable}
 
 \subsection{Test delle funzionalità applicative}
+\begin{itemize}
+    \item avvio dell'applicazione da \texttt{Main};
+    \item login con credenziali demo;
+    \item apertura della dashboard personale;
+    \item visualizzazione della sezione documenti;
+    \item apertura di un documento con path valido;
+    \item gestione di path non valido con messaggio di errore;
+    \item inserimento di un documento su una spesa senza documento.
+\end{itemize}
 
 \subsection{Casi limite gestiti}
+\begin{itemize}
+    \item assenza di budget per il periodo corrente;
+    \item assenza di documenti per un utente;
+    \item file documento rimosso dal disco;
+    \item assenza di entrate nel calcolo percentuale;
+    \item tentativo di associare un documento a una spesa non appartenente all'utente.
+\end{itemize}
 
 \subsection{Errori noti o limitazioni}
+La principale limitazione riguarda i documenti: il DB conserva il percorso del file, non il contenuto. Se il file viene spostato, cancellato o se l'utente usa un altro dispositivo, il percorso può risultare non valido. Questa scelta è consapevole e motivata dalla semplicità del progetto e dal minor carico sul database.
 
 \section{Conclusioni}
 \subsection{Risultato ottenuto}
+Il progetto realizza una base di dati relazionale coerente con il dominio della gestione economica personale. L'applicazione Java consente di autenticare un utente, mantenere una sessione, interrogare dati filtrati per email e visualizzare le principali aree funzionali.
 
 \subsection{Scelte progettuali principali}
+Le scelte più rilevanti sono il collasso della gerarchia spesa/entrata in \textsc{TRANSIZIONE}, l'isolamento dati tramite email, la modellazione ibrida di elementi globali/personali, la ridondanza controllata del budget e la memorizzazione dei documenti tramite path.
 
 \subsection{Possibili sviluppi futuri}
+Sviluppi futuri includono:
+\begin{itemize}
+    \item sincronizzazione o copia controllata dei documenti in una cartella applicativa;
+    \item eventuale uso di \texttt{LONGBLOB} per rendere i documenti portabili attraverso il solo database;
+    \item completamento delle funzionalità amministrative;
+    \item grafici statistici più avanzati;
+    \item esportazione dei report in PDF o CSV.
+\end{itemize}
 
 \appendix
 \section{Script SQL completo}
+Gli script completi sono mantenuti nella cartella \texttt{doc/schemes}. In particolare, \texttt{schema.sql} contiene la versione pulita dello schema, mentre gli altri file raccolgono popolamento, trigger, viste e query operative.
 
 \section{Query SQL complete}
+Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{Querry\_Operazioni\_SAGE.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
 
-\section{Screenshot dell’applicazione}
+\section{Screenshot dell'applicazione}
+Gli screenshot dell'applicazione possono essere inseriti in questa sezione durante la consegna finale. Le schermate più rilevanti sono login, dashboard, budget e gestione documenti.
 
 \section{Manuale utente sintetico}
+Per usare l'applicazione occorre avviare \texttt{it.unibo.sage.Main}, effettuare il login con un utente presente nel database e navigare tra le sezioni della dashboard. I dati demo includono l'utente \texttt{studente1@mail.com} con password \texttt{password1}.
 
 \section{Eventuale link al repository}
+Il link al repository può essere aggiunto in fase di consegna, insieme a eventuali istruzioni di compilazione ed esecuzione.
 
 \end{document}

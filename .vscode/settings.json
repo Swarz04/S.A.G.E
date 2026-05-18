@@ -2,10 +2,14 @@
     "java.project.sourcePaths": [
         "src"
     ],
-    "java.project.outputPath": "bin",
+    "java.project.outputPath": "build/classes",
     "java.project.referencedLibraries": [
         "lib/**/*.jar"
     ],
+    "code-runner.runInTerminal": true,
+    "code-runner.executorMap": {
+        "java": "cd $workspaceRoot; if (!(Test-Path build/classes)) { New-Item -ItemType Directory -Force build/classes | Out-Null }; javac -d build/classes (Get-ChildItem -Recurse -Filter *.java -Path src).FullName; if ($?) { java -cp \"build/classes;lib/*\" it.unibo.sage.Main }"
+    },
     "latex-workshop.latex.recipes": [
         {
             "name": "pdflatex",

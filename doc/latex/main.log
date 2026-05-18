@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.5.11)  11 MAY 2026 11:48
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.5.11)  18 MAY 2026 11:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**c:/Users/schar/Music/Projects/S.A.G.E/S.A.G.E/doc/latex/main.tex
-(c:/Users/schar/Music/Projects/S.A.G.E/S.A.G.E/doc/latex/main.tex
+**./main.tex
+(main.tex
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
 (C:\Program Files\MiKTeX\tex/latex/base\article.cls
@@ -551,10 +551,13 @@ Package hyperref Info: Link coloring OFF on input line 60.
 \openout3 = `main.out'.
 
 \c@lstlisting=\count332
+Package hyperref Info: Option `pageanchor' set `false' on input line 62.
  [1
 
 {C:/Users/schar/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Program Fi
-les/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc}] (main.toc
+les/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc}]
+Package hyperref Info: Option `pageanchor' set `true' on input line 85.
+ (main.toc
 LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 4
 .
 
@@ -585,92 +588,207 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <8> on input line 4.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <6> on input line 4.
- [1] [2])
+ [1
+
+])
 \tf@toc=\write4
 \openout4 = `main.toc'.
 
- [3]
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 9
-8.
+ [2]
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
+00.
 
-(C:\Program Files\MiKTeX\tex/latex/lm\ts1lmr.fd
-File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-)
-pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has 
-been already used, duplicate ignored
-<to be read again> 
-                   \relax 
-l.126 
-       [1{C:/Program Files/MiKTeX/fonts/enc/dvips/lm/lm-ts1.enc}]
-Package microtype Info: Character `029' is missing
-(microtype)             in font `T1/lmr/m/sc/10.95'.
-(microtype)             Ignoring protrusion settings for this character.
-
-Underfull \hbox (badness 1226) in paragraph at lines 138--138
-[]|\T1/lmr/m/n/10.95 (+20) Generazione dei re-cord nel
- []
-
-
-Underfull \hbox (badness 2103) in paragraph at lines 139--139
-[]|\T1/lmr/m/n/10.95 (+20) L'admin ve-de i da-ti de-gli
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 139--140
-[]|\T1/lmr/m/n/10.95 (+20) Vincolo ap-pli-ca-ti-vo: l'ad-min
- []
-
-
-Underfull \hbox (badness 7595) in paragraph at lines 139--140
-\T1/lmr/m/n/10.95 (+20) ac-ce-de so-lo a vi-ste ag-gre-ga-te
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 139--140
-\T1/lmr/m/n/10.95 (+20) (COUNT/SUM), non ai da-ti
- []
-
-[2]
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 2
-02.
- (C:\Program Files\MiKTeX\tex/latex/lm\t1lmtt.fd
+(C:\Program Files\MiKTeX\tex/latex/lm\t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `lmtt' (encoding: T1).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
- [3] [4] [5] [6]
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 1
+05.
+
+(C:\Program Files\MiKTeX\tex/latex/lm\ts1lmr.fd
+File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+) [1{C:/Program Files/MiKTeX/fonts/enc/dvips/lm/lm-ts1.enc}]
+Package microtype Info: Character `029' is missing
+(microtype)             in font `T1/lmr/m/sc/10.95'.
+(microtype)             Ignoring protrusion settings for this character.
+
+Underfull \hbox (badness 10000) in paragraph at lines 157--158
+[]|\T1/lmr/m/n/10.95 (+20) Si usa una re-la-zio-ne uni-ca
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 157--158
+\T1/lmr/m/sc/10.95 (+20) TRAN-SI-ZIO-NE \T1/lmr/m/n/10.95 (+20) con at-tri-bu-t
+o
+ []
+
+
+Underfull \hbox (badness 4779) in paragraph at lines 158--158
+[]|\T1/lmr/m/n/10.95 (+20) Come di-stin-gue-re ca-ta-lo-go
+ []
+
+
+Underfull \hbox (badness 6316) in paragraph at lines 158--159
+[]|\T1/lmr/m/sc/10.95 (+20) CATEGORIA\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.
+95 (+20) TAG \T1/lmr/m/n/10.95 (+20) e \T1/lmr/m/sc/10.95 (+20) FON-
+ []
+
+
+Underfull \hbox (badness 1968) in paragraph at lines 161--161
+[]|\T1/lmr/m/n/10.95 (+20) L'admin ve-de i mo-vi-men-ti
+ []
+
+
+Underfull \hbox (badness 2547) in paragraph at lines 161--162
+[]|\T1/lmr/m/n/10.95 (+20) No: l'ac-ces-so am-mi-ni-stra-ti-vo è
+ []
+
+[2]
+Overfull \hbox (19.07228pt too wide) in paragraph at lines 241--241
+[]|\T1/lmr/m/sc/10.95 (-20) SPESA_RICORRENTE| 
+ []
+
+[3]
+Overfull \hbox (2.8343pt too wide) in paragraph at lines 253--254
+\T1/lmr/m/n/10.95 (-20) stin-gue un bud-get spe-ci-fi-co da un bud-get men-si-l
+e com-ples-si-vo. L'at-tri-bu-to \T1/lmtt/m/n/10.95 Totale_Speso_Attuale
+ []
+
+
+Overfull \hbox (73.27733pt too wide) in paragraph at lines 256--257
+\T1/lmr/m/n/10.95 (-20) Il do-cu-men-to di-gi-ta-le è col-le-ga-to a una spe-sa
+ e con-tie-ne \T1/lmtt/m/n/10.95 Path_File\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/
+n/10.95 Tipo_File \T1/lmr/m/n/10.95 (-20) e \T1/lmtt/m/n/10.95 Data_Acquisizion
+e_Documento\T1/lmr/m/n/10.95 (-20) .
+ []
+
+[4]
+Overfull \hbox (0.27054pt too wide) in paragraph at lines 296--297
+[]\T1/lmr/m/sc/10.95 (-20) DOCUMENTO\T1/lmr/m/n/10.95 (-20) : ID, ID_Transizion
+e, Path_File, Ti-po_File, Da-ta_Acquisizione_Documento. 
+ []
+
+
+Underfull \hbox (badness 2253) in paragraph at lines 315--315
+[]|\T1/lmr/m/n/10.95 (+20) Importo, da-ta, de-scri-zio-ne,
+ []
+
+
+Underfull \hbox (badness 4144) in paragraph at lines 315--315
+\T1/lmr/m/n/10.95 (+20) ca-te-go-ria, tag, do-cu-men-to
+ []
+
+
+Underfull \hbox (badness 1062) in paragraph at lines 315--316
+\T1/lmr/m/sc/10.95 (+20) SA_TAG\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.95 (+2
+0) DO-CU-MEN-TO\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.95 (+20) BUD-
+ []
+
+
+Underfull \hbox (badness 2253) in paragraph at lines 316--316
+[]|\T1/lmr/m/n/10.95 (+20) Importo, da-ta, de-scri-zio-ne,
+ []
+
+
+Underfull \hbox (badness 2269) in paragraph at lines 317--318
+[]|\T1/lmr/m/sc/10.95 (+20) BUDGET\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.95 
+(+20) PE-RIO-DO\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.95 (+20) TRAN-SI-
+ []
+
+ignored error: Infinite glue shrinkage found in box being split [5]
+Underfull \hbox (badness 6078) in paragraph at lines 352--352
+[]|\T1/lmr/bx/n/10.95 (+20) Frequenza sti-
+ []
+
+
+Underfull \hbox (badness 6078) in paragraph at lines 356--356
+[]|\T1/lmr/bx/n/10.95 (+20) Frequenza sti-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 361--361
+[]|\T1/lmr/m/n/10.95 (+20) Consultazione
+ []
+
+ignored error: Infinite glue shrinkage found in box being split [6]
+Underfull \hbox (badness 10000) in paragraph at lines 381--382
+[]|\T1/lmr/m/sc/10.95 (+20) PERIODO\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.95
+ (+20) TRAN-SI-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 381--382
+\T1/lmr/m/sc/10.95 (+20) ZIO-NE\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/sc/10.95 (+2
+0) SPE-SA_TAG\T1/lmr/m/n/10.95 (+20) ,
+ []
+
+
+Overfull \hbox (2.88722pt too wide) in paragraph at lines 393--394
+[]\T1/lmr/m/n/10.95 (-20) quando vie-ne in-se-ri-ta una spe-sa, l'in-se-ri-men-
+to del-la tran-sa-zio-ne, l'as-so-cia-zio-ne di tag/documento
+ []
+
+[7]
+Overfull \hbox (61.6396pt too wide) in paragraph at lines 414--415
+\T1/lmr/m/sc/10.95 (-20) FON-TE\T1/lmr/m/n/10.95 (-20) , \T1/lmr/m/sc/10.95 (-2
+0) TAG\T1/lmr/m/n/10.95 (-20) , \T1/lmr/m/sc/10.95 (-20) TRAN-SI-ZIO-NE\T1/lmr/
+m/n/10.95 (-20) , \T1/lmr/m/sc/10.95 (-20) SPE-SA_TAG\T1/lmr/m/n/10.95 (-20) , 
+\T1/lmr/m/sc/10.95 (-20) DO-CU-MEN-TO\T1/lmr/m/n/10.95 (-20) , \T1/lmr/m/sc/10.
+95 (-20) BUD-GET \T1/lmr/m/n/10.95 (-20) e \T1/lmr/m/sc/10.95 (-20) SPE-SA_RICO
+RRENTE\T1/lmr/m/n/10.95 (-20) .
+ []
+
+[8]
 Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on i
-nput line 318.
+nput line 460.
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 320.
- [7]
-[8] [9] [10] [11] [12] (main.aux)
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 461.
+ [9] [10] [11] [12]
+Overfull \hbox (9.3539pt too wide) in paragraph at lines 612--613
+\T1/lmr/m/n/10.95 (-20) I da-ti di te-st in-clu-do-no due stu-den-ti nor-ma-li 
+e un am-mi-ni-stra-to-re. Lo stu-den-te \T1/lmtt/m/n/10.95 studente1@mail.com
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 624--624
+[]|\T1/lmtt/m/n/10.95 studente1@mail.com\T1/lmr/m/n/10.95 (+20) ,
+ []
+
+[13]
+Overfull \hbox (62.23383pt too wide) in paragraph at lines 678--679
+\T1/lmr/m/n/10.95 (-20) Le que-ry prin-ci-pa-li so-no ri-por-ta-te nel ca-pi-to
+-lo di im-ple-men-ta-zio-ne SQL e nel fi-le \T1/lmtt/m/n/10.95 Querry_Operazion
+i_SAGE.sql\T1/lmr/m/n/10.95 (-20) .
+ []
+
+[14] (main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: E458B51B6F4A6AB73E0EDBA418854DDD;20630.
+(rerunfilecheck)             Checksum: 71DFE36EC9054178D9BCCC42E584C96E;17538.
  ) 
 Here is how much of TeX's memory you used:
- 15834 strings out of 467871
- 246836 string characters out of 5428443
- 1168971 words of memory out of 5000000
- 44184 multiletter control sequences out of 15000+600000
- 678789 words of font info for 123 fonts, out of 8000000 for 9000
+ 15840 strings out of 467871
+ 246594 string characters out of 5428443
+ 1109015 words of memory out of 5000000
+ 44190 multiletter control sequences out of 15000+600000
+ 679918 words of font info for 136 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,6n,79p,1057b,2003s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,6n,79p,1003b,2222s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Program Files/MiKTeX/fonts/type1/public/lm/lmbx10.pfb><C:/Program Files/M
 iKTeX/fonts/type1/public/lm/lmbx12.pfb><C:/Program Files/MiKTeX/fonts/type1/pub
 lic/lm/lmcsc10.pfb><C:/Program Files/MiKTeX/fonts/type1/public/lm/lmr10.pfb><C:
 /Program Files/MiKTeX/fonts/type1/public/lm/lmr12.pfb><C:/Program Files/MiKTeX/
 fonts/type1/public/lm/lmr6.pfb><C:/Program Files/MiKTeX/fonts/type1/public/lm/l
 mtk10.pfb><C:/Program Files/MiKTeX/fonts/type1/public/lm/lmtt10.pfb>
-Output written on main.pdf (16 pages, 353846 bytes).
+Output written on main.pdf (17 pages, 357086 bytes).
 PDF statistics:
- 774 PDF objects out of 1000 (max. 8388607)
- 228 named destinations out of 1000 (max. 500000)
- 33049 words of extra memory for PDF output out of 35830 (max. 10000000)
+ 698 PDF objects out of 1000 (max. 8388607)
+ 204 named destinations out of 1000 (max. 500000)
+ 32953 words of extra memory for PDF output out of 35830 (max. 10000000)
 

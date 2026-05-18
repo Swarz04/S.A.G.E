@@ -4,8 +4,10 @@ import it.unibo.sage.controller.LoginController;
 import it.unibo.sage.model.Utente;
 import javax.swing.*;
 import java.awt.*;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Pannello di login centrato: per ora raccoglie le credenziali e porta alla
@@ -139,10 +141,30 @@ public class LoginPanel extends AppBackgroundPanel {
                     }
                 } catch (Exception ex) {
                     statusLabel.setForeground(AppTheme.EXPENSE);
-                    statusLabel.setText("Database non raggiungibile o configurazione errata.");
+                    statusLabel.setText(resolveLoginError(ex));
                 }
             }
         }.execute();
+    }
+
+    private String resolveLoginError(final Exception exception) {
+        final Throwable cause = exception instanceof ExecutionException
+                ? exception.getCause()
+                : exception;
+        if (cause instanceof SQLException) {
+            final String message = cause.getMessage();
+            if (message != null && message.contains("No suitable driver")) {
+                return "Driver MySQL mancante nel classpath: usa Run S.A.G.E.";
+            }
+            if (message != null && message.contains("Access denied")) {
+                return "Accesso MySQL negato: controlla utente/password DB.";
+            }
+            if (message != null && message.contains("Unknown database")) {
+                return "Database S.A.G.E. non creato: esegui gli script SQL.";
+            }
+            return "Errore database: " + message;
+        }
+        return "Database non raggiungibile o configurazione errata.";
     }
 
     private JPanel createFieldGroup(String label, JComponent field) {
