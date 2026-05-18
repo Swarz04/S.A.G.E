@@ -222,6 +222,107 @@ public class MovimentiService {
         }
     }
 
+    public List<Long> caricaTagTransazione(final String email, final long idTransazione)
+            throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            return transazioneDAO.findTagIds(idTransazione, email);
+        }
+    }
+
+    public void aggiornaTransazione(final String email, final long idTransazione,
+            final BigDecimal importo, final LocalDate data, final String descrizione,
+            final Long idCategoria, final Long idFonte, final List<Long> idTag)
+            throws SQLException {
+        Connection connection = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            connection.setAutoCommit(false);
+
+            final PeriodoDAO periodoDAO = new JdbcPeriodoDAO(connection);
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            final BudgetDAO budgetDAO = new JdbcBudgetDAO(connection);
+
+            final Transazione precedente = transazioneDAO.findById(idTransazione, email);
+            final long idPeriodo = periodoDAO.trovaOCreaPeriodo(data.getMonthValue(), data.getYear());
+            final Transazione aggiornata = new Transazione(
+                    idTransazione,
+                    precedente.getTipo(),
+                    importo,
+                    data,
+                    descrizione,
+                    email,
+                    idCategoria,
+                    idPeriodo,
+                    idFonte);
+
+            transazioneDAO.aggiorna(aggiornata);
+            transazioneDAO.eliminaTag(idTransazione);
+            if (precedente.getTipo() == TipoTransazione.SPESA) {
+                for (final Long tag : idTag) {
+                    transazioneDAO.associaTag(idTransazione, tag.longValue());
+                }
+            }
+            aggiornaBudgetDopoModifica(budgetDAO, precedente, aggiornata);
+            connection.commit();
+        } catch (final SQLException ex) {
+            rollbackSilenzioso(connection);
+            throw ex;
+        } finally {
+            closeSilenzioso(connection);
+        }
+    }
+
+    public void eliminaTransazione(final String email, final long idTransazione)
+            throws SQLException {
+        Connection connection = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            connection.setAutoCommit(false);
+
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            final BudgetDAO budgetDAO = new JdbcBudgetDAO(connection);
+            final Transazione transazione = transazioneDAO.findById(idTransazione, email);
+
+            transazioneDAO.elimina(idTransazione, email);
+            sottraiDaBudgetSeSpesa(budgetDAO, transazione);
+            connection.commit();
+        } catch (final SQLException ex) {
+            rollbackSilenzioso(connection);
+            throw ex;
+        } finally {
+            closeSilenzioso(connection);
+        }
+    }
+
+    private void aggiornaBudgetDopoModifica(final BudgetDAO budgetDAO,
+            final Transazione precedente, final Transazione aggiornata) throws SQLException {
+        sottraiDaBudgetSeSpesa(budgetDAO, precedente);
+        aggiungiABudgetSeSpesa(budgetDAO, aggiornata);
+    }
+
+    private void sottraiDaBudgetSeSpesa(final BudgetDAO budgetDAO,
+            final Transazione transazione) throws SQLException {
+        if (transazione.getTipo() == TipoTransazione.SPESA && transazione.getIdCategoria() != null) {
+            budgetDAO.aggiungiSpesaAiBudget(
+                    transazione.getEmail(),
+                    transazione.getIdPeriodo(),
+                    transazione.getIdCategoria(),
+                    transazione.getImporto().negate());
+        }
+    }
+
+    private void aggiungiABudgetSeSpesa(final BudgetDAO budgetDAO,
+            final Transazione transazione) throws SQLException {
+        if (transazione.getTipo() == TipoTransazione.SPESA && transazione.getIdCategoria() != null) {
+            budgetDAO.aggiungiSpesaAiBudget(
+                    transazione.getEmail(),
+                    transazione.getIdPeriodo(),
+                    transazione.getIdCategoria(),
+                    transazione.getImporto());
+        }
+    }
+
     private String riconosciTipoFile(final String path) {
         final int dotIndex = path.lastIndexOf('.');
         if (dotIndex < 0 || dotIndex == path.length() - 1) {

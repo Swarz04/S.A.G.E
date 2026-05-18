@@ -15,6 +15,10 @@ public class JdbcUtenteDAO implements UtenteDAO {
             + "FROM UTENTE "
             + "WHERE Email = ? AND Password = SHA2(?, 512)";
 
+    private static final String INSERT_UTENTE_SQL =
+            "INSERT INTO UTENTE (Email, Password, Nome, Cognome, Ruolo) "
+            + "VALUES (?, SHA2(?, 512), ?, ?, 'UTENTE')";
+
     private final Connection connection;
 
     public JdbcUtenteDAO(final Connection connection) {
@@ -34,6 +38,18 @@ public class JdbcUtenteDAO implements UtenteDAO {
                 }
                 return Optional.of(mapUtente(resultSet));
             }
+        }
+    }
+
+    @Override
+    public void registraUtente(final String email, final String passwordChiara,
+            final String nome, final String cognome) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_UTENTE_SQL)) {
+            statement.setString(1, email);
+            statement.setString(2, passwordChiara);
+            statement.setString(3, nome);
+            statement.setString(4, cognome);
+            statement.executeUpdate();
         }
     }
 

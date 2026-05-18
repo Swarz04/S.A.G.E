@@ -1,16 +1,27 @@
 package it.unibo.sage.view;
 
-import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 /**
- * Barra laterale della dashboard, disegnata con un gradiente scuro per
- * separare bene la navigazione dal contenuto principale.
+ * Barra laterale della dashboard. Se presente, usa un'immagine personalizzata
+ * come sfondo; altrimenti mantiene il gradiente scuro originale.
  */
 public class SidebarPanel extends JPanel {
 
+    private static final Path CUSTOM_BACKGROUND_PATH = Path.of(
+            "src", "it", "unibo", "sage", "view", "assets", "sidebar-background.png");
+
+    private final BufferedImage backgroundImage;
+
     public SidebarPanel() {
         setOpaque(false);
+        backgroundImage = loadBackgroundImage();
     }
 
     @Override
@@ -20,6 +31,13 @@ public class SidebarPanel extends JPanel {
 
         int width = getWidth();
         int height = getHeight();
+
+        if (backgroundImage != null) {
+            paintCoverImage(graphics2D, width, height);
+            graphics2D.dispose();
+            super.paintComponent(graphics);
+            return;
+        }
 
         GradientPaint gradient = new GradientPaint(
             0, 0, AppTheme.SIDEBAR_TOP,
@@ -36,5 +54,30 @@ public class SidebarPanel extends JPanel {
 
         graphics2D.dispose();
         super.paintComponent(graphics);
+    }
+
+    private BufferedImage loadBackgroundImage() {
+        if (!Files.isRegularFile(CUSTOM_BACKGROUND_PATH)) {
+            return null;
+        }
+        try {
+            return ImageIO.read(CUSTOM_BACKGROUND_PATH.toFile());
+        } catch (final IOException ignored) {
+            return null;
+        }
+    }
+
+    private void paintCoverImage(final Graphics2D graphics2D, final int width, final int height) {
+        final double scale = Math.max(
+                (double) width / backgroundImage.getWidth(),
+                (double) height / backgroundImage.getHeight());
+        final int scaledWidth = (int) Math.ceil(backgroundImage.getWidth() * scale);
+        final int scaledHeight = (int) Math.ceil(backgroundImage.getHeight() * scale);
+        final int x = (width - scaledWidth) / 2;
+        final int y = (height - scaledHeight) / 2;
+
+        graphics2D.drawImage(backgroundImage, x, y, scaledWidth, scaledHeight, null);
+        graphics2D.setColor(new Color(5, 15, 30, 92));
+        graphics2D.fillRect(0, 0, width, height);
     }
 }

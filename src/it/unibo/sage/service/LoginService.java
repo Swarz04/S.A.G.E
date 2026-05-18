@@ -17,4 +17,12 @@ public class LoginService {
             return utenteDAO.login(email, passwordChiara);
         }
     }
+
+    public void registraUtente(final String email, final String passwordChiara,
+            final String nome, final String cognome) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final UtenteDAO utenteDAO = new JdbcUtenteDAO(connection);
+            utenteDAO.registraUtente(email, passwordChiara, nome, cognome);
+        }
+    }
 }

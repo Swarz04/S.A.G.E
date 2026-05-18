@@ -13,4 +13,9 @@ public class LoginController {
             throws SQLException {
         return loginService.login(email, passwordChiara);
     }
+
+    public void registraUtente(final String email, final String passwordChiara,
+            final String nome, final String cognome) throws SQLException {
+        loginService.registraUtente(email, passwordChiara, nome, cognome);
+    }
 }

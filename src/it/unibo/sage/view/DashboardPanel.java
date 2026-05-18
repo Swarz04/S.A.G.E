@@ -25,6 +25,10 @@ import java.awt.*;
  */
 public class DashboardPanel extends AppBackgroundPanel {
 
+    private static final String CARD_SETTINGS = "CARD_SETTINGS";
+    private static final int SIDEBAR_WIDTH = 300;
+    private static final int MENU_BUTTON_HEIGHT = 56;
+
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
     private final Utente currentUser;
@@ -53,7 +57,14 @@ public class DashboardPanel extends AppBackgroundPanel {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(24, 26, 24, 26));
 
         mainPanel.add(createHeaderPanel(), BorderLayout.NORTH);
-        mainPanel.add(contentPanel, BorderLayout.CENTER);
+
+        // Avvolgo il contentPanel in uno JScrollPane per permettere lo scorrimento
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
 
         return mainPanel;
     }
@@ -99,8 +110,8 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JPanel createMenuPanel() {
         JPanel menuPanel = new SidebarPanel();
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
-        menuPanel.setPreferredSize(new Dimension(245, 0));
-        menuPanel.setBorder(BorderFactory.createEmptyBorder(24, 18, 24, 18));
+        menuPanel.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 0));
+        menuPanel.setBorder(BorderFactory.createEmptyBorder(24, 22, 24, 22));
 
         JLabel appName = new JLabel("S.A.G.E.");
         appName.setForeground(Color.WHITE);
@@ -138,21 +149,40 @@ public class DashboardPanel extends AppBackgroundPanel {
         JPanel userBox = new GlassPanel(
             new BorderLayout(10, 0),
             AppTheme.SIDEBAR_USER_TOP,
-            AppTheme.SIDEBAR_USER_BOTTOM
+            AppTheme.SIDEBAR_USER_BOTTOM,
+            false
         );
-        userBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
-        userBox.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));
+        userBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        userBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
+        userBox.setMinimumSize(new Dimension(0, 66));
+        userBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        userBox.setToolTipText("Apri impostazioni");
+        userBox.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JLabel avatar = new JLabel("U", SwingConstants.CENTER);
         avatar.setOpaque(true);
-        avatar.setPreferredSize(new Dimension(34, 34));
+        avatar.setPreferredSize(new Dimension(38, 38));
         avatar.setBackground(AppTheme.AVATAR_BACKGROUND);
         avatar.setForeground(AppTheme.AVATAR_TEXT);
-        avatar.setFont(new Font("SansSerif", Font.BOLD, 15));
+        avatar.setFont(new Font("SansSerif", Font.BOLD, 16));
+        avatar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        avatar.setToolTipText("Apri impostazioni");
 
         JLabel name = new JLabel(currentUser.getNome() + " " + currentUser.getCognome());
         name.setForeground(Color.WHITE);
-        name.setFont(new Font("SansSerif", Font.BOLD, 13));
+        name.setFont(new Font("SansSerif", Font.BOLD, 15));
+        name.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        name.setToolTipText("Apri impostazioni");
+
+        java.awt.event.MouseAdapter settingsClick = new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent event) {
+                showSettings();
+            }
+        };
+        userBox.addMouseListener(settingsClick);
+        avatar.addMouseListener(settingsClick);
+        name.addMouseListener(settingsClick);
 
         userBox.add(avatar, BorderLayout.WEST);
         userBox.add(name, BorderLayout.CENTER);
@@ -163,12 +193,14 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JButton createMenuButton(String text, String cardName) {
         SoftButton button = new SoftButton(text);
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        button.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, MENU_BUTTON_HEIGHT));
+        button.setMinimumSize(new Dimension(0, MENU_BUTTON_HEIGHT));
+        button.setPreferredSize(new Dimension(0, MENU_BUTTON_HEIGHT));
+        button.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setBackground(AppTheme.SIDEBAR_BUTTON);
         button.setForeground(Color.WHITE);
-        button.setFont(new Font("SansSerif", Font.BOLD, 14));
+        button.setFont(new Font("SansSerif", Font.BOLD, 16));
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent event) {
@@ -202,7 +234,14 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
 
         selectedMenuButton = button;
-        selectedMenuButton.setBackground(AppTheme.SIDEBAR_BUTTON_SELECTED);
+        if (selectedMenuButton != null) {
+            selectedMenuButton.setBackground(AppTheme.SIDEBAR_BUTTON_SELECTED);
+        }
+    }
+
+    private void showSettings() {
+        selectMenuButton(null);
+        contentLayout.show(contentPanel, CARD_SETTINGS);
     }
 
     private void initContentCards() {
@@ -215,6 +254,7 @@ public class DashboardPanel extends AppBackgroundPanel {
             "Modelli astratti da cui generare spese effettive periodiche."
         ), "CARD_RECURRING");
         contentPanel.add(new DocumentiPanel(currentUser), "CARD_DOCUMENTS");
+        contentPanel.add(createSettingsCard(), CARD_SETTINGS);
     }
 
     private void refreshContent(final String cardName) {
@@ -255,18 +295,37 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private JPanel createTransactionsCard() {
-        final String[] columns = {"Data", "Tipo", "Descrizione", "Importo"};
+        final String[] columns = {"ID", "Data", "Tipo", "Descrizione", "Importo"};
         final DefaultTableModel model = new DefaultTableModel(columns, 0);
         for (Transazione transazione : loadTransactions()) {
             model.addRow(new Object[] {
+                transazione.getId(),
                 transazione.getData(),
                 labelTipo(transazione.getTipo()),
                 transazione.getDescrizione(),
                 formatEuro(transazione.getImporto())
             });
         }
-        return createTableCard("Transazioni demo", "Movimenti caricati dal database per "
-                + currentUser.getEmail(), model);
+
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton editButton = createSmallActionButton("Modifica");
+        SoftButton deleteButton = createSmallActionButton("Elimina");
+
+        editButton.addActionListener(e -> editSelectedTransaction(table));
+        deleteButton.addActionListener(e -> deleteSelectedTransaction(table));
+
+        actions.add(editButton);
+        actions.add(deleteButton);
+
+        return createTableCard("Transazioni", "Storico dei movimenti caricati per "
+                + currentUser.getEmail(), table, actions);
     }
 
     private JPanel createBudgetCard() {
@@ -289,48 +348,152 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private JPanel createCategoriesCard() {
-        final String[] columns = {"Tipo", "ID", "Nome", "Origine"};
-        final DefaultTableModel model = new DefaultTableModel(columns, 0);
-        for (Categoria categoria : loadCategories()) {
-            model.addRow(new Object[] {
-                "Categoria",
-                categoria.getId(),
-                categoria.getNome(),
-                categoria.isSystem() ? "Sistema" : "Personale"
-            });
-        }
-        for (Tag tag : loadTags()) {
-            model.addRow(new Object[] {
-                "Tag",
-                tag.getId(),
-                tag.getNome(),
-                tag.isSystem() ? "Sistema" : "Personale"
-            });
-        }
-
-        JTable table = new JTable(model);
-        table.setFillsViewportHeight(true);
-        table.setRowHeight(28);
-        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
-
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         actions.setOpaque(false);
         SoftButton addCategoryButton = createSmallActionButton("+ Categoria");
         SoftButton addTagButton = createSmallActionButton("+ Tag");
-        SoftButton renameButton = createSmallActionButton("Rinomina");
-        SoftButton deleteButton = createSmallActionButton("Elimina");
         addCategoryButton.addActionListener(e -> addPersonalCategory());
         addTagButton.addActionListener(e -> addPersonalTag());
-        renameButton.addActionListener(e -> renameSelectedClassification(table));
-        deleteButton.addActionListener(e -> deleteSelectedClassification(table));
         actions.add(addCategoryButton);
         actions.add(addTagButton);
-        actions.add(renameButton);
-        actions.add(deleteButton);
 
-        return createTableCard("Categorie e Tag",
-                "Classificazioni disponibili per l'utente corrente.", table, actions);
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel(new BorderLayout(12, 0));
+        header.setOpaque(false);
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel("Categorie e Tag");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel("Classificazioni disponibili per l'utente corrente.");
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(6));
+        titlePanel.add(subtitleLabel);
+        header.add(titlePanel, BorderLayout.CENTER);
+        header.add(actions, BorderLayout.EAST);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 14, 14));
+        grid.setOpaque(false);
+        for (Categoria categoria : loadCategories()) {
+            grid.add(createClassificationTile(
+                    "Categoria",
+                    categoria.getId(),
+                    categoria.getNome(),
+                    categoria.isSystem()));
+        }
+        for (Tag tag : loadTags()) {
+            grid.add(createClassificationTile(
+                    "Tag",
+                    tag.getId(),
+                    tag.getNome(),
+                    tag.isSystem()));
+        }
+
+        if (grid.getComponentCount() == 0) {
+            grid.add(createPlaceholderBox("Nessuna classificazione", "Aggiungi categorie o tag personali."));
+        }
+
+        JScrollPane scrollPane = new JScrollPane(grid);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createClassificationTile(final String type, final long id,
+            final String name, final boolean system) {
+        final JPanel tile = new GlassPanel(new BorderLayout(14, 0));
+        tile.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        tile.setPreferredSize(new Dimension(0, 104));
+
+        tile.add(createClassificationIcon(type), BorderLayout.WEST);
+
+        JPanel textPanel = new JPanel();
+        textPanel.setOpaque(false);
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+
+        JLabel nameLabel = new JLabel(name);
+        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 17));
+        nameLabel.setForeground(AppTheme.TEXT);
+
+        JLabel metaLabel = new JLabel(type + " - " + (system ? "Sistema" : "Personale"));
+        metaLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        metaLabel.setForeground(system ? AppTheme.TEXT_MUTED : AppTheme.BADGE_TEXT);
+
+        textPanel.add(Box.createVerticalGlue());
+        textPanel.add(nameLabel);
+        textPanel.add(Box.createVerticalStrut(6));
+        textPanel.add(metaLabel);
+        textPanel.add(Box.createVerticalGlue());
+        tile.add(textPanel, BorderLayout.CENTER);
+
+        if (!system) {
+            JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
+            buttons.setOpaque(false);
+            SoftButton renameButton = createTinyActionButton("Rinomina");
+            SoftButton deleteButton = createTinyActionButton("Elimina");
+            renameButton.addActionListener(e -> renameClassification(type, id, name));
+            deleteButton.addActionListener(e -> deleteClassification(type, id));
+            buttons.add(renameButton);
+            buttons.add(deleteButton);
+            tile.add(buttons, BorderLayout.EAST);
+        }
+
+        return tile;
+    }
+
+    private JComponent createClassificationIcon(final String type) {
+        return new JComponent() {
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(56, 56);
+            }
+
+            @Override
+            protected void paintComponent(final Graphics graphics) {
+                Graphics2D graphics2D = (Graphics2D) graphics.create();
+                graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                final boolean category = "Categoria".equals(type);
+                graphics2D.setColor(category
+                        ? new Color(37, 99, 235, 34)
+                        : new Color(20, 184, 166, 38));
+                graphics2D.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+                graphics2D.setColor(category
+                        ? new Color(37, 99, 235, 92)
+                        : new Color(20, 184, 166, 96));
+                graphics2D.fillOval(getWidth() / 2 - 9, getHeight() / 2 - 9, 18, 18);
+                graphics2D.setFont(new Font("SansSerif", Font.BOLD, 18));
+                graphics2D.setColor(category ? AppTheme.PRIMARY : AppTheme.ACCENT_HOVER);
+                final String letter = category ? "C" : "T";
+                FontMetrics metrics = graphics2D.getFontMetrics();
+                int x = (getWidth() - metrics.stringWidth(letter)) / 2;
+                int y = (getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
+                graphics2D.drawString(letter, x, y);
+                graphics2D.dispose();
+            }
+        };
+    }
+
+    private SoftButton createTinyActionButton(final String text) {
+        SoftButton button = new SoftButton(text);
+        button.setBackground(AppTheme.SURFACE_MUTED);
+        button.setForeground(AppTheme.TEXT);
+        button.setFont(new Font("SansSerif", Font.BOLD, 11));
+        button.setBorder(BorderFactory.createEmptyBorder(7, 10, 7, 10));
+        button.setArc(12);
+        button.addMouseListener(new ButtonHoverAdapter(button, AppTheme.SURFACE_MUTED, AppTheme.BADGE_BACKGROUND));
+        return button;
     }
 
     private JPanel createMetricBox(String title, String value, Color accent) {
@@ -481,6 +644,45 @@ public class DashboardPanel extends AppBackgroundPanel {
         panel.add(textPanel);
 
         return panel;
+    }
+
+    private JPanel createSettingsCard() {
+        JPanel panel = new GlassPanel(new BorderLayout(0, 18));
+        panel.setBorder(BorderFactory.createEmptyBorder(26, 28, 26, 28));
+
+        JLabel titleLabel = new JLabel("Impostazioni");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JPanel fieldsPanel = new JPanel(new GridLayout(4, 1, 0, 12));
+        fieldsPanel.setOpaque(false);
+        fieldsPanel.add(createSettingsRow("Nome", currentUser.getNome()));
+        fieldsPanel.add(createSettingsRow("Cognome", currentUser.getCognome()));
+        fieldsPanel.add(createSettingsRow("Email", currentUser.getEmail()));
+        fieldsPanel.add(createSettingsRow("Ruolo", currentUser.getRuolo().name()));
+
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(fieldsPanel, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JPanel createSettingsRow(String label, String value) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+
+        JLabel labelComponent = new JLabel(label);
+        labelComponent.setForeground(AppTheme.TEXT_MUTED);
+        labelComponent.setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JLabel valueComponent = new JLabel(value);
+        valueComponent.setForeground(AppTheme.TEXT);
+        valueComponent.setFont(new Font("SansSerif", Font.BOLD, 16));
+
+        row.add(labelComponent, BorderLayout.WEST);
+        row.add(valueComponent, BorderLayout.EAST);
+
+        return row;
     }
 
     private void showNewTransactionDialog() {
@@ -732,6 +934,167 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
     }
 
+    private void editSelectedTransaction(final JTable table) {
+        final int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleziona una transazione da modificare.");
+            return;
+        }
+
+        final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 0)));
+        Transazione target = null;
+        // Cerco l'oggetto transazione corrispondente all'ID tra quelle caricate
+        for (Transazione t : loadTransactions()) {
+            if (t.getId() == id) {
+                target = t;
+                break;
+            }
+        }
+
+        if (target != null) {
+            showEditDialog(target);
+        }
+    }
+
+    private void showEditDialog(final Transazione t) {
+        final List<Categoria> categories = loadCategories();
+        final List<Fonte> sources = loadSources();
+        final List<Tag> tags = loadTags();
+        final List<Long> selectedTagIds = loadTransactionTagIds(t.getId());
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Modifica transazione",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+        root.setBackground(Color.WHITE);
+
+        JTextField amount = createDialogTextField(t.getImporto().toString());
+        JTextField date = createDialogTextField(t.getData().toString());
+        JTextField desc = createDialogTextField(t.getDescrizione());
+
+        JPanel form;
+        if (t.getTipo() == TipoTransazione.SPESA) {
+            JComboBox<Categoria> catCombo = createCategoryCombo(categories);
+            for (int i = 0; i < catCombo.getItemCount(); i++) {
+                if (Long.valueOf(catCombo.getItemAt(i).getId()).equals(t.getIdCategoria())) {
+                    catCombo.setSelectedIndex(i);
+                    break;
+                }
+            }
+            JList<Tag> tagList = createTagList(tags);
+            selectTags(tagList, selectedTagIds);
+            form = createExpenseForm(amount, date, desc, catCombo, tagList);
+
+            SoftButton save = createDialogButton("Salva modifiche", AppTheme.ACCENT);
+            save.addActionListener(e -> {
+                try {
+                    final List<Tag> selectedTags = tagList.getSelectedValuesList();
+                    if (selectedTags.isEmpty()) {
+                        throw new IllegalArgumentException("Seleziona almeno un tag.");
+                    }
+                    movimentiController.aggiornaTransazione(currentUser.getEmail(), t.getId(),
+                        parseAmount(amount),
+                        LocalDate.parse(date.getText().trim()),
+                        requireDescription(desc),
+                        ((Categoria) catCombo.getSelectedItem()).getId(),
+                        null,
+                        selectedTags.stream().map(Tag::getId).toList());
+                    dialog.dispose();
+                    refreshContent("CARD_TRANSACTIONS");
+                } catch (Exception ex) { showTransactionError(ex); }
+            });
+            root.add(form, BorderLayout.CENTER);
+            root.add(createDialogFooter(dialog, save), BorderLayout.SOUTH);
+        } else {
+            JComboBox<Fonte> srcCombo = createSourceCombo(sources);
+            for (int i = 0; i < srcCombo.getItemCount(); i++) {
+                if (Long.valueOf(srcCombo.getItemAt(i).getId()).equals(t.getIdFonte())) {
+                    srcCombo.setSelectedIndex(i);
+                    break;
+                }
+            }
+            form = createIncomeForm(amount, date, desc, srcCombo);
+
+            SoftButton save = createDialogButton("Salva modifiche", AppTheme.ACCENT);
+            save.addActionListener(e -> {
+                try {
+                    movimentiController.aggiornaTransazione(currentUser.getEmail(), t.getId(),
+                        parseAmount(amount),
+                        LocalDate.parse(date.getText().trim()),
+                        requireDescription(desc),
+                        null,
+                        ((Fonte) srcCombo.getSelectedItem()).getId(),
+                        List.of());
+                    dialog.dispose();
+                    refreshContent("CARD_TRANSACTIONS");
+                } catch (Exception ex) { showTransactionError(ex); }
+            });
+            root.add(form, BorderLayout.CENTER);
+            root.add(createDialogFooter(dialog, save), BorderLayout.SOUTH);
+        }
+
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(520, 520));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void deleteSelectedTransaction(final JTable table) {
+        final int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleziona una transazione da eliminare.");
+            return;
+        }
+
+        final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 0)));
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare definitivamente la transazione ID " + id + "?",
+                "Conferma eliminazione",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                movimentiController.eliminaTransazione(currentUser.getEmail(), id);
+                refreshContent("CARD_TRANSACTIONS");
+            } catch (final Exception ex) {
+                showLoadError("eliminazione transazione", new SQLException(ex.getMessage()));
+            }
+        }
+    }
+
+    private List<Long> loadTransactionTagIds(final long idTransazione) {
+        try {
+            return movimentiController.caricaTagTransazione(currentUser.getEmail(), idTransazione);
+        } catch (final SQLException ex) {
+            showLoadError("tag della transazione", ex);
+            return List.of();
+        }
+    }
+
+    private void selectTags(final JList<Tag> tagList, final List<Long> selectedTagIds) {
+        final java.util.List<Integer> selectedIndices = new java.util.ArrayList<>();
+        for (int i = 0; i < tagList.getModel().getSize(); i++) {
+            if (selectedTagIds.contains(tagList.getModel().getElementAt(i).getId())) {
+                selectedIndices.add(i);
+            }
+        }
+        final int[] indices = selectedIndices.stream().mapToInt(Integer::intValue).toArray();
+        tagList.setSelectedIndices(indices);
+    }
+
+    private JPanel createDialogFooter(JDialog dialog, SoftButton saveButton) {
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton cancel = createDialogButton("Annulla", AppTheme.SIDEBAR_BUTTON);
+        cancel.addActionListener(e -> dialog.dispose());
+        actions.add(cancel);
+        actions.add(saveButton);
+        return actions;
+    }
+
     private void addPersonalTag() {
         final String name = JOptionPane.showInputDialog(this, "Nome nuovo tag personale:");
         if (name == null || name.trim().isEmpty()) {
@@ -742,6 +1105,44 @@ public class DashboardPanel extends AppBackgroundPanel {
             refreshContent("CARD_CATEGORIES");
         } catch (final SQLException ex) {
             showLoadError("tag", ex);
+        }
+    }
+
+    private void renameClassification(final String type, final long id, final String oldName) {
+        final String newName = JOptionPane.showInputDialog(this, "Nuovo nome:", oldName);
+        if (newName == null || newName.trim().isEmpty()) {
+            return;
+        }
+        try {
+            if ("Categoria".equals(type)) {
+                movimentiController.rinominaCategoriaPersonale(currentUser.getEmail(), id, newName.trim());
+            } else {
+                movimentiController.rinominaTagPersonale(currentUser.getEmail(), id, newName.trim());
+            }
+            refreshContent("CARD_CATEGORIES");
+        } catch (final SQLException ex) {
+            showLoadError("classificazione", ex);
+        }
+    }
+
+    private void deleteClassification(final String type, final long id) {
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare l'elemento selezionato?",
+                "Conferma eliminazione",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            if ("Categoria".equals(type)) {
+                movimentiController.eliminaCategoriaPersonale(currentUser.getEmail(), id);
+            } else {
+                movimentiController.eliminaTagPersonale(currentUser.getEmail(), id);
+            }
+            refreshContent("CARD_CATEGORIES");
+        } catch (final SQLException ex) {
+            showLoadError("classificazione", ex);
         }
     }
 
@@ -759,20 +1160,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         final String type = String.valueOf(table.getValueAt(selectedRow, 0));
         final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 1)));
         final String oldName = String.valueOf(table.getValueAt(selectedRow, 2));
-        final String newName = JOptionPane.showInputDialog(this, "Nuovo nome:", oldName);
-        if (newName == null || newName.trim().isEmpty()) {
-            return;
-        }
-        try {
-            if ("Categoria".equals(type)) {
-                movimentiController.rinominaCategoriaPersonale(currentUser.getEmail(), id, newName.trim());
-            } else {
-                movimentiController.rinominaTagPersonale(currentUser.getEmail(), id, newName.trim());
-            }
-            refreshContent("CARD_CATEGORIES");
-        } catch (final SQLException ex) {
-            showLoadError("classificazione", ex);
-        }
+        renameClassification(type, id, oldName);
     }
 
     private void deleteSelectedClassification(final JTable table) {
@@ -786,26 +1174,9 @@ public class DashboardPanel extends AppBackgroundPanel {
             JOptionPane.showMessageDialog(this, "Gli elementi di sistema non si eliminano.");
             return;
         }
-        final int confirm = JOptionPane.showConfirmDialog(this,
-                "Eliminare l'elemento selezionato?",
-                "Conferma eliminazione",
-                JOptionPane.YES_NO_OPTION);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
         final String type = String.valueOf(table.getValueAt(selectedRow, 0));
         final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 1)));
-        try {
-            if ("Categoria".equals(type)) {
-                movimentiController.eliminaCategoriaPersonale(currentUser.getEmail(), id);
-            } else {
-                movimentiController.eliminaTagPersonale(currentUser.getEmail(), id);
-            }
-            refreshContent("CARD_CATEGORIES");
-        } catch (final SQLException ex) {
-            showLoadError("classificazione", ex);
-        }
+        deleteClassification(type, id);
     }
 
     private List<Transazione> loadTransactions() {

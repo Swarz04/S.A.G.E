@@ -9,6 +9,9 @@ target/
 *.tmp
 *.bak
 
+# Immagini locali personalizzate della UI
+src/it/unibo/sage/view/assets/*
+
 # File generati da LaTeX durante la compilazione del report
 doc/latex/*.aux
 doc/latex/*.fdb_latexmk

@@ -68,4 +68,22 @@ public class MovimentiController {
             final LocalDate data, final String descrizione, final long idFonte) throws SQLException {
         return movimentiService.registraEntrata(email, importo, data, descrizione, idFonte);
     }
+
+    public List<Long> caricaTagTransazione(final String email, final long idTransazione)
+            throws SQLException {
+        return movimentiService.caricaTagTransazione(email, idTransazione);
+    }
+
+    public void aggiornaTransazione(final String email, final long idTransazione,
+            final BigDecimal importo, final LocalDate data, final String descrizione,
+            final Long idCategoria, final Long idFonte, final List<Long> idTag)
+            throws SQLException {
+        movimentiService.aggiornaTransazione(email, idTransazione, importo, data,
+                descrizione, idCategoria, idFonte, idTag);
+    }
+
+    public void eliminaTransazione(final String email, final long idTransazione)
+            throws SQLException {
+        movimentiService.eliminaTransazione(email, idTransazione);
+    }
 }

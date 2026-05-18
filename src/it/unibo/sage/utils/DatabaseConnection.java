@@ -35,11 +35,13 @@ public final class DatabaseConnection {
         return fromEnv == null || fromEnv.isEmpty() ? defaultValue : fromEnv;
     }
 
-    private static void loadDriverIfPresent() {
+    private static void loadDriverIfPresent() throws SQLException {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (final ClassNotFoundException ignored) {
-            // Con JDBC 4 il driver si registra da solo quando il jar e' nel classpath.
+            throw new SQLException(
+                    "Driver MySQL JDBC non trovato. Verifica che lib/mysql-connector-j-9.7.0.jar "
+                    + "sia nel classpath dell'applicazione.");
         }
     }
 }

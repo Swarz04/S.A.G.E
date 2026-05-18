@@ -35,6 +35,30 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             + "WHERE Email = ? AND Data BETWEEN ? AND ? "
             + "ORDER BY Data DESC, ID_Transizione DESC";
 
+    private static final String FIND_BY_ID_SQL =
+            "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
+            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "FROM TRANSIZIONE "
+            + "WHERE ID_Transizione = ? AND Email = ?";
+
+    private static final String FIND_TAG_IDS_SQL =
+            "SELECT ST.ID_Tag "
+            + "FROM SPESA_TAG ST "
+            + "JOIN TRANSIZIONE T ON ST.ID_Transizione = T.ID_Transizione "
+            + "WHERE ST.ID_Transizione = ? AND T.Email = ?";
+
+    private static final String UPDATE_SQL =
+            "UPDATE TRANSIZIONE "
+            + "SET Importo = ?, Data = ?, Descrizione = ?, ID_Categoria = ?, "
+            + "ID_Periodo = ?, ID_Fonte = ? "
+            + "WHERE ID_Transizione = ? AND Email = ?";
+
+    private static final String DELETE_TAG_SQL =
+            "DELETE FROM SPESA_TAG WHERE ID_Transizione = ?";
+
+    private static final String DELETE_SQL =
+            "DELETE FROM TRANSIZIONE WHERE ID_Transizione = ? AND Email = ?";
+
     private final Connection connection;
 
     public JdbcTransazioneDAO(final Connection connection) {
@@ -100,6 +124,73 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             }
         }
         return transazioni;
+    }
+
+    @Override
+    public Transazione findById(final long idTransazione, final String email) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(FIND_BY_ID_SQL)) {
+            statement.setLong(1, idTransazione);
+            statement.setString(2, email);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return mapTransazione(resultSet);
+                }
+                throw new SQLException("Transazione inesistente o non appartenente all'utente");
+            }
+        }
+    }
+
+    @Override
+    public List<Long> findTagIds(final long idTransazione, final String email) throws SQLException {
+        final List<Long> tagIds = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(FIND_TAG_IDS_SQL)) {
+            statement.setLong(1, idTransazione);
+            statement.setString(2, email);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    tagIds.add(resultSet.getLong("ID_Tag"));
+                }
+            }
+        }
+        return tagIds;
+    }
+
+    @Override
+    public void aggiorna(final Transazione transazione) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
+            statement.setBigDecimal(1, transazione.getImporto());
+            statement.setDate(2, Date.valueOf(transazione.getData()));
+            statement.setString(3, transazione.getDescrizione());
+            setNullableLong(statement, 4, transazione.getIdCategoria());
+            statement.setLong(5, transazione.getIdPeriodo());
+            setNullableLong(statement, 6, transazione.getIdFonte());
+            statement.setLong(7, transazione.getId());
+            statement.setString(8, transazione.getEmail());
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Transazione inesistente o non appartenente all'utente");
+            }
+        }
+    }
+
+    @Override
+    public void eliminaTag(final long idTransazione) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(DELETE_TAG_SQL)) {
+            statement.setLong(1, idTransazione);
+            statement.executeUpdate();
+        }
+    }
+
+    @Override
+    public void elimina(final long idTransazione, final String email) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(DELETE_SQL)) {
+            statement.setLong(1, idTransazione);
+            statement.setString(2, email);
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Transazione inesistente o non appartenente all'utente");
+            }
+        }
     }
 
     private Transazione mapTransazione(final ResultSet resultSet) throws SQLException {

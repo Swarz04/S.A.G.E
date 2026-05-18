@@ -586,6 +586,8 @@ Per l'utente standard la dashboard permette di consultare riepilogo, transazioni
 
 Per l'amministratore viene mostrata una vista distinta, coerente con i requisiti di privacy: l'admin non consulta il dettaglio dei movimenti personali, ma accede a statistiche aggregate mensili e allo stato complessivo dei budget tramite viste SQL dedicate.
 
+La schermata iniziale gestisce sia l'accesso sia la creazione di un nuovo account studente. La registrazione richiede nome, cognome, email, password e conferma password; il nuovo utente viene inserito nella tabella \textsc{UTENTE} con ruolo \texttt{UTENTE}, mentre la password viene salvata in forma hash tramite \texttt{SHA2}. La creazione di account amministrativi non è esposta dall'interfaccia utente, così da mantenere separati gli account operativi dagli account di gestione.
+
 \subsection{Schermate principali}
 
 \subsection{Flussi d’uso principali}

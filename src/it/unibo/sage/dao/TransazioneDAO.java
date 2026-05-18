@@ -15,4 +15,14 @@ public interface TransazioneDAO {
     void inserisciDocumento(Documento documento) throws SQLException;
 
     List<Transazione> findByPeriodo(String email, LocalDate dal, LocalDate al) throws SQLException;
+
+    Transazione findById(long idTransazione, String email) throws SQLException;
+
+    List<Long> findTagIds(long idTransazione, String email) throws SQLException;
+
+    void aggiorna(Transazione transazione) throws SQLException;
+
+    void eliminaTag(long idTransazione) throws SQLException;
+
+    void elimina(long idTransazione, String email) throws SQLException;
 }
