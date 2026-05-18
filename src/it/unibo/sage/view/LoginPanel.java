@@ -327,7 +327,7 @@ public class LoginPanel extends AppBackgroundPanel {
                 try {
                     Optional<Utente> user = get();
                     if (user.isPresent()) {
-                        parent.loginSucceeded(user.get());
+                        parent.showConfigurazioneIniziale(user.get());
                     } else {
                         statusLabel.setForeground(AppTheme.EXPENSE);
                         statusLabel.setText("Account creato, ma login non riuscito.");

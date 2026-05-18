@@ -13,6 +13,7 @@ public class MainFrame extends JFrame {
 
     private static final String VIEW_LOGIN = "VIEW_LOGIN";
     private static final String VIEW_DASHBOARD = "VIEW_DASHBOARD";
+    private static final String VIEW_CONFIGURAZIONE_INIZIALE = "VIEW_CONFIGURAZIONE_INIZIALE";
 
     private final CardLayout cardLayout;
     private final JPanel mainContainer;
@@ -50,6 +51,15 @@ public class MainFrame extends JFrame {
         mainContainer.revalidate();
         mainContainer.repaint();
         cardLayout.show(mainContainer, VIEW_DASHBOARD);
+    }
+
+    public void showConfigurazioneIniziale(final Utente user) {
+        final ConfigurazioneInizialePanel configurazionePanel =
+                new ConfigurazioneInizialePanel(this, user);
+        mainContainer.add(configurazionePanel, VIEW_CONFIGURAZIONE_INIZIALE);
+        mainContainer.revalidate();
+        mainContainer.repaint();
+        cardLayout.show(mainContainer, VIEW_CONFIGURAZIONE_INIZIALE);
     }
 
     public void changeView(String viewName) {
