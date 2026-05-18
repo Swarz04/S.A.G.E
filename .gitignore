@@ -21,6 +21,7 @@ doc/latex/*.synctex.gz
 # Lock file creati da LibreOffice quando gli schemi sono aperti
 .~lock.*#
 doc/schemes/.~lock.*#
+doc/sql/.~lock.*#
 
 # File automatici di IDE e sistema operativo
 .DS_Store

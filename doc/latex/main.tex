@@ -394,6 +394,8 @@ La coerenza viene garantita con due regole applicative:
     \item quando un budget viene creato o aggiornato dopo spese già registrate, il valore iniziale viene calcolato con una query di aggregazione sulle transazioni esistenti.
 \end{itemize}
 
+In questo modo il budget rimane opzionale senza perdere consistenza: l'assenza di un budget non blocca la registrazione della spesa, mentre l'esistenza di un budget impone la sincronizzazione del suo totale ridondante.
+
 \subsection{Raffinamento dello schema}
 \subsubsection{Eliminazione delle gerarchie}
 La gerarchia spesa/entrata viene eliminata collassando i sottotipi in \textsc{TRANSIZIONE}. La distinzione rimane espressa da \texttt{TipoTransazione}, mentre i vincoli CHECK controllano la presenza corretta di categoria o fonte.
@@ -443,7 +445,6 @@ I vincoli NOT NULL garantiscono la presenza degli attributi essenziali. I vincol
 I trigger presenti negli script rafforzano vincoli che non sono esprimibili interamente con semplici CHECK, come la validità di categorie, fonti, tag e documenti rispetto all'utente proprietario e al tipo della transazione. Le viste semplificano interrogazioni frequenti, come il riepilogo dei movimenti e lo stato dei budget.
 
 \subsection{Popolamento iniziale del database}
-Il popolamento iniziale inserisce utenti dimostrativi, categorie, fonti, tag, transazioni, documenti e budget. In particolare sono presenti utenti come \texttt{studente1@mail.com} e \texttt{studente2@mail.com}, utili per verificare l'isolamento dei dati tra studenti.
 
 \subsection{Query SQL delle operazioni principali}
 \subsubsection{Problemi e criticità}
@@ -566,46 +567,32 @@ ORDER BY Anno DESC, Mese DESC, Ambito;
 \subsubsection{Motivazioni}
 L'uso di \texttt{PreparedStatement} evita concatenazioni insicure e permette di parametrizzare email, date e importi. L'uso di transazioni JDBC garantisce atomicità sulle operazioni che coinvolgono più tabelle. Le query sui documenti attraversano sempre \textsc{TRANSIZIONE}, così il filtro sull'utente rimane centralizzato.
 
-\section{Progettazione dell'applicazione}
-\subsection{Architettura generale}
-L'applicazione segue una struttura 2-tier: la UI Swing comunica con controller Java, che a loro volta utilizzano DAO JDBC per accedere direttamente a MySQL. Non è presente un application server intermedio.
+\section{Progettazione dell’applicazione}
+\subsection{Architettura generale dell’applicazione}
+
+\subsection{Tecnologie usate}
 
 \subsection{Struttura dei package Java}
-\begin{itemize}
-    \item \texttt{model}: classi di dominio come \texttt{Utente}, \texttt{Transazione}, \texttt{Budget}, \texttt{Documento}.
-    \item \texttt{dao}: interfacce e implementazioni JDBC per le query.
-    \item \texttt{controller}: coordinamento delle operazioni applicative.
-    \item \texttt{view}: pannelli Swing, frame principale e componenti grafici.
-    \item \texttt{utils}: configurazione condivisa, in particolare la connessione al database.
-\end{itemize}
 
 \subsection{Collegamento al database tramite JDBC}
-La classe \texttt{DatabaseConnection} legge URL, utente e password da proprietà di sistema o variabili d'ambiente, con valori di default per lo sviluppo locale. Ogni controller apre una connessione quando deve eseguire operazioni persistenti e la chiude tramite \texttt{try-with-resources} o blocchi \texttt{finally}.
-
-\subsection{Gestione della sessione utente}
-Dopo il login, \texttt{MainFrame} conserva l'oggetto \texttt{Utente} corrente e lo passa alla dashboard. Le schermate usano \texttt{currentUser.getEmail()} per filtrare i dati. Questo evita che un utente possa visualizzare o modificare informazioni di altri studenti.
 
 \subsection{Organizzazione delle classi principali}
-Il login è gestito da \texttt{LoginController} e \texttt{JdbcUtenteDAO}. Le operazioni su movimenti e budget usano controller dedicati. La sezione documenti usa un \texttt{DocumentiController} e un \texttt{DocumentoDAO}, separando la visualizzazione dei documenti dalla logica di inserimento delle transazioni.
 
 \subsection{Gestione degli errori e validazione input}
-Gli errori SQL vengono intercettati dai controller o dalle view e mostrati tramite messaggi Swing. Per i documenti, il path viene validato prima dell'apertura: se il file non esiste o il sistema operativo non supporta l'apertura tramite \texttt{Desktop}, l'applicazione mostra un messaggio invece di terminare con eccezione non gestita.
 
 \subsection{Interfaccia grafica Java Swing}
-L'interfaccia usa un \texttt{MainFrame} con \texttt{CardLayout}. Dopo l'accesso, la dashboard presenta un menu laterale con le sezioni principali: riepilogo, transazioni, budget, categorie/tag, ricorrenze e documenti. I pannelli usano componenti Swing standard e componenti personalizzati per mantenere coerenza visiva.
 
-\subsection{Schermata Documenti}
-La schermata documenti mostra le spese che hanno un documento associato. Ogni elemento visualizza data, importo, descrizione, tipo file, path e data di acquisizione. L'anteprima a sinistra permette di aprire il file con il programma predefinito del sistema operativo. Se il file è un'immagine disponibile localmente, la UI può mostrare una miniatura; altrimenti mostra il tipo file.
+\subsection{Schermate principali}
 
-\subsection{Flussi d'uso principali}
-\begin{enumerate}
-    \item L'utente avvia l'applicazione e inserisce email e password.
-    \item Il sistema autentica l'utente e apre la dashboard personale.
-    \item L'utente registra una spesa o una entrata.
-    \item L'utente consulta i budget e i riepiloghi.
-    \item L'utente associa un documento a una spesa priva di allegato.
-    \item L'utente apre un documento dalla schermata dedicata.
-\end{enumerate}
+\subsection{Flussi d’uso principali}
+
+Registrazione studente\\
+Inserimento di una spesa\\
+Inserimento di una entrata\\
+Definizione di un budget\\
+Gestione di una spesa ricorrente\\
+Associazione di un documento digitale\\
+Visualizzazione statistiche amministratore
 
 \section{Test e validazione}
 \subsection{Dati di test utilizzati}

@@ -1,13 +1,14 @@
-package it.unibo.sage.controller;
+package it.unibo.sage.service;
 
 import it.unibo.sage.dao.JdbcUtenteDAO;
 import it.unibo.sage.dao.UtenteDAO;
 import it.unibo.sage.model.Utente;
-import it.unibo.sage.service.LoginService;
+import it.unibo.sage.utils.DatabaseConnection;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
 
-public class LoginController {
+public class LoginService {
 
     public Optional<Utente> login(final String email, final String passwordChiara)
             throws SQLException {
@@ -15,9 +16,5 @@ public class LoginController {
             final UtenteDAO utenteDAO = new JdbcUtenteDAO(connection);
             return utenteDAO.login(email, passwordChiara);
         }
-    }
-
-    private boolean isOfflineAdmin(final String username, final String passwordChiara) {
-        return OFFLINE_USERNAME.equals(username) && OFFLINE_PASSWORD.equals(passwordChiara);
     }
 }
