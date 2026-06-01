@@ -1,0 +1,15 @@
+Aggiunti test aggiuntivi rispetto alla prima versione:
+
+- UtenteModelTest
+- TransazioneModelTest
+- BudgetModelTest
+- DocumentoModelTest
+- ClassificationModelTest
+- IconResourceTest
+- SqlScriptConsistencyTest
+- DaoContractTest
+- ConfigurazioneInizialeMappingTest
+- DashboardSourceInspectionTest
+- DatabaseContentSmokeTest opzionale con DB reale
+
+La suite base ora passa senza database. I test con database si attivano solo con -Dsage.db.tests=true.

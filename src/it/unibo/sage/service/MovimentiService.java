@@ -34,6 +34,9 @@ public class MovimentiService {
     private static final String INSERT_TAG_SQL =
             "INSERT INTO TAG (Nome, is_system, Email_Proprietario) VALUES (?, FALSE, ?)";
 
+    private static final String INSERT_FONTE_SQL =
+            "INSERT INTO FONTE (Nome, is_system, Email_Proprietario) VALUES (?, FALSE, ?)";
+
     private static final String UPDATE_CATEGORIA_PERSONALE_SQL =
             "UPDATE CATEGORIA SET Nome = ? "
             + "WHERE ID_Categoria = ? AND is_system = FALSE AND Email_Proprietario = ?";
@@ -49,6 +52,14 @@ public class MovimentiService {
     private static final String DELETE_TAG_PERSONALE_SQL =
             "DELETE FROM TAG "
             + "WHERE ID_Tag = ? AND is_system = FALSE AND Email_Proprietario = ?";
+
+    private static final String UPDATE_FONTE_PERSONALE_SQL =
+            "UPDATE FONTE SET Nome = ? "
+            + "WHERE ID_Fonte = ? AND is_system = FALSE AND Email_Proprietario = ?";
+
+    private static final String DELETE_FONTE_PERSONALE_SQL =
+            "DELETE FROM FONTE "
+            + "WHERE ID_Fonte = ? AND is_system = FALSE AND Email_Proprietario = ?";
 
     public List<Categoria> caricaCategorieDisponibili(final String email) throws SQLException {
         try (Connection connection = DatabaseConnection.getConnection()) {
@@ -89,6 +100,15 @@ public class MovimentiService {
         }
     }
 
+    public void aggiungiFontePersonale(final String email, final String nome) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(INSERT_FONTE_SQL)) {
+            statement.setString(1, nome);
+            statement.setString(2, email);
+            statement.executeUpdate();
+        }
+    }
+
     public void rinominaCategoriaPersonale(final String email, final long idCategoria,
             final String nome) throws SQLException {
         executePersonalUpdate(UPDATE_CATEGORIA_PERSONALE_SQL, nome, idCategoria, email);
@@ -106,6 +126,15 @@ public class MovimentiService {
 
     public void eliminaTagPersonale(final String email, final long idTag) throws SQLException {
         executePersonalDelete(DELETE_TAG_PERSONALE_SQL, idTag, email);
+    }
+
+    public void rinominaFontePersonale(final String email, final long idFonte,
+            final String nome) throws SQLException {
+        executePersonalUpdate(UPDATE_FONTE_PERSONALE_SQL, nome, idFonte, email);
+    }
+
+    public void eliminaFontePersonale(final String email, final long idFonte) throws SQLException {
+        executePersonalDelete(DELETE_FONTE_PERSONALE_SQL, idFonte, email);
     }
 
     private void executePersonalUpdate(final String sql, final String nome, final long id,
@@ -138,6 +167,30 @@ public class MovimentiService {
         try (Connection connection = DatabaseConnection.getConnection()) {
             final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
             return transazioneDAO.findByPeriodo(email, dal, al);
+        }
+    }
+
+    public List<Transazione> caricaTransazioniPerCategoria(final String email,
+            final long idCategoria) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            return transazioneDAO.findByCategoria(email, idCategoria);
+        }
+    }
+
+    public List<Transazione> caricaTransazioniPerTag(final String email,
+            final long idTag) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            return transazioneDAO.findByTag(email, idTag);
+        }
+    }
+
+    public List<Transazione> caricaTransazioniPerFonte(final String email,
+            final long idFonte) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            return transazioneDAO.findByFonte(email, idFonte);
         }
     }
 

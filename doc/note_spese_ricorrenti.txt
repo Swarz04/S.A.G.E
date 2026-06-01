@@ -1,0 +1,17 @@
+Modifiche aggiunte - Spese Ricorrenti
+
+Java:
+- aggiunto DAO SpesaRicorrenteDAO e implementazione JdbcSpesaRicorrenteDAO;
+- completato SpeseRicorrentiService con caricamento, inserimento, eliminazione e generazione delle spese scadute;
+- completato SpeseRicorrentiController;
+- sostituito il placeholder della card Ricorrenze in DashboardPanel con una schermata operativa;
+- aggiunti pulsanti: + Ricorrenza, Genera scadute, Elimina.
+
+SQL:
+- aggiunto indice IDX_RICORRENTE_EMAIL_SCADENZA su SPESA_RICORRENTE(Email, Data_Prossima_Scadenza);
+- aggiunta vista v_spese_ricorrenti_scadute;
+- aggiunto script incrementale doc/sql/aggiornamento_spese_ricorrenti.sql per database gia importati.
+
+Uso DB:
+- se il database non e' ancora stato importato: eseguire schema_completo.sql, trigger_viste.sql, popolamento.sql;
+- se il database era gia stato importato: eseguire solo aggiornamento_spese_ricorrenti.sql.

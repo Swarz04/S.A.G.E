@@ -35,6 +35,28 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             + "WHERE Email = ? AND Data BETWEEN ? AND ? "
             + "ORDER BY Data DESC, ID_Transizione DESC";
 
+    private static final String FIND_BY_CATEGORIA_SQL =
+            "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
+            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "FROM TRANSIZIONE "
+            + "WHERE Email = ? AND ID_Categoria = ? "
+            + "ORDER BY Data DESC, ID_Transizione DESC";
+
+    private static final String FIND_BY_TAG_SQL =
+            "SELECT T.ID_Transizione, T.TipoTransazione, T.Importo, T.Data, T.Descrizione, "
+            + "T.Email, T.ID_Categoria, T.ID_Periodo, T.ID_Fonte "
+            + "FROM TRANSIZIONE T "
+            + "JOIN SPESA_TAG ST ON T.ID_Transizione = ST.ID_Transizione "
+            + "WHERE T.Email = ? AND ST.ID_Tag = ? "
+            + "ORDER BY T.Data DESC, T.ID_Transizione DESC";
+
+    private static final String FIND_BY_FONTE_SQL =
+            "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
+            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "FROM TRANSIZIONE "
+            + "WHERE Email = ? AND ID_Fonte = ? "
+            + "ORDER BY Data DESC, ID_Transizione DESC";
+
     private static final String FIND_BY_ID_SQL =
             "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
             + "ID_Categoria, ID_Periodo, ID_Fonte "
@@ -116,6 +138,57 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             statement.setString(1, email);
             statement.setDate(2, Date.valueOf(dal));
             statement.setDate(3, Date.valueOf(al));
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    transazioni.add(mapTransazione(resultSet));
+                }
+            }
+        }
+        return transazioni;
+    }
+
+    @Override
+    public List<Transazione> findByCategoria(final String email, final long idCategoria)
+            throws SQLException {
+        final List<Transazione> transazioni = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(FIND_BY_CATEGORIA_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idCategoria);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    transazioni.add(mapTransazione(resultSet));
+                }
+            }
+        }
+        return transazioni;
+    }
+
+    @Override
+    public List<Transazione> findByTag(final String email, final long idTag)
+            throws SQLException {
+        final List<Transazione> transazioni = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(FIND_BY_TAG_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idTag);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    transazioni.add(mapTransazione(resultSet));
+                }
+            }
+        }
+        return transazioni;
+    }
+
+    @Override
+    public List<Transazione> findByFonte(final String email, final long idFonte)
+            throws SQLException {
+        final List<Transazione> transazioni = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(FIND_BY_FONTE_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idFonte);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {

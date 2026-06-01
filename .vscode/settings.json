@@ -1,6 +1,7 @@
 {
     "java.project.sourcePaths": [
-        "src"
+        "src",
+        "test"
     ],
     "java.project.outputPath": "build/classes",
     "java.project.referencedLibraries": [
@@ -8,7 +9,7 @@
     ],
     "code-runner.runInTerminal": true,
     "code-runner.executorMap": {
-        "java": "cd $workspaceRoot; if (!(Test-Path build/classes)) { New-Item -ItemType Directory -Force build/classes | Out-Null }; javac -cp \"lib/*\" -d build/classes (Get-ChildItem -Recurse -Filter *.java -Path src).FullName; if ($?) { java -cp \"build/classes;lib/*\" it.unibo.sage.Main }"
+        "java": "cd $workspaceRoot; if (!(Test-Path build/classes)) { New-Item -ItemType Directory -Force build/classes | Out-Null }; javac -cp \"lib/*\" -d build/classes (Get-ChildItem -Recurse -Filter *.java -Path src,test).FullName; if ($?) { java -cp \"build/classes;lib/*\" it.unibo.sage.Main }"
     },
     "latex-workshop.latex.recipes": [
         {

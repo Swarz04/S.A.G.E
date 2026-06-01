@@ -2,9 +2,11 @@ package it.unibo.sage.view;
 
 import it.unibo.sage.controller.BudgetController;
 import it.unibo.sage.controller.MovimentiController;
+import it.unibo.sage.controller.SpeseRicorrentiController;
 import it.unibo.sage.model.Budget;
 import it.unibo.sage.model.Categoria;
 import it.unibo.sage.model.Fonte;
+import it.unibo.sage.model.SpesaRicorrente;
 import it.unibo.sage.model.Tag;
 import it.unibo.sage.model.TipoTransazione;
 import it.unibo.sage.model.Transazione;
@@ -34,6 +36,7 @@ public class DashboardPanel extends AppBackgroundPanel {
     private final Utente currentUser;
     private final MovimentiController movimentiController = new MovimentiController();
     private final BudgetController budgetController = new BudgetController();
+    private final SpeseRicorrentiController speseRicorrentiController = new SpeseRicorrentiController();
     private JButton selectedMenuButton;
 
     public DashboardPanel(final Utente currentUser) {
@@ -137,6 +140,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         menuPanel.add(createMenuButton("Transazioni", "CARD_TRANSACTIONS"));
         menuPanel.add(createMenuButton("Budget", "CARD_BUDGET"));
         menuPanel.add(createMenuButton("Categorie e Tag", "CARD_CATEGORIES"));
+        menuPanel.add(createMenuButton("Fonti", "CARD_SOURCES"));
         menuPanel.add(createMenuButton("Ricorrenze", "CARD_RECURRING"));
         menuPanel.add(createMenuButton("Documenti", "CARD_DOCUMENTS"));
         menuPanel.add(Box.createVerticalGlue());
@@ -249,10 +253,8 @@ public class DashboardPanel extends AppBackgroundPanel {
         contentPanel.add(createTransactionsCard(), "CARD_TRANSACTIONS");
         contentPanel.add(createBudgetCard(), "CARD_BUDGET");
         contentPanel.add(createCategoriesCard(), "CARD_CATEGORIES");
-        contentPanel.add(createPlaceholderCard(
-            "Spese Ricorrenti",
-            "Modelli astratti da cui generare spese effettive periodiche."
-        ), "CARD_RECURRING");
+        contentPanel.add(createSourcesCard(), "CARD_SOURCES");
+        contentPanel.add(createRecurringCard(), "CARD_RECURRING");
         contentPanel.add(new DocumentiPanel(currentUser), "CARD_DOCUMENTS");
         contentPanel.add(createSettingsCard(), CARD_SETTINGS);
     }
@@ -346,6 +348,48 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
         return createTableCard("Budget demo", "Budget mensili e per categoria caricati dal database.", model);
     }
+    private JPanel createRecurringCard() {
+        final String[] columns = {"ID", "Categoria", "Importo", "Frequenza", "Inizio", "Prossima", "Fine"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        final Map<Long, String> categoryNames = loadCategoryNames();
+        for (SpesaRicorrente ricorrenza : loadRecurringExpenses()) {
+            model.addRow(new Object[] {
+                ricorrenza.getId(),
+                categoryNames.getOrDefault(ricorrenza.getIdCategoria(),
+                        "Categoria " + ricorrenza.getIdCategoria()),
+                formatEuro(ricorrenza.getImportoPrevisto()),
+                ricorrenza.getFrequenzaGiorni() + " giorni",
+                ricorrenza.getDataInizio(),
+                ricorrenza.getDataProssimaScadenza(),
+                ricorrenza.getScadenza() == null ? "-" : ricorrenza.getScadenza()
+            });
+        }
+
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton addButton = createSmallActionButton("+ Ricorrenza");
+        SoftButton generateButton = createSmallActionButton("Genera scadute");
+        SoftButton deleteButton = createSmallActionButton("Elimina");
+        addButton.addActionListener(e -> showAddRecurringDialog());
+        generateButton.addActionListener(e -> generateDueRecurringExpenses());
+        deleteButton.addActionListener(e -> deleteSelectedRecurringExpense(table));
+        actions.add(addButton);
+        actions.add(generateButton);
+        actions.add(deleteButton);
+
+        return createTableCard(
+                "Spese Ricorrenti",
+                "Modelli che generano automaticamente spese reali alla scadenza.",
+                table,
+                actions);
+    }
+
 
     private JPanel createCategoriesCard() {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -400,15 +444,74 @@ public class DashboardPanel extends AppBackgroundPanel {
             grid.add(createPlaceholderBox("Nessuna classificazione", "Aggiungi categorie o tag personali."));
         }
 
-        JScrollPane scrollPane = new JScrollPane(grid);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setBorder(null);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        JScrollPane scrollPane = createClassificationScrollPane(grid);
 
         panel.add(header, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
         return panel;
+    }
+
+    private JPanel createSourcesCard() {
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton addSourceButton = createSmallActionButton("+ Fonte");
+        addSourceButton.addActionListener(e -> addPersonalSource());
+        actions.add(addSourceButton);
+
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel(new BorderLayout(12, 0));
+        header.setOpaque(false);
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel("Fonti");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel("Fonti disponibili per classificare le entrate dell'utente corrente.");
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(6));
+        titlePanel.add(subtitleLabel);
+        header.add(titlePanel, BorderLayout.CENTER);
+        header.add(actions, BorderLayout.EAST);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 14, 14));
+        grid.setOpaque(false);
+        for (Fonte fonte : loadSources()) {
+            grid.add(createClassificationTile(
+                    "Fonte",
+                    fonte.getId(),
+                    fonte.getNome(),
+                    fonte.isSystem()));
+        }
+
+        if (grid.getComponentCount() == 0) {
+            grid.add(createPlaceholderBox("Nessuna fonte", "Aggiungi una fonte personale per le entrate."));
+        }
+
+        JScrollPane scrollPane = createClassificationScrollPane(grid);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JScrollPane createClassificationScrollPane(final JPanel grid) {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(grid, BorderLayout.NORTH);
+
+        JScrollPane scrollPane = new JScrollPane(wrapper);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        return scrollPane;
     }
 
     private JPanel createClassificationTile(final String type, final long id,
@@ -417,7 +520,8 @@ public class DashboardPanel extends AppBackgroundPanel {
         tile.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         tile.setPreferredSize(new Dimension(0, 104));
 
-        tile.add(createClassificationIcon(type), BorderLayout.WEST);
+        final JComponent icon = createClassificationIcon(type, name);
+        tile.add(icon, BorderLayout.WEST);
 
         JPanel textPanel = new JPanel();
         textPanel.setOpaque(false);
@@ -450,10 +554,148 @@ public class DashboardPanel extends AppBackgroundPanel {
             tile.add(buttons, BorderLayout.EAST);
         }
 
+        installClassificationClick(tile, type, id, name);
         return tile;
     }
 
-    private JComponent createClassificationIcon(final String type) {
+    private void installClassificationClick(final Component component, final String type,
+            final long id, final String name) {
+        if (component instanceof AbstractButton) {
+            return;
+        }
+
+        component.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (component instanceof JComponent) {
+            ((JComponent) component).setToolTipText(
+                    "Mostra movimenti collegati a " + name);
+        }
+        component.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(final java.awt.event.MouseEvent event) {
+                if (SwingUtilities.isLeftMouseButton(event)) {
+                    showTransactionsForClassification(type, id, name);
+                }
+            }
+        });
+
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                installClassificationClick(child, type, id, name);
+            }
+        }
+    }
+
+    private void showTransactionsForClassification(final String type, final long id,
+            final String name) {
+        try {
+            final List<Transazione> transazioni;
+            if ("Categoria".equals(type)) {
+                transazioni = movimentiController.caricaTransazioniPerCategoria(currentUser.getEmail(), id);
+            } else if ("Fonte".equals(type)) {
+                transazioni = movimentiController.caricaTransazioniPerFonte(currentUser.getEmail(), id);
+            } else {
+                transazioni = movimentiController.caricaTransazioniPerTag(currentUser.getEmail(), id);
+            }
+            showClassificationTransactionsDialog(type, name, transazioni);
+        } catch (final SQLException ex) {
+            showLoadError("movimenti collegati a " + name, ex);
+        }
+    }
+
+    private void showClassificationTransactionsDialog(final String type, final String name,
+            final List<Transazione> transazioni) {
+        final JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Movimenti collegati", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        final JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        root.setBackground(Color.WHITE);
+
+        final JPanel header = new JPanel();
+        header.setOpaque(false);
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+
+        final JLabel titleLabel = new JLabel(type + ": " + name);
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        final JLabel subtitleLabel = new JLabel(buildClassificationDialogSubtitle(type, transazioni));
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        header.add(titleLabel);
+        header.add(Box.createVerticalStrut(6));
+        header.add(subtitleLabel);
+
+        final JTable table = createLinkedTransactionsTable(transazioni);
+        final JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(218, 226, 236)));
+
+        final JPanel footer = new JPanel(new BorderLayout(12, 0));
+        footer.setOpaque(false);
+        final JLabel summaryLabel = new JLabel(buildTransactionsSummary(transazioni));
+        summaryLabel.setForeground(AppTheme.TEXT_MUTED);
+        final SoftButton closeButton = createDialogButton("Chiudi", AppTheme.ACCENT);
+        closeButton.addActionListener(e -> dialog.dispose());
+        footer.add(summaryLabel, BorderLayout.CENTER);
+        footer.add(closeButton, BorderLayout.EAST);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(scrollPane, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(760, 420));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private JTable createLinkedTransactionsTable(final List<Transazione> transazioni) {
+        final String[] columns = {"ID", "Data", "Tipo", "Descrizione", "Importo"};
+        final DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(final int row, final int column) {
+                return false;
+            }
+        };
+
+        for (Transazione transazione : transazioni) {
+            model.addRow(new Object[] {
+                transazione.getId(),
+                transazione.getData(),
+                labelTipo(transazione.getTipo()),
+                transazione.getDescrizione(),
+                formatEuro(transazione.getImporto())
+            });
+        }
+
+        final JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        return table;
+    }
+
+    private String buildClassificationDialogSubtitle(final String type,
+            final List<Transazione> transazioni) {
+        if (transazioni.isEmpty()) {
+            return "Nessun movimento collegato a questa " + type.toLowerCase() + ".";
+        }
+        return transazioni.size() + " movimenti collegati alla " + type.toLowerCase()
+                + " selezionata.";
+    }
+
+    private String buildTransactionsSummary(final List<Transazione> transazioni) {
+        final BigDecimal entrate = sumByType(transazioni, TipoTransazione.ENTRATA);
+        final BigDecimal spese = sumByType(transazioni, TipoTransazione.SPESA);
+        return "Entrate: " + formatEuro(entrate) + "    Spese: " + formatEuro(spese);
+    }
+
+    private JComponent createClassificationIcon(final String type, final String name) {
+        final ImageIcon icon = loadClassificationIcon(type, name);
         return new JComponent() {
             @Override
             public Dimension getPreferredSize() {
@@ -464,25 +706,196 @@ public class DashboardPanel extends AppBackgroundPanel {
             protected void paintComponent(final Graphics graphics) {
                 Graphics2D graphics2D = (Graphics2D) graphics.create();
                 graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                final boolean category = "Categoria".equals(type);
-                graphics2D.setColor(category
-                        ? new Color(37, 99, 235, 34)
-                        : new Color(20, 184, 166, 38));
+                graphics2D.setColor(classificationBackground(type));
                 graphics2D.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
-                graphics2D.setColor(category
-                        ? new Color(37, 99, 235, 92)
-                        : new Color(20, 184, 166, 96));
-                graphics2D.fillOval(getWidth() / 2 - 9, getHeight() / 2 - 9, 18, 18);
-                graphics2D.setFont(new Font("SansSerif", Font.BOLD, 18));
-                graphics2D.setColor(category ? AppTheme.PRIMARY : AppTheme.ACCENT_HOVER);
-                final String letter = category ? "C" : "T";
-                FontMetrics metrics = graphics2D.getFontMetrics();
-                int x = (getWidth() - metrics.stringWidth(letter)) / 2;
-                int y = (getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
-                graphics2D.drawString(letter, x, y);
+
+                if (icon != null) {
+                    int x = (getWidth() - icon.getIconWidth()) / 2;
+                    int y = (getHeight() - icon.getIconHeight()) / 2;
+                    icon.paintIcon(this, graphics2D, x, y);
+                } else {
+                    paintFallbackClassificationIcon(graphics2D, type, getWidth(), getHeight());
+                }
                 graphics2D.dispose();
             }
         };
+    }
+
+    private ImageIcon loadClassificationIcon(final String type, final String name) {
+        final String resourcePath = getClassificationIconPath(type, name);
+        ImageIcon rawIcon = null;
+
+        final java.net.URL url = getClass().getResource(resourcePath);
+        if (url != null) {
+            rawIcon = new ImageIcon(url);
+        } else {
+            final String relativePath = resourcePath.substring(1).replace("/", java.io.File.separator);
+            final java.util.List<java.nio.file.Path> possiblePaths = java.util.List.of(
+                    java.nio.file.Paths.get("src", relativePath),
+                    java.nio.file.Paths.get("bin", relativePath),
+                    java.nio.file.Paths.get("build", "classes", relativePath));
+
+            for (java.nio.file.Path path : possiblePaths) {
+                if (java.nio.file.Files.exists(path)) {
+                    rawIcon = new ImageIcon(path.toString());
+                    break;
+                }
+            }
+        }
+
+        if (rawIcon == null || rawIcon.getIconWidth() <= 0 || rawIcon.getIconHeight() <= 0) {
+            return null;
+        }
+
+        final Image scaledImage = rawIcon.getImage().getScaledInstance(30, 30, Image.SCALE_SMOOTH);
+        return new ImageIcon(scaledImage);
+    }
+
+    private String getClassificationIconPath(final String type, final String name) {
+        final String normalized = normalizeClassificationName(name);
+        if ("Categoria".equals(type)) {
+            switch (normalized) {
+                case "casa":
+                case "affitto":
+                    return "/it/unibo/sage/view/icons/house.png";
+                case "spesa":
+                case "cibo":
+                case "alimentari":
+                case "alimentazione":
+                    return "/it/unibo/sage/view/icons/food.png";
+                case "trasporti":
+                case "trasporto":
+                case "bus":
+                case "treno":
+                    return "/it/unibo/sage/view/icons/transport.png";
+                case "salute":
+                case "medicina":
+                case "farmacia":
+                    return "/it/unibo/sage/view/icons/health.png";
+                case "studio":
+                case "universita":
+                case "libri":
+                    return "/it/unibo/sage/view/icons/study.png";
+                case "stipendio":
+                case "entrate":
+                case "lavoro":
+                    return "/it/unibo/sage/view/icons/work.png";
+                case "risparmi":
+                case "risparmio":
+                    return "/it/unibo/sage/view/icons/savings.png";
+                case "shopping":
+                case "acquisti":
+                    return "/it/unibo/sage/view/icons/shopping.png";
+                case "svago":
+                case "tempo libero":
+                    return "/it/unibo/sage/view/icons/leisure.png";
+                case "bollette":
+                case "utenze":
+                    return "/it/unibo/sage/view/icons/bill.png";
+                default:
+                    return "/it/unibo/sage/view/icons/generic_category.png";
+            }
+        }
+        if ("Fonte".equals(type)) {
+            switch (normalized) {
+                case "stipendio":
+                case "salario":
+                case "lavoro":
+                    return "/it/unibo/sage/view/icons/salary.png";
+                case "borsa di studio":
+                case "borsa studio":
+                case "universita":
+                    return "/it/unibo/sage/view/icons/scholarship.png";
+                case "regalo":
+                case "regali":
+                    return "/it/unibo/sage/view/icons/gift.png";
+                case "rimborso":
+                case "rimborsi":
+                    return "/it/unibo/sage/view/icons/refund.png";
+                case "ripetizioni private":
+                case "ripetizioni":
+                case "lezioni":
+                    return "/it/unibo/sage/view/icons/tutoring.png";
+                case "lavoretto weekend":
+                case "lavoretto":
+                case "lavoro occasionale":
+                    return "/it/unibo/sage/view/icons/work.png";
+                case "famiglia":
+                case "aiuto famiglia":
+                    return "/it/unibo/sage/view/icons/family.png";
+                default:
+                    return "/it/unibo/sage/view/icons/generic_source.png";
+            }
+        }
+        switch (normalized) {
+            case "urgente":
+            case "importante":
+                return "/it/unibo/sage/view/icons/urgent.png";
+            case "universita":
+            case "esami":
+            case "studio":
+                return "/it/unibo/sage/view/icons/study.png";
+            case "palestra":
+            case "gym":
+            case "sport":
+                return "/it/unibo/sage/view/icons/gym.png";
+            case "lavoro":
+                return "/it/unibo/sage/view/icons/work.png";
+            case "famiglia":
+                return "/it/unibo/sage/view/icons/family.png";
+            case "viaggio":
+            case "viaggi":
+            case "travel":
+                return "/it/unibo/sage/view/icons/travel.png";
+            default:
+                return "/it/unibo/sage/view/icons/generic_tag.png";
+        }
+    }
+
+    private String normalizeClassificationName(final String name) {
+        if (name == null) {
+            return "";
+        }
+        return name.trim().toLowerCase()
+                .replace("à", "a")
+                .replace("è", "e")
+                .replace("é", "e")
+                .replace("ì", "i")
+                .replace("ò", "o")
+                .replace("ù", "u");
+    }
+
+    private Color classificationBackground(final String type) {
+        if ("Categoria".equals(type)) {
+            return new Color(37, 99, 235, 34);
+        }
+        if ("Fonte".equals(type)) {
+            return new Color(245, 158, 11, 38);
+        }
+        return new Color(20, 184, 166, 38);
+    }
+
+    private Color classificationAccent(final String type) {
+        if ("Categoria".equals(type)) {
+            return AppTheme.PRIMARY;
+        }
+        if ("Fonte".equals(type)) {
+            return new Color(217, 119, 6);
+        }
+        return AppTheme.ACCENT_HOVER;
+    }
+
+    private void paintFallbackClassificationIcon(final Graphics2D graphics2D, final String type,
+            final int width, final int height) {
+        graphics2D.setColor(classificationAccent(type));
+        graphics2D.fillOval(width / 2 - 9, height / 2 - 9, 18, 18);
+        graphics2D.setFont(new Font("SansSerif", Font.BOLD, 18));
+        graphics2D.setColor(Color.WHITE);
+        final String letter = "Categoria".equals(type) ? "C" : ("Fonte".equals(type) ? "F" : "T");
+        FontMetrics metrics = graphics2D.getFontMetrics();
+        int x = (width - metrics.stringWidth(letter)) / 2;
+        int y = (height - metrics.getHeight()) / 2 + metrics.getAscent();
+        graphics2D.drawString(letter, x, y);
     }
 
     private SoftButton createTinyActionButton(final String text) {
@@ -921,6 +1334,130 @@ public class DashboardPanel extends AppBackgroundPanel {
                 JOptionPane.ERROR_MESSAGE);
     }
 
+    private void showAddRecurringDialog() {
+        final List<Categoria> categories = loadCategories();
+        if (categories.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Serve almeno una categoria disponibile.",
+                    "Dati mancanti",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Nuova spesa ricorrente", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(createRecurringDialogContent(dialog, categories));
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(520, 360));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private JPanel createRecurringDialogContent(final JDialog dialog,
+            final List<Categoria> categories) {
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+        root.setBackground(Color.WHITE);
+
+        JTextField amount = createDialogTextField();
+        JTextField frequency = createDialogTextField("30");
+        JTextField start = createDialogTextField(LocalDate.now().toString());
+        JTextField next = createDialogTextField(LocalDate.now().toString());
+        JTextField end = createDialogTextField();
+        JComboBox<Categoria> category = createCategoryCombo(categories);
+
+        JPanel form = createDialogFormPanel();
+        addFormRow(form, "Importo", amount);
+        addFormRow(form, "Frequenza giorni", frequency);
+        addFormRow(form, "Data inizio", start);
+        addFormRow(form, "Prossima scadenza", next);
+        addFormRow(form, "Fine opzionale", end);
+        addFormRow(form, "Categoria", category);
+
+        SoftButton saveButton = createDialogButton("Salva", AppTheme.ACCENT);
+        saveButton.addActionListener(e -> saveRecurringExpense(
+                dialog, amount, frequency, start, next, end, category));
+
+        root.add(form, BorderLayout.CENTER);
+        root.add(createDialogFooter(dialog, saveButton), BorderLayout.SOUTH);
+        return root;
+    }
+
+    private void saveRecurringExpense(final JDialog dialog, final JTextField amountField,
+            final JTextField frequencyField, final JTextField startField,
+            final JTextField nextField, final JTextField endField,
+            final JComboBox<Categoria> categoryField) {
+        try {
+            final BigDecimal amount = parseAmount(amountField);
+            final int frequency = Integer.parseInt(frequencyField.getText().trim());
+            if (frequency <= 0) {
+                throw new IllegalArgumentException("La frequenza deve essere positiva.");
+            }
+            final LocalDate start = LocalDate.parse(startField.getText().trim());
+            final LocalDate next = LocalDate.parse(nextField.getText().trim());
+            final LocalDate end = parseOptionalDate(endField);
+            final Categoria category = (Categoria) categoryField.getSelectedItem();
+
+            speseRicorrentiController.aggiungiRicorrenza(
+                    currentUser.getEmail(), amount, frequency, start, next, end, category.getId());
+            dialog.dispose();
+            refreshContent("CARD_RECURRING");
+        } catch (final Exception ex) {
+            showRecurringError(ex);
+        }
+    }
+
+    private void generateDueRecurringExpenses() {
+        try {
+            final int generated = speseRicorrentiController.generaSpeseScadute(
+                    currentUser.getEmail(), LocalDate.now());
+            JOptionPane.showMessageDialog(this,
+                    "Spese ricorrenti generate: " + generated,
+                    "Generazione completata",
+                    JOptionPane.INFORMATION_MESSAGE);
+            refreshContent("CARD_RECURRING");
+        } catch (final Exception ex) {
+            showRecurringError(ex);
+        }
+    }
+
+    private void deleteSelectedRecurringExpense(final JTable table) {
+        final int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleziona una spesa ricorrente da eliminare.");
+            return;
+        }
+
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare la spesa ricorrente selezionata?",
+                "Conferma eliminazione",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 0)));
+            speseRicorrentiController.eliminaRicorrenza(currentUser.getEmail(), id);
+            refreshContent("CARD_RECURRING");
+        } catch (final Exception ex) {
+            showRecurringError(ex);
+        }
+    }
+
+    private LocalDate parseOptionalDate(final JTextField dateField) {
+        final String value = dateField.getText().trim();
+        return value.isEmpty() ? null : LocalDate.parse(value);
+    }
+
+    private void showRecurringError(final Exception ex) {
+        JOptionPane.showMessageDialog(this,
+                "Operazione sulle ricorrenze non completata: " + ex.getMessage(),
+                "Errore",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
     private void addPersonalCategory() {
         final String name = JOptionPane.showInputDialog(this, "Nome nuova categoria personale:");
         if (name == null || name.trim().isEmpty()) {
@@ -1108,6 +1645,19 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
     }
 
+    private void addPersonalSource() {
+        final String name = JOptionPane.showInputDialog(this, "Nome nuova fonte personale:");
+        if (name == null || name.trim().isEmpty()) {
+            return;
+        }
+        try {
+            movimentiController.aggiungiFontePersonale(currentUser.getEmail(), name.trim());
+            refreshContent("CARD_SOURCES");
+        } catch (final SQLException ex) {
+            showLoadError("fonti", ex);
+        }
+    }
+
     private void renameClassification(final String type, final long id, final String oldName) {
         final String newName = JOptionPane.showInputDialog(this, "Nuovo nome:", oldName);
         if (newName == null || newName.trim().isEmpty()) {
@@ -1116,10 +1666,14 @@ public class DashboardPanel extends AppBackgroundPanel {
         try {
             if ("Categoria".equals(type)) {
                 movimentiController.rinominaCategoriaPersonale(currentUser.getEmail(), id, newName.trim());
+                refreshContent("CARD_CATEGORIES");
+            } else if ("Fonte".equals(type)) {
+                movimentiController.rinominaFontePersonale(currentUser.getEmail(), id, newName.trim());
+                refreshContent("CARD_SOURCES");
             } else {
                 movimentiController.rinominaTagPersonale(currentUser.getEmail(), id, newName.trim());
+                refreshContent("CARD_CATEGORIES");
             }
-            refreshContent("CARD_CATEGORIES");
         } catch (final SQLException ex) {
             showLoadError("classificazione", ex);
         }
@@ -1137,10 +1691,14 @@ public class DashboardPanel extends AppBackgroundPanel {
         try {
             if ("Categoria".equals(type)) {
                 movimentiController.eliminaCategoriaPersonale(currentUser.getEmail(), id);
+                refreshContent("CARD_CATEGORIES");
+            } else if ("Fonte".equals(type)) {
+                movimentiController.eliminaFontePersonale(currentUser.getEmail(), id);
+                refreshContent("CARD_SOURCES");
             } else {
                 movimentiController.eliminaTagPersonale(currentUser.getEmail(), id);
+                refreshContent("CARD_CATEGORIES");
             }
-            refreshContent("CARD_CATEGORIES");
         } catch (final SQLException ex) {
             showLoadError("classificazione", ex);
         }
@@ -1196,6 +1754,15 @@ public class DashboardPanel extends AppBackgroundPanel {
             return budgetController.caricaBudget(currentUser.getEmail());
         } catch (final SQLException ex) {
             showLoadError("budget", ex);
+            return List.of();
+        }
+    }
+
+    private List<SpesaRicorrente> loadRecurringExpenses() {
+        try {
+            return speseRicorrentiController.caricaRicorrenze(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            showLoadError("spese ricorrenti", ex);
             return List.of();
         }
     }

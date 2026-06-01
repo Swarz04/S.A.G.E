@@ -33,6 +33,10 @@ public class MovimentiController {
         movimentiService.aggiungiTagPersonale(email, nome);
     }
 
+    public void aggiungiFontePersonale(final String email, final String nome) throws SQLException {
+        movimentiService.aggiungiFontePersonale(email, nome);
+    }
+
     public void rinominaCategoriaPersonale(final String email, final long idCategoria,
             final String nome) throws SQLException {
         movimentiService.rinominaCategoriaPersonale(email, idCategoria, nome);
@@ -52,9 +56,33 @@ public class MovimentiController {
         movimentiService.eliminaTagPersonale(email, idTag);
     }
 
+    public void rinominaFontePersonale(final String email, final long idFonte,
+            final String nome) throws SQLException {
+        movimentiService.rinominaFontePersonale(email, idFonte, nome);
+    }
+
+    public void eliminaFontePersonale(final String email, final long idFonte) throws SQLException {
+        movimentiService.eliminaFontePersonale(email, idFonte);
+    }
+
     public List<it.unibo.sage.model.Transazione> caricaTransazioni(final String email,
             final LocalDate dal, final LocalDate al) throws SQLException {
         return movimentiService.caricaTransazioni(email, dal, al);
+    }
+
+    public List<it.unibo.sage.model.Transazione> caricaTransazioniPerCategoria(
+            final String email, final long idCategoria) throws SQLException {
+        return movimentiService.caricaTransazioniPerCategoria(email, idCategoria);
+    }
+
+    public List<it.unibo.sage.model.Transazione> caricaTransazioniPerTag(
+            final String email, final long idTag) throws SQLException {
+        return movimentiService.caricaTransazioniPerTag(email, idTag);
+    }
+
+    public List<it.unibo.sage.model.Transazione> caricaTransazioniPerFonte(
+            final String email, final long idFonte) throws SQLException {
+        return movimentiService.caricaTransazioniPerFonte(email, idFonte);
     }
 
     public long registraSpesa(final String email, final BigDecimal importo,
