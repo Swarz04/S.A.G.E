@@ -1,0 +1,17 @@
+Modifica: click su categoria/tag
+=================================
+
+Aggiunta nella schermata "Categorie e Tag" la possibilità di cliccare su una categoria o su un tag.
+Al click viene aperta una finestra modale con tutte le transazioni dell'utente correlate:
+- Categoria: spese con ID_Categoria uguale alla categoria selezionata.
+- Tag: spese collegate tramite SPESA_TAG al tag selezionato.
+
+File modificati:
+- src/it/unibo/sage/view/DashboardPanel.java
+- src/it/unibo/sage/controller/MovimentiController.java
+- src/it/unibo/sage/service/MovimentiService.java
+- src/it/unibo/sage/dao/TransazioneDAO.java
+- src/it/unibo/sage/dao/JdbcTransazioneDAO.java
+
+Non richiede modifiche al database e non richiede aggiornamenti XAMPP.
+Serve solo che MySQL sia acceso e che il database S.A.G.E. sia già importato.

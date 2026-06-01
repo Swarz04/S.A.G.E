@@ -1,0 +1,28 @@
+Modifica: aggiunta sezione "Fonti" nella sidebar.
+
+Funzioni aggiunte:
+- nuova schermata Fonti per visualizzare le fonti di entrata già presenti nel DB;
+- pulsante + Fonte per creare fonti personali;
+- rinomina/elimina per le fonti personali;
+- click su una fonte per mostrare tutte le entrate collegate a quella fonte;
+- icone descrittive per Stipendio, Regalo, Rimborso, Borsa di studio, Ripetizioni private e fonti generiche.
+
+File Java modificati:
+- src/it/unibo/sage/view/DashboardPanel.java
+- src/it/unibo/sage/controller/MovimentiController.java
+- src/it/unibo/sage/service/MovimentiService.java
+- src/it/unibo/sage/dao/TransazioneDAO.java
+- src/it/unibo/sage/dao/JdbcTransazioneDAO.java
+
+Risorse aggiunte:
+- src/it/unibo/sage/view/icons/salary.png
+- src/it/unibo/sage/view/icons/gift.png
+- src/it/unibo/sage/view/icons/refund.png
+- src/it/unibo/sage/view/icons/scholarship.png
+- src/it/unibo/sage/view/icons/tutoring.png
+- src/it/unibo/sage/view/icons/generic_source.png
+
+Nota DB:
+- non è necessario aggiornare XAMPP;
+- non è necessario cambiare lo schema SQL;
+- la sezione usa la tabella FONTE già prevista nello schema e popolata da popolamento.sql.

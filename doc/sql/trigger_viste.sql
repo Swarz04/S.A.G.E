@@ -319,3 +319,20 @@ GROUP BY
     B.ID_Categoria,
     B.Importo_Limite,
     B.Alert_Soglia;
+
+-- Spese ricorrenti gia' scadute rispetto alla data corrente.
+CREATE OR REPLACE VIEW v_spese_ricorrenti_scadute AS
+SELECT
+    SR.ID_Ricorrenza,
+    SR.Email,
+    SR.Importo_Previsto,
+    SR.Frequenza_Giorni,
+    SR.Data_Inizio,
+    SR.Data_Prossima_Scadenza,
+    SR.Scadenza,
+    SR.ID_Categoria,
+    C.Nome AS Categoria
+FROM SPESA_RICORRENTE SR
+JOIN CATEGORIA C ON SR.ID_Categoria = C.ID_Categoria
+WHERE SR.Data_Prossima_Scadenza <= CURRENT_DATE
+  AND (SR.Scadenza IS NULL OR SR.Data_Prossima_Scadenza <= SR.Scadenza);

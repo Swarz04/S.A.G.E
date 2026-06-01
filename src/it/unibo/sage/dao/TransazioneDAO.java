@@ -16,6 +16,12 @@ public interface TransazioneDAO {
 
     List<Transazione> findByPeriodo(String email, LocalDate dal, LocalDate al) throws SQLException;
 
+    List<Transazione> findByCategoria(String email, long idCategoria) throws SQLException;
+
+    List<Transazione> findByTag(String email, long idTag) throws SQLException;
+
+    List<Transazione> findByFonte(String email, long idFonte) throws SQLException;
+
     Transazione findById(long idTransazione, String email) throws SQLException;
 
     List<Long> findTagIds(long idTransazione, String email) throws SQLException;
