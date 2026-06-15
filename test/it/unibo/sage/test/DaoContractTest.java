@@ -32,6 +32,7 @@ public final class DaoContractTest {
         assertMethod(TransazioneDAO.class, "inserisciDocumento", Documento.class);
         assertMethod(TransazioneDAO.class, "associaTag", long.class, long.class);
         assertMethod(TransazioneDAO.class, "findTagIds", long.class, String.class);
+        assertMethod(TransazioneDAO.class, "findDateByRicorrenza", String.class, long.class);
         assertMethod(TransazioneDAO.class, "aggiorna", Transazione.class);
         assertMethod(TransazioneDAO.class, "elimina", long.class, String.class);
     }

@@ -23,6 +23,24 @@ public class SpeseRicorrentiController {
                 dataInizio, dataProssimaScadenza, scadenza, idCategoria);
     }
 
+    public long aggiungiRicorrenza(final String email, final String nome,
+            final BigDecimal importo, final int frequenzaGiorni,
+            final LocalDate dataInizio, final LocalDate dataProssimaScadenza,
+            final LocalDate scadenza, final long idCategoria) throws SQLException {
+        return speseRicorrentiService.aggiungiRicorrenza(email, nome, importo,
+                frequenzaGiorni, dataInizio, dataProssimaScadenza, scadenza, idCategoria);
+    }
+
+    public long aggiungiRicorrenzaERegistraPrimaSpesa(final String email,
+            final String nome, final BigDecimal importo, final int frequenzaGiorni,
+            final LocalDate dataInizio, final LocalDate dataProssimaScadenza,
+            final LocalDate scadenza, final long idCategoria,
+            final LocalDate dataRegistrazione) throws SQLException {
+        return speseRicorrentiService.aggiungiRicorrenzaERegistraPrimaSpesa(
+                email, nome, importo, frequenzaGiorni, dataInizio,
+                dataProssimaScadenza, scadenza, idCategoria, dataRegistrazione);
+    }
+
     public void eliminaRicorrenza(final String email, final long idRicorrenza)
             throws SQLException {
         speseRicorrentiService.eliminaRicorrenza(email, idRicorrenza);

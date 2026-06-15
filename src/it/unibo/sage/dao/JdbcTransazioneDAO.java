@@ -17,8 +17,8 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
 
     private static final String INSERT_SQL =
             "INSERT INTO TRANSIZIONE "
-            + "(TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            + "(TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String INSERT_TAG_SQL =
             "INSERT INTO SPESA_TAG (ID_Transizione, ID_Tag) VALUES (?, ?)";
@@ -30,21 +30,21 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
 
     private static final String FIND_BY_PERIODO_SQL =
             "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
-            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza "
             + "FROM TRANSIZIONE "
             + "WHERE Email = ? AND Data BETWEEN ? AND ? "
             + "ORDER BY Data DESC, ID_Transizione DESC";
 
     private static final String FIND_BY_CATEGORIA_SQL =
             "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
-            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza "
             + "FROM TRANSIZIONE "
             + "WHERE Email = ? AND ID_Categoria = ? "
             + "ORDER BY Data DESC, ID_Transizione DESC";
 
     private static final String FIND_BY_TAG_SQL =
             "SELECT T.ID_Transizione, T.TipoTransazione, T.Importo, T.Data, T.Descrizione, "
-            + "T.Email, T.ID_Categoria, T.ID_Periodo, T.ID_Fonte "
+            + "T.Email, T.ID_Categoria, T.ID_Periodo, T.ID_Fonte, T.ID_Ricorrenza "
             + "FROM TRANSIZIONE T "
             + "JOIN SPESA_TAG ST ON T.ID_Transizione = ST.ID_Transizione "
             + "WHERE T.Email = ? AND ST.ID_Tag = ? "
@@ -52,14 +52,14 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
 
     private static final String FIND_BY_FONTE_SQL =
             "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
-            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza "
             + "FROM TRANSIZIONE "
             + "WHERE Email = ? AND ID_Fonte = ? "
             + "ORDER BY Data DESC, ID_Transizione DESC";
 
     private static final String FIND_BY_ID_SQL =
             "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
-            + "ID_Categoria, ID_Periodo, ID_Fonte "
+            + "ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza "
             + "FROM TRANSIZIONE "
             + "WHERE ID_Transizione = ? AND Email = ?";
 
@@ -68,6 +68,11 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             + "FROM SPESA_TAG ST "
             + "JOIN TRANSIZIONE T ON ST.ID_Transizione = T.ID_Transizione "
             + "WHERE ST.ID_Transizione = ? AND T.Email = ?";
+
+    private static final String FIND_DATES_BY_RICORRENZA_SQL =
+            "SELECT Data FROM TRANSIZIONE "
+            + "WHERE Email = ? AND ID_Ricorrenza = ? "
+            + "ORDER BY Data";
 
     private static final String UPDATE_SQL =
             "UPDATE TRANSIZIONE "
@@ -99,6 +104,7 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             setNullableLong(statement, 6, transazione.getIdCategoria());
             statement.setLong(7, transazione.getIdPeriodo());
             setNullableLong(statement, 8, transazione.getIdFonte());
+            setNullableLong(statement, 9, transazione.getIdRicorrenza());
             statement.executeUpdate();
 
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -231,6 +237,24 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
     }
 
     @Override
+    public List<LocalDate> findDateByRicorrenza(final String email,
+            final long idRicorrenza) throws SQLException {
+        final List<LocalDate> dates = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                FIND_DATES_BY_RICORRENZA_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idRicorrenza);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    dates.add(resultSet.getDate("Data").toLocalDate());
+                }
+            }
+        }
+        return dates;
+    }
+
+    @Override
     public void aggiorna(final Transazione transazione) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
             statement.setBigDecimal(1, transazione.getImporto());
@@ -276,7 +300,8 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
                 resultSet.getString("Email"),
                 readNullableLong(resultSet, "ID_Categoria"),
                 resultSet.getLong("ID_Periodo"),
-                readNullableLong(resultSet, "ID_Fonte"));
+                readNullableLong(resultSet, "ID_Fonte"),
+                readNullableLong(resultSet, "ID_Ricorrenza"));
     }
 
     private void setNullableLong(final PreparedStatement statement, final int index,

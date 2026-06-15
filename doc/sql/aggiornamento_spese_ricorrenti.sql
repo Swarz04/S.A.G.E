@@ -1,7 +1,24 @@
 -- Aggiornamento incrementale per chi ha gia importato il database S.A.G.E.
 -- Non aggiorna XAMPP: aggiorna solo schema/viste del database esistente.
+-- Per le modifiche complete più recenti usare aggiornamento_funzioni_richieste.sql.
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
+
+SET @nome_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'SPESA_RICORRENTE'
+      AND COLUMN_NAME = 'Nome'
+);
+SET @nome_sql = IF(
+    @nome_exists = 0,
+    'ALTER TABLE SPESA_RICORRENTE ADD COLUMN Nome VARCHAR(100) NOT NULL DEFAULT ''Spesa ricorrente'' AFTER ID_Ricorrenza',
+    'SELECT ''Colonna SPESA_RICORRENTE.Nome gia presente'' AS Messaggio'
+);
+PREPARE stmt FROM @nome_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 SET @idx_exists = (
     SELECT COUNT(*)
@@ -22,6 +39,7 @@ DEALLOCATE PREPARE stmt;
 CREATE OR REPLACE VIEW v_spese_ricorrenti_scadute AS
 SELECT
     SR.ID_Ricorrenza,
+    SR.Nome,
     SR.Email,
     SR.Importo_Previsto,
     SR.Frequenza_Giorni,

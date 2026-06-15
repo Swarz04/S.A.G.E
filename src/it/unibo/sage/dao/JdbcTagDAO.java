@@ -11,10 +11,14 @@ import java.util.List;
 public class JdbcTagDAO implements TagDAO {
 
     private static final String FIND_DISPONIBILI_SQL =
-            "SELECT ID_Tag, Nome, is_system, Email_Proprietario "
-            + "FROM TAG "
-            + "WHERE is_system = TRUE OR Email_Proprietario = ? "
-            + "ORDER BY is_system DESC, Nome";
+            "SELECT T.ID_Tag, T.Nome, T.is_system, T.Email_Proprietario, T.Icona "
+            + "FROM TAG T "
+            + "WHERE (T.is_system = TRUE OR T.Email_Proprietario = ?) "
+            + "AND NOT (T.is_system = FALSE AND EXISTS ("
+            + "SELECT 1 FROM TAG TS "
+            + "WHERE TS.is_system = TRUE "
+            + "AND LOWER(TRIM(TS.Nome)) = LOWER(TRIM(T.Nome)))) "
+            + "ORDER BY T.is_system DESC, T.Nome";
 
     private final Connection connection;
 
@@ -42,6 +46,7 @@ public class JdbcTagDAO implements TagDAO {
                 resultSet.getLong("ID_Tag"),
                 resultSet.getString("Nome"),
                 resultSet.getBoolean("is_system"),
-                resultSet.getString("Email_Proprietario"));
+                resultSet.getString("Email_Proprietario"),
+                resultSet.getString("Icona"));
     }
 }

@@ -11,7 +11,7 @@ import java.util.List;
 public class JdbcFonteDAO implements FonteDAO {
 
     private static final String FIND_DISPONIBILI_SQL =
-            "SELECT ID_Fonte, Nome, is_system, Email_Proprietario "
+            "SELECT ID_Fonte, Nome, Icona, is_system, Email_Proprietario "
             + "FROM FONTE "
             + "WHERE is_system = TRUE OR Email_Proprietario = ? "
             + "ORDER BY is_system DESC, Nome";
@@ -42,6 +42,7 @@ public class JdbcFonteDAO implements FonteDAO {
                 resultSet.getLong("ID_Fonte"),
                 resultSet.getString("Nome"),
                 resultSet.getBoolean("is_system"),
-                resultSet.getString("Email_Proprietario"));
+                resultSet.getString("Email_Proprietario"),
+                resultSet.getString("Icona"));
     }
 }

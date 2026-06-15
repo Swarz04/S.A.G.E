@@ -14,7 +14,8 @@ public final class ConfigurazioneInizialeMappingTest {
         testCategoriePerFocusUniversita();
         testCategorieDefault();
         testNomeFonteNormalizzato();
-        testTagPerGruppoEssenziali();
+        testTagPerGruppoCasaTrasporti();
+        testNessunGruppoCreaEssenziale();
     }
 
     @SuppressWarnings("unchecked")
@@ -47,14 +48,24 @@ public final class ConfigurazioneInizialeMappingTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void testTagPerGruppoEssenziali() throws Exception {
-        final List<String> tag = (List<String>) callPrivate("tagPerGruppo", "essenziali");
-        TestAssertions.assertTrue(tag.contains("Essenziale"),
-                "Gruppo essenziali deve contenere il tag Essenziale");
+    private static void testTagPerGruppoCasaTrasporti() throws Exception {
+        final List<String> tag = (List<String>) callPrivate(
+                "tagPerGruppo", "casa e trasporti");
         TestAssertions.assertTrue(tag.contains("Casa"),
-                "Gruppo essenziali deve contenere il tag Casa");
+                "Il gruppo casa e trasporti deve contenere Casa");
         TestAssertions.assertTrue(tag.contains("Trasporti"),
-                "Gruppo essenziali deve contenere il tag Trasporti");
+                "Il gruppo casa e trasporti deve contenere Trasporti");
+        TestAssertions.assertFalse(tag.contains("Essenziale"),
+                "Il tag Essenziale non deve più essere creato");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void testNessunGruppoCreaEssenziale() throws Exception {
+        for (final String gruppo : List.of("base", "studio", "lavoro", "essenziali")) {
+            final List<String> tag = (List<String>) callPrivate("tagPerGruppo", gruppo);
+            TestAssertions.assertFalse(tag.contains("Essenziale"),
+                    "Nessun gruppo deve creare il tag Essenziale: " + gruppo);
+        }
     }
 
     private static Object callPrivate(final String methodName, final String value) throws Exception {

@@ -49,16 +49,20 @@ public final class ModelMappingTest {
     }
 
     private static void testCategoriaTagFonte() {
-        Categoria categoria = new Categoria(1L, "Casa", true, null);
+        Categoria categoria = new Categoria(1L, "Casa", true, null, "house.png");
         TestAssertions.assertEquals(1L, categoria.getId(), "ID categoria non coerente");
         TestAssertions.assertEquals("Casa", categoria.getNome(), "Nome categoria non coerente");
         TestAssertions.assertTrue(categoria.isSystem(), "Categoria di sistema non riconosciuta");
+        TestAssertions.assertEquals("house.png", categoria.getIcona(),
+                "Icona categoria non coerente");
 
-        Tag tag = new Tag(2L, "Essenziale", false, "utente@test.it");
+        Tag tag = new Tag(2L, "Studio", false, "utente@test.it", "study.png");
         TestAssertions.assertEquals(2L, tag.getId(), "ID tag non coerente");
         TestAssertions.assertFalse(tag.isSystem(), "Tag personale marcato come sistema");
         TestAssertions.assertEquals("utente@test.it", tag.getEmailProprietario(),
                 "Proprietario tag non coerente");
+        TestAssertions.assertEquals("study.png", tag.getIcona(),
+                "Icona tag non coerente");
 
         Fonte fonte = new Fonte(3L, "Stipendio", true, null);
         TestAssertions.assertEquals(3L, fonte.getId(), "ID fonte non coerente");
@@ -82,27 +86,33 @@ public final class ModelMappingTest {
     private static void testTransazione() {
         LocalDate data = LocalDate.of(2026, 5, 17);
         Transazione transazione = new Transazione(8L, TipoTransazione.SPESA,
-                new BigDecimal("19.99"), data, "Mensa", "utente@test.it", 2L, 6L, null);
+                new BigDecimal("19.99"), data, "Netflix", "utente@test.it",
+                2L, 6L, null, 12L);
         TestAssertions.assertEquals(8L, transazione.getId(), "ID transazione non coerente");
         TestAssertions.assertEquals(TipoTransazione.SPESA, transazione.getTipo(),
                 "Tipo transazione non coerente");
         TestAssertions.assertBigDecimalEquals(new BigDecimal("19.99"), transazione.getImporto(),
                 "Importo transazione non coerente");
         TestAssertions.assertEquals(data, transazione.getData(), "Data transazione non coerente");
-        TestAssertions.assertEquals("Mensa", transazione.getDescrizione(),
+        TestAssertions.assertEquals("Netflix", transazione.getDescrizione(),
                 "Descrizione transazione non coerente");
         TestAssertions.assertEquals(2L, transazione.getIdCategoria(),
                 "Categoria transazione non coerente");
         TestAssertions.assertEquals(null, transazione.getIdFonte(),
                 "Fonte transazione dovrebbe essere null per una spesa");
+        TestAssertions.assertEquals(12L, transazione.getIdRicorrenza(),
+                "Riferimento alla ricorrenza non coerente");
     }
 
     private static void testSpesaRicorrente() {
         LocalDate inizio = LocalDate.of(2026, 1, 1);
         LocalDate prossima = LocalDate.of(2026, 2, 1);
-        SpesaRicorrente ricorrente = new SpesaRicorrente(5L, new BigDecimal("30.00"),
-                30, inizio, prossima, null, 3L, "utente@test.it");
+        SpesaRicorrente ricorrente = new SpesaRicorrente(5L, "Netflix",
+                new BigDecimal("30.00"), 30, inizio, prossima, null,
+                3L, "utente@test.it");
         TestAssertions.assertEquals(5L, ricorrente.getId(), "ID ricorrenza non coerente");
+        TestAssertions.assertEquals("Netflix", ricorrente.getNome(),
+                "Nome ricorrenza non coerente");
         TestAssertions.assertBigDecimalEquals(new BigDecimal("30.00"),
                 ricorrente.getImportoPrevisto(), "Importo ricorrenza non coerente");
         TestAssertions.assertEquals(30, ricorrente.getFrequenzaGiorni(),

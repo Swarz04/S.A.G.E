@@ -41,20 +41,20 @@ SET @periodo_luglio = (
 );
 
 -- Categorie comuni, disponibili per tutti gli utenti.
-INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario)
+INSERT INTO CATEGORIA (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Trasporti', TRUE, NULL),
-('Alimentari', TRUE, NULL),
-('Casa', TRUE, NULL),
-('Salute', TRUE, NULL),
-('Svago', TRUE, NULL);
+('Trasporti', 'transport.png', TRUE, NULL),
+('Alimentari', 'food.png', TRUE, NULL),
+('Casa', 'house.png', TRUE, NULL),
+('Salute', 'health.png', TRUE, NULL),
+('Svago', 'leisure.png', TRUE, NULL);
 
 -- Categorie personali: appartengono a un solo studente.
-INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario)
+INSERT INTO CATEGORIA (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Mensa universitaria', FALSE, 'studente1@mail.com'),
-('Libri universitari', FALSE, 'studente1@mail.com'),
-('Palestra', FALSE, 'studente2@mail.com');
+('Mensa universitaria', 'food.png', FALSE, 'studente1@mail.com'),
+('Libri universitari', 'study.png', FALSE, 'studente1@mail.com'),
+('Palestra', 'gym.png', FALSE, 'studente2@mail.com');
 
 -- Recupero la categoria Trasporti creata come categoria di sistema.
 SET @cat_trasporti = (
@@ -95,18 +95,18 @@ SET @cat_palestra = (
 );
 
 -- Fonti di entrata generali, valide per tutti.
-INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
+INSERT INTO FONTE (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Stipendio', TRUE, NULL),
-('Regalo', TRUE, NULL),
-('Rimborso', TRUE, NULL);
+('Stipendio', 'salary.png', TRUE, NULL),
+('Regalo', 'gift.png', TRUE, NULL),
+('Rimborso', 'refund.png', TRUE, NULL);
 
 -- Fonti personali dello studente demo.
-INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
+INSERT INTO FONTE (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Borsa di studio', FALSE, 'studente1@mail.com'),
-('Ripetizioni private', FALSE, 'studente1@mail.com'),
-('Lavoretto weekend', FALSE, 'studente2@mail.com');
+('Borsa di studio', 'scholarship.png', FALSE, 'studente1@mail.com'),
+('Ripetizioni private', 'tutoring.png', FALSE, 'studente1@mail.com'),
+('Lavoretto weekend', 'work.png', FALSE, 'studente2@mail.com');
 
 -- ID della borsa di studio, usato per l'entrata principale.
 SET @fonte_borsa = (
@@ -141,31 +141,30 @@ SET @fonte_regalo = (
 );
 
 -- Tag comuni per classificare velocemente le spese.
-INSERT INTO TAG (Nome, is_system, Email_Proprietario)
+INSERT INTO TAG (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Essenziale', TRUE, NULL),
-('Università', TRUE, NULL),
-('Extra', TRUE, NULL);
+('Università', 'study.png', TRUE, NULL),
+('Extra', 'leisure.png', TRUE, NULL);
 
 -- Tag personali che rendono piu' flessibile la classificazione dello studente.
-INSERT INTO TAG (Nome, is_system, Email_Proprietario)
+INSERT INTO TAG (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Esame', FALSE, 'studente1@mail.com'),
-('Weekend', FALSE, 'studente1@mail.com');
-
--- Tag per distinguere le spese davvero necessarie.
-SET @tag_essenziale = (
-    SELECT ID_Tag
-    FROM TAG
-    WHERE Nome = 'Essenziale'
-      AND is_system = TRUE
-);
+('Esame', 'study.png', FALSE, 'studente1@mail.com'),
+('Weekend', 'leisure.png', FALSE, 'studente1@mail.com');
 
 -- Tag legato al contesto universitario.
 SET @tag_universita = (
     SELECT ID_Tag
     FROM TAG
     WHERE Nome = 'Università'
+      AND is_system = TRUE
+);
+
+-- Tag generale per spese non necessarie o di tempo libero.
+SET @tag_extra = (
+    SELECT ID_Tag
+    FROM TAG
+    WHERE Nome = 'Extra'
       AND is_system = TRUE
 );
 
@@ -185,11 +184,10 @@ VALUES
 
 SET @spesa_mensa = LAST_INSERT_ID();
 
--- La spesa in mensa e' sia universitaria sia essenziale.
-INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
+-- La spesa in mensa viene classificata nel contesto universitario.
+INSERT INTO SPESA_TAG (ID_Transizione, ID_Tag)
 VALUES
-(@spesa_mensa, @tag_universita),
-(@spesa_mensa, @tag_essenziale);
+(@spesa_mensa, @tag_universita);
 
 -- Associo uno scontrino demo alla spesa in mensa.
 INSERT INTO DOCUMENTO
@@ -219,10 +217,10 @@ VALUES
 
 SET @spesa_autobus = LAST_INSERT_ID();
 
--- L'abbonamento viene considerato una spesa essenziale.
-INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
+-- L'abbonamento ai trasporti viene collegato al contesto universitario.
+INSERT INTO SPESA_TAG (ID_Transizione, ID_Tag)
 VALUES
-(@spesa_autobus, @tag_essenziale);
+(@spesa_autobus, @tag_universita);
 
 -- Entrata principale dello studente: accredito della borsa di studio.
 INSERT INTO TRANSIZIONE
@@ -300,9 +298,9 @@ VALUES
 
 SET @spesa_palestra = LAST_INSERT_ID();
 
-INSERT INTO spesa_tag (ID_Transizione, ID_Tag)
+INSERT INTO SPESA_TAG (ID_Transizione, ID_Tag)
 VALUES
-(@spesa_palestra, @tag_essenziale);
+(@spesa_palestra, @tag_extra);
 
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
@@ -347,15 +345,28 @@ Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale);
 
 -- Spesa ricorrente demo per rappresentare l'abbonamento mensile ai trasporti.
 INSERT INTO SPESA_RICORRENTE
-(Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza,
+(Nome, Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza,
  Scadenza, ID_Categoria, Email)
 VALUES
-(25.00, 30, '2026-05-01', '2026-06-01', '2026-12-31',
+('Abbonamento autobus', 25.00, 30, '2026-05-01', '2026-06-01', '2026-12-31',
  @cat_trasporti, 'studente1@mail.com');
 
+SET @ricorrenza_autobus = LAST_INSERT_ID();
+
+-- La transazione già presente viene collegata al modello che l'ha originata.
+UPDATE TRANSIZIONE
+SET ID_Ricorrenza = @ricorrenza_autobus
+WHERE ID_Transizione = @spesa_autobus;
+
 INSERT INTO SPESA_RICORRENTE
-(Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza,
+(Nome, Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza,
  Scadenza, ID_Categoria, Email)
 VALUES
-(35.00, 30, '2026-05-01', '2026-06-01', '2026-12-31',
+('Abbonamento palestra', 35.00, 30, '2026-05-01', '2026-06-01', '2026-12-31',
  @cat_palestra, 'studente2@mail.com');
+
+SET @ricorrenza_palestra = LAST_INSERT_ID();
+
+UPDATE TRANSIZIONE
+SET ID_Ricorrenza = @ricorrenza_palestra
+WHERE ID_Transizione = @spesa_palestra;

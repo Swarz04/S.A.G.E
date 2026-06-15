@@ -14,6 +14,7 @@ public final class TransazioneModelTest {
         testSpesaConCategoriaSenzaFonte();
         testEntrataConFonteSenzaCategoria();
         testTipoTransazioneMappingCaseInsensitive();
+        testSpesaGenerataDaRicorrenza();
     }
 
     private static void testSpesaConCategoriaSenzaFonte() {
@@ -36,6 +37,16 @@ public final class TransazioneModelTest {
                 "Importo entrata non coerente");
         TestAssertions.assertEquals(null, entrata.getIdCategoria(), "Un'entrata non deve avere categoria");
         TestAssertions.assertEquals(4L, entrata.getIdFonte(), "Fonte entrata non coerente");
+    }
+
+    private static void testSpesaGenerataDaRicorrenza() {
+        Transazione spesa = new Transazione(13L, TipoTransazione.SPESA,
+                new BigDecimal("12.99"), LocalDate.of(2026, 6, 15),
+                "Netflix", "studente@test.it", 3L, 8L, null, 7L);
+        TestAssertions.assertEquals(7L, spesa.getIdRicorrenza(),
+                "Una spesa generata deve conservare l'ID della ricorrenza");
+        TestAssertions.assertEquals("Netflix", spesa.getDescrizione(),
+                "La transazione generata deve usare il nome della ricorrenza");
     }
 
     private static void testTipoTransazioneMappingCaseInsensitive() {

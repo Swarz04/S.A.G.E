@@ -32,7 +32,7 @@ public class ConfigurazioneInizialePanel extends AppBackgroundPanel {
     private final JComboBox<String> budgetCombo = new JComboBox<>(
             new String[] {"nessuno", "150", "300", "500", "800"});
     private final JComboBox<String> tagCombo = new JComboBox<>(
-            new String[] {"base", "studio", "lavoro", "essenziali"});
+            new String[] {"base", "studio", "lavoro", "casa e trasporti"});
 
     public ConfigurazioneInizialePanel(final MainFrame parent, final Utente user) {
         super(new GridBagLayout());

@@ -11,12 +11,24 @@ import it.unibo.sage.model.Tag;
 import it.unibo.sage.model.TipoTransazione;
 import it.unibo.sage.model.Transazione;
 import it.unibo.sage.model.Utente;
+import it.unibo.sage.utils.IconStorage;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.awt.datatransfer.DataFlavor;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -31,6 +43,46 @@ public class DashboardPanel extends AppBackgroundPanel {
     private static final int SIDEBAR_WIDTH = 300;
     private static final int MENU_BUTTON_HEIGHT = 56;
 
+    private static final List<IconChoice> CATEGORY_ICON_CHOICES = List.of(
+            new IconChoice("Generica", "generic_category.png"),
+            new IconChoice("Casa", "house.png"),
+            new IconChoice("Cibo", "food.png"),
+            new IconChoice("Trasporti", "transport.png"),
+            new IconChoice("Salute", "health.png"),
+            new IconChoice("Studio", "study.png"),
+            new IconChoice("Lavoro", "work.png"),
+            new IconChoice("Risparmi", "savings.png"),
+            new IconChoice("Shopping", "shopping.png"),
+            new IconChoice("Svago", "leisure.png"),
+            new IconChoice("Bollette", "bill.png"),
+            new IconChoice("Palestra", "gym.png"),
+            new IconChoice("Viaggi", "travel.png"),
+            new IconChoice("Regalo", "gift.png"));
+
+    private static final List<IconChoice> TAG_ICON_CHOICES = List.of(
+            new IconChoice("Generica", "generic_tag.png"),
+            new IconChoice("Urgente", "urgent.png"),
+            new IconChoice("Studio", "study.png"),
+            new IconChoice("Palestra", "gym.png"),
+            new IconChoice("Lavoro", "work.png"),
+            new IconChoice("Famiglia", "family.png"),
+            new IconChoice("Viaggi", "travel.png"),
+            new IconChoice("Regalo", "gift.png"),
+            new IconChoice("Risparmi", "savings.png"),
+            new IconChoice("Shopping", "shopping.png"),
+            new IconChoice("Svago", "leisure.png"));
+
+    private static final List<IconChoice> SOURCE_ICON_CHOICES = List.of(
+            new IconChoice("Generica", "generic_source.png"),
+            new IconChoice("Stipendio", "salary.png"),
+            new IconChoice("Borsa di studio", "scholarship.png"),
+            new IconChoice("Regalo", "gift.png"),
+            new IconChoice("Rimborso", "refund.png"),
+            new IconChoice("Ripetizioni", "tutoring.png"),
+            new IconChoice("Lavoro", "work.png"),
+            new IconChoice("Famiglia", "family.png"),
+            new IconChoice("Risparmi", "savings.png"));
+
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
     private final Utente currentUser;
@@ -38,6 +90,7 @@ public class DashboardPanel extends AppBackgroundPanel {
     private final BudgetController budgetController = new BudgetController();
     private final SpeseRicorrentiController speseRicorrentiController = new SpeseRicorrentiController();
     private JButton selectedMenuButton;
+    private OverviewFilter overviewFilter = OverviewFilter.MONTH;
 
     public DashboardPanel(final Utente currentUser) {
         super(new BorderLayout());
@@ -50,6 +103,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         add(createMenuPanel(), BorderLayout.WEST);
         add(createMainPanel(), BorderLayout.CENTER);
 
+        generateDueRecurringExpensesOnStartup();
         initContentCards();
         contentLayout.show(contentPanel, "CARD_OVERVIEW");
     }
@@ -268,30 +322,40 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private JPanel createOverviewCard() {
-        final List<Transazione> transazioni = loadTransactions();
+        final List<Transazione> allTransactions = loadTransactions();
+        final List<Transazione> transazioni = filterOverviewTransactions(allTransactions);
         final List<Budget> budgets = loadBudgets();
+        final Map<Long, String> categoryNames = loadCategoryNames();
         final BigDecimal entrate = sumByType(transazioni, TipoTransazione.ENTRATA);
         final BigDecimal spese = sumByType(transazioni, TipoTransazione.SPESA);
         final BigDecimal saldo = entrate.subtract(spese);
         final String budgetUsage = calculateBudgetUsage(budgets);
 
-        JPanel panel = new JPanel(new BorderLayout(0, 18));
+        JPanel panel = new JPanel();
         panel.setOpaque(false);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
         JPanel metricsPanel = new JPanel(new GridLayout(1, 4, 16, 16));
         metricsPanel.setOpaque(false);
-        metricsPanel.add(createMetricBox("Saldo demo", formatEuro(saldo), AppTheme.PRIMARY));
+        metricsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        metricsPanel.add(createMetricBox("Saldo attuale", formatEuro(saldo), AppTheme.PRIMARY));
         metricsPanel.add(createMetricBox("Entrate", formatEuro(entrate), AppTheme.INCOME));
         metricsPanel.add(createMetricBox("Spese", formatEuro(spese), AppTheme.EXPENSE));
         metricsPanel.add(createMetricBox("Budget usato", budgetUsage, AppTheme.BUDGET));
 
-        JPanel lowerPanel = new JPanel(new GridLayout(1, 2, 16, 16));
-        lowerPanel.setOpaque(false);
-        lowerPanel.add(createMiniTransactionsBox(transazioni));
-        lowerPanel.add(createMiniBudgetBox(budgets));
+        JPanel dashboardGrid = new JPanel(new GridLayout(0, 2, 16, 16));
+        dashboardGrid.setOpaque(false);
+        dashboardGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        dashboardGrid.add(createMonthlyTrendCard(transazioni));
+        dashboardGrid.add(createExpenseDistributionCard(transazioni, categoryNames));
+        dashboardGrid.add(createBudgetProgressCard(budgets, categoryNames));
+        dashboardGrid.add(createRecentTransactionsListCard(transazioni));
 
-        panel.add(metricsPanel, BorderLayout.NORTH);
-        panel.add(lowerPanel, BorderLayout.CENTER);
+        panel.add(createOverviewFilterPanel());
+        panel.add(Box.createVerticalStrut(14));
+        panel.add(metricsPanel);
+        panel.add(Box.createVerticalStrut(16));
+        panel.add(dashboardGrid);
 
         return panel;
     }
@@ -349,12 +413,13 @@ public class DashboardPanel extends AppBackgroundPanel {
         return createTableCard("Budget demo", "Budget mensili e per categoria caricati dal database.", model);
     }
     private JPanel createRecurringCard() {
-        final String[] columns = {"ID", "Categoria", "Importo", "Frequenza", "Inizio", "Prossima", "Fine"};
+        final String[] columns = {"ID", "Nome", "Categoria", "Importo", "Frequenza", "Inizio", "Prossima", "Fine"};
         final DefaultTableModel model = new DefaultTableModel(columns, 0);
         final Map<Long, String> categoryNames = loadCategoryNames();
         for (SpesaRicorrente ricorrenza : loadRecurringExpenses()) {
             model.addRow(new Object[] {
                 ricorrenza.getId(),
+                ricorrenza.getNome(),
                 categoryNames.getOrDefault(ricorrenza.getIdCategoria(),
                         "Categoria " + ricorrenza.getIdCategoria()),
                 formatEuro(ricorrenza.getImportoPrevisto()),
@@ -430,14 +495,16 @@ public class DashboardPanel extends AppBackgroundPanel {
                     "Categoria",
                     categoria.getId(),
                     categoria.getNome(),
-                    categoria.isSystem()));
+                    categoria.isSystem(),
+                    categoria.getIcona()));
         }
         for (Tag tag : loadTags()) {
             grid.add(createClassificationTile(
                     "Tag",
                     tag.getId(),
                     tag.getNome(),
-                    tag.isSystem()));
+                    tag.isSystem(),
+                    tag.getIcona()));
         }
 
         if (grid.getComponentCount() == 0) {
@@ -487,7 +554,8 @@ public class DashboardPanel extends AppBackgroundPanel {
                     "Fonte",
                     fonte.getId(),
                     fonte.getNome(),
-                    fonte.isSystem()));
+                    fonte.isSystem(),
+                    fonte.getIcona()));
         }
 
         if (grid.getComponentCount() == 0) {
@@ -516,11 +584,16 @@ public class DashboardPanel extends AppBackgroundPanel {
 
     private JPanel createClassificationTile(final String type, final long id,
             final String name, final boolean system) {
+        return createClassificationTile(type, id, name, system, null);
+    }
+
+    private JPanel createClassificationTile(final String type, final long id,
+            final String name, final boolean system, final String iconName) {
         final JPanel tile = new GlassPanel(new BorderLayout(14, 0));
         tile.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         tile.setPreferredSize(new Dimension(0, 104));
 
-        final JComponent icon = createClassificationIcon(type, name);
+        final JComponent icon = createClassificationIcon(type, name, iconName);
         tile.add(icon, BorderLayout.WEST);
 
         JPanel textPanel = new JPanel();
@@ -545,9 +618,9 @@ public class DashboardPanel extends AppBackgroundPanel {
         if (!system) {
             JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
             buttons.setOpaque(false);
-            SoftButton renameButton = createTinyActionButton("Rinomina");
+            SoftButton renameButton = createTinyActionButton("Modifica");
             SoftButton deleteButton = createTinyActionButton("Elimina");
-            renameButton.addActionListener(e -> renameClassification(type, id, name));
+            renameButton.addActionListener(e -> editClassification(type, id, name, iconName));
             deleteButton.addActionListener(e -> deleteClassification(type, id));
             buttons.add(renameButton);
             buttons.add(deleteButton);
@@ -694,8 +767,9 @@ public class DashboardPanel extends AppBackgroundPanel {
         return "Entrate: " + formatEuro(entrate) + "    Spese: " + formatEuro(spese);
     }
 
-    private JComponent createClassificationIcon(final String type, final String name) {
-        final ImageIcon icon = loadClassificationIcon(type, name);
+    private JComponent createClassificationIcon(final String type, final String name,
+            final String iconName) {
+        final ImageIcon icon = loadClassificationIcon(type, name, iconName);
         return new JComponent() {
             @Override
             public Dimension getPreferredSize() {
@@ -721,8 +795,16 @@ public class DashboardPanel extends AppBackgroundPanel {
         };
     }
 
-    private ImageIcon loadClassificationIcon(final String type, final String name) {
-        final String resourcePath = getClassificationIconPath(type, name);
+    private ImageIcon loadClassificationIcon(final String type, final String name,
+            final String iconName) {
+        if (IconStorage.isCustomIconReference(iconName)) {
+            final ImageIcon customIcon = loadIconFile(iconName, 30);
+            if (customIcon != null) {
+                return customIcon;
+            }
+        }
+
+        final String resourcePath = getClassificationIconPath(type, name, iconName);
         ImageIcon rawIcon = null;
 
         final java.net.URL url = getClass().getResource(resourcePath);
@@ -751,7 +833,12 @@ public class DashboardPanel extends AppBackgroundPanel {
         return new ImageIcon(scaledImage);
     }
 
-    private String getClassificationIconPath(final String type, final String name) {
+    private String getClassificationIconPath(final String type, final String name,
+            final String iconName) {
+        if (iconName != null && !iconName.isBlank()
+                && iconName.matches("[a-z0-9_-]+\\.png")) {
+            return "/it/unibo/sage/view/icons/" + iconName;
+        }
         final String normalized = normalizeClassificationName(name);
         if ("Categoria".equals(type)) {
             switch (normalized) {
@@ -907,6 +994,497 @@ public class DashboardPanel extends AppBackgroundPanel {
         button.setArc(12);
         button.addMouseListener(new ButtonHoverAdapter(button, AppTheme.SURFACE_MUTED, AppTheme.BADGE_BACKGROUND));
         return button;
+    }
+
+    private JPanel createOverviewFilterPanel() {
+        JPanel panel = new JPanel(new BorderLayout(14, 0));
+        panel.setOpaque(false);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel labels = new JPanel();
+        labels.setOpaque(false);
+        labels.setLayout(new BoxLayout(labels, BoxLayout.Y_AXIS));
+
+        JLabel title = new JLabel("Periodo analizzato");
+        title.setForeground(AppTheme.TEXT);
+        title.setFont(new Font("SansSerif", Font.BOLD, 14));
+
+        JLabel description = new JLabel(overviewPeriodDescription());
+        description.setForeground(AppTheme.TEXT_MUTED);
+        description.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        labels.add(title);
+        labels.add(Box.createVerticalStrut(3));
+        labels.add(description);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        buttons.setOpaque(false);
+        buttons.add(createOverviewFilterButton("Mese", OverviewFilter.MONTH));
+        buttons.add(createOverviewFilterButton("Anno", OverviewFilter.YEAR));
+        buttons.add(createOverviewFilterButton("Tutto", OverviewFilter.ALL));
+
+        panel.add(labels, BorderLayout.WEST);
+        panel.add(buttons, BorderLayout.EAST);
+        return panel;
+    }
+
+    private SoftButton createOverviewFilterButton(final String text, final OverviewFilter filter) {
+        final boolean selected = overviewFilter == filter;
+        SoftButton button = new SoftButton(text);
+        button.setFont(new Font("SansSerif", Font.BOLD, 12));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        button.setArc(14);
+        button.setBackground(selected ? AppTheme.ACCENT : AppTheme.SURFACE_MUTED);
+        button.setForeground(selected ? Color.WHITE : AppTheme.TEXT);
+        button.addMouseListener(new ButtonHoverAdapter(
+                button,
+                selected ? AppTheme.ACCENT : AppTheme.SURFACE_MUTED,
+                selected ? AppTheme.ACCENT_HOVER : AppTheme.BADGE_BACKGROUND));
+        button.addActionListener(e -> {
+            if (overviewFilter != filter) {
+                overviewFilter = filter;
+                refreshContent("CARD_OVERVIEW");
+            }
+        });
+        return button;
+    }
+
+    private List<Transazione> filterOverviewTransactions(final List<Transazione> transazioni) {
+        if (overviewFilter == OverviewFilter.ALL) {
+            return transazioni;
+        }
+
+        final LocalDate today = LocalDate.now();
+        final List<Transazione> filtered = new ArrayList<>();
+        for (Transazione transazione : transazioni) {
+            final LocalDate date = transazione.getData();
+            if (date == null) {
+                continue;
+            }
+            if (overviewFilter == OverviewFilter.MONTH
+                    && date.getYear() == today.getYear()
+                    && date.getMonthValue() == today.getMonthValue()) {
+                filtered.add(transazione);
+            } else if (overviewFilter == OverviewFilter.YEAR
+                    && date.getYear() == today.getYear()) {
+                filtered.add(transazione);
+            }
+        }
+        return filtered;
+    }
+
+    private String overviewPeriodDescription() {
+        final LocalDate today = LocalDate.now();
+        if (overviewFilter == OverviewFilter.MONTH) {
+            String month = today.getMonth().getDisplayName(TextStyle.FULL, Locale.ITALIAN);
+            if (!month.isEmpty()) {
+                month = Character.toUpperCase(month.charAt(0)) + month.substring(1);
+            }
+            return month + " " + today.getYear();
+        }
+        if (overviewFilter == OverviewFilter.YEAR) {
+            return "Anno " + today.getYear();
+        }
+        return "Intero storico disponibile";
+    }
+
+    private JPanel createAnalyticsCard(final String title, final String subtitle, final JComponent content) {
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JPanel header = new JPanel();
+        header.setOpaque(false);
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel(subtitle);
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+        subtitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        header.add(titleLabel);
+        header.add(Box.createVerticalStrut(6));
+        header.add(subtitleLabel);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(content, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createMonthlyTrendCard(final List<Transazione> transazioni) {
+        if (overviewFilter == OverviewFilter.MONTH) {
+            final YearMonth currentMonth = YearMonth.now();
+            final List<DayExpense> dailyExpenses = buildDailyExpenses(transazioni, currentMonth);
+            final DailyExpenseChartPanel chartPanel = new DailyExpenseChartPanel(dailyExpenses);
+            chartPanel.setPreferredSize(new Dimension(340, 240));
+
+            String monthName = currentMonth.getMonth().getDisplayName(TextStyle.FULL, Locale.ITALIAN);
+            if (!monthName.isEmpty()) {
+                monthName = Character.toUpperCase(monthName.charAt(0)) + monthName.substring(1);
+            }
+            return createAnalyticsCard(
+                    "Andamento mensile",
+                    "Entrate e spese giorno per giorno di " + monthName + " " + currentMonth.getYear() + ".",
+                    chartPanel);
+        }
+
+        final List<MonthTotals> monthTotals = overviewFilter == OverviewFilter.YEAR
+                ? buildYearMonthlyTotals(transazioni, LocalDate.now().getYear())
+                : buildMonthlyTotals(transazioni, 6);
+        final MonthlyTrendChartPanel chartPanel = new MonthlyTrendChartPanel(monthTotals);
+        chartPanel.setPreferredSize(new Dimension(340, 240));
+        return createAnalyticsCard(
+                "Andamento mensile",
+                overviewFilter == OverviewFilter.YEAR
+                        ? "Confronto tra entrate e spese mese per mese nell'anno corrente."
+                        : "Confronto tra entrate e spese negli ultimi 6 mesi disponibili.",
+                chartPanel);
+    }
+
+    private JPanel createExpenseDistributionCard(final List<Transazione> transazioni,
+            final Map<Long, String> categoryNames) {
+        final LinkedHashMap<String, BigDecimal> expensesByCategory = buildExpenseDistribution(transazioni, categoryNames);
+        final JPanel content = new JPanel(new BorderLayout(12, 0));
+        content.setOpaque(false);
+
+        final ExpenseDistributionChartPanel chartPanel = new ExpenseDistributionChartPanel(expensesByCategory);
+        chartPanel.setPreferredSize(new Dimension(220, 220));
+        content.add(chartPanel, BorderLayout.CENTER);
+        content.add(createLegendPanel(expensesByCategory), BorderLayout.EAST);
+
+        return createAnalyticsCard(
+                "Spese per categoria",
+                "Distribuzione delle uscite per categoria nel periodo caricato.",
+                content);
+    }
+
+    private JPanel createBudgetProgressCard(final List<Budget> budgets, final Map<Long, String> categoryNames) {
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+
+        if (budgets.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Nessun budget configurato.");
+            emptyLabel.setForeground(AppTheme.TEXT_MUTED);
+            emptyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            content.add(emptyLabel);
+        } else {
+            int limit = Math.min(5, budgets.size());
+            for (int i = 0; i < limit; i++) {
+                Budget budget = budgets.get(i);
+                content.add(createBudgetProgressRow(budget, categoryNames));
+                if (i < limit - 1) {
+                    content.add(Box.createVerticalStrut(12));
+                }
+            }
+        }
+
+        return createAnalyticsCard(
+                "Stato budget",
+                "Avanzamento dei budget mensili e per categoria.",
+                content);
+    }
+
+    private JPanel createBudgetProgressRow(final Budget budget, final Map<Long, String> categoryNames) {
+        JPanel row = new JPanel(new BorderLayout(10, 8));
+        row.setOpaque(false);
+
+        String label = budget.getIdCategoria() == null
+                ? "Budget mensile"
+                : categoryNames.getOrDefault(budget.getIdCategoria(), "Categoria " + budget.getIdCategoria());
+        BigDecimal limite = budget.getImportoLimite() == null ? BigDecimal.ZERO : budget.getImportoLimite();
+        BigDecimal speso = budget.getTotaleSpesoAttuale() == null ? BigDecimal.ZERO : budget.getTotaleSpesoAttuale();
+        int percentage = 0;
+        if (limite.signum() > 0) {
+            percentage = speso.multiply(BigDecimal.valueOf(100))
+                    .divide(limite, 0, java.math.RoundingMode.HALF_UP)
+                    .intValue();
+        }
+
+        JLabel nameLabel = new JLabel(label);
+        nameLabel.setForeground(AppTheme.TEXT);
+        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JLabel valueLabel = new JLabel(formatEuro(speso) + " / " + formatEuro(limite));
+        valueLabel.setForeground(AppTheme.TEXT_MUTED);
+        valueLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        top.add(nameLabel, BorderLayout.WEST);
+        top.add(valueLabel, BorderLayout.EAST);
+
+        JProgressBar progressBar = new JProgressBar(0, 100);
+        progressBar.setValue(Math.min(percentage, 100));
+        progressBar.setString(percentage + "%");
+        progressBar.setStringPainted(true);
+        progressBar.setForeground(percentage >= 100 ? AppTheme.EXPENSE : (percentage >= 80 ? AppTheme.BUDGET : AppTheme.ACCENT));
+        progressBar.setBackground(AppTheme.SURFACE_MUTED);
+        progressBar.setBorder(BorderFactory.createEmptyBorder());
+
+        row.add(top, BorderLayout.NORTH);
+        row.add(progressBar, BorderLayout.CENTER);
+        return row;
+    }
+
+    private JPanel createRecentTransactionsListCard(final List<Transazione> transazioni) {
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+
+        if (transazioni.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Nessuna transazione caricata.");
+            emptyLabel.setForeground(AppTheme.TEXT_MUTED);
+            emptyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            content.add(emptyLabel);
+        } else {
+            int limit = Math.min(5, transazioni.size());
+            for (int i = 0; i < limit; i++) {
+                content.add(createTransactionSummaryRow(transazioni.get(i)));
+                if (i < limit - 1) {
+                    content.add(Box.createVerticalStrut(10));
+                }
+            }
+        }
+
+        return createAnalyticsCard(
+                "Ultime transazioni",
+                "Movimenti più recenti registrati nel portafoglio.",
+                content);
+    }
+
+    private JPanel createTransactionSummaryRow(final Transazione transazione) {
+        JPanel row = new JPanel(new BorderLayout(10, 0));
+        row.setOpaque(false);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(230, 236, 242)),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+
+        JLabel descriptionLabel = new JLabel(transazione.getDescrizione());
+        descriptionLabel.setForeground(AppTheme.TEXT);
+        descriptionLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+
+        JLabel dateLabel = new JLabel(String.valueOf(transazione.getData()));
+        dateLabel.setForeground(AppTheme.TEXT_MUTED);
+        dateLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        left.add(descriptionLabel);
+        left.add(Box.createVerticalStrut(4));
+        left.add(dateLabel);
+
+        JLabel amountLabel = new JLabel(formatEuro(transazione.getImporto()));
+        amountLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        amountLabel.setForeground(transazione.getTipo() == TipoTransazione.ENTRATA
+                ? AppTheme.INCOME
+                : AppTheme.EXPENSE);
+
+        row.add(left, BorderLayout.CENTER);
+        row.add(amountLabel, BorderLayout.EAST);
+        return row;
+    }
+
+    private JPanel createLegendPanel(final LinkedHashMap<String, BigDecimal> expensesByCategory) {
+        JPanel legend = new JPanel();
+        legend.setOpaque(false);
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
+        legend.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+
+        if (expensesByCategory.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Nessuna spesa disponibile");
+            emptyLabel.setForeground(AppTheme.TEXT_MUTED);
+            legend.add(emptyLabel);
+            return legend;
+        }
+
+        int index = 0;
+        for (Map.Entry<String, BigDecimal> entry : expensesByCategory.entrySet()) {
+            JPanel item = new JPanel(new BorderLayout(8, 0));
+            item.setOpaque(false);
+
+            JPanel swatch = new JPanel();
+            swatch.setOpaque(true);
+            swatch.setBackground(chartColor(index));
+            swatch.setPreferredSize(new Dimension(12, 12));
+            swatch.setMinimumSize(new Dimension(12, 12));
+            swatch.setMaximumSize(new Dimension(12, 12));
+
+            JLabel label = new JLabel(entry.getKey());
+            label.setForeground(AppTheme.TEXT);
+            label.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+            JLabel value = new JLabel(formatEuro(entry.getValue()));
+            value.setForeground(AppTheme.TEXT_MUTED);
+            value.setFont(new Font("SansSerif", Font.BOLD, 12));
+
+            JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+            labelPanel.setOpaque(false);
+            labelPanel.add(swatch);
+            labelPanel.add(label);
+
+            item.add(labelPanel, BorderLayout.WEST);
+            item.add(value, BorderLayout.EAST);
+
+            legend.add(item);
+            legend.add(Box.createVerticalStrut(8));
+            index++;
+        }
+        return legend;
+    }
+
+    private List<DayExpense> buildDailyExpenses(final List<Transazione> transazioni,
+            final YearMonth month) {
+        final BigDecimal[] incomes = new BigDecimal[month.lengthOfMonth()];
+        final BigDecimal[] expenses = new BigDecimal[month.lengthOfMonth()];
+        for (int i = 0; i < month.lengthOfMonth(); i++) {
+            incomes[i] = BigDecimal.ZERO;
+            expenses[i] = BigDecimal.ZERO;
+        }
+
+        for (Transazione transazione : transazioni) {
+            if (transazione.getData() == null
+                    || !YearMonth.from(transazione.getData()).equals(month)) {
+                continue;
+            }
+
+            final int dayIndex = transazione.getData().getDayOfMonth() - 1;
+            if (transazione.getTipo() == TipoTransazione.ENTRATA) {
+                incomes[dayIndex] = incomes[dayIndex].add(transazione.getImporto());
+            } else {
+                expenses[dayIndex] = expenses[dayIndex].add(transazione.getImporto());
+            }
+        }
+
+        final List<DayExpense> result = new ArrayList<>();
+        for (int i = 0; i < month.lengthOfMonth(); i++) {
+            result.add(new DayExpense(i + 1, incomes[i], expenses[i]));
+        }
+        return result;
+    }
+
+    private List<MonthTotals> buildYearMonthlyTotals(final List<Transazione> transazioni,
+            final int year) {
+        final List<MonthTotals> result = new ArrayList<>();
+        for (int monthNumber = 1; monthNumber <= 12; monthNumber++) {
+            final YearMonth currentMonth = YearMonth.of(year, monthNumber);
+            BigDecimal income = BigDecimal.ZERO;
+            BigDecimal expense = BigDecimal.ZERO;
+            for (Transazione transazione : transazioni) {
+                if (transazione.getData() == null
+                        || !YearMonth.from(transazione.getData()).equals(currentMonth)) {
+                    continue;
+                }
+                if (transazione.getTipo() == TipoTransazione.ENTRATA) {
+                    income = income.add(transazione.getImporto());
+                } else {
+                    expense = expense.add(transazione.getImporto());
+                }
+            }
+            String label = currentMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ITALIAN);
+            if (!label.isEmpty()) {
+                label = Character.toUpperCase(label.charAt(0)) + label.substring(1).replace(".", "");
+            }
+            result.add(new MonthTotals(label, income, expense));
+        }
+        return result;
+    }
+
+    private List<MonthTotals> buildMonthlyTotals(final List<Transazione> transazioni, final int months) {
+        LocalDate referenceDate = LocalDate.now();
+        for (Transazione transazione : transazioni) {
+            if (transazione.getData() != null && transazione.getData().isAfter(referenceDate)) {
+                referenceDate = transazione.getData();
+            }
+        }
+        if (!transazioni.isEmpty()) {
+            referenceDate = transazioni.stream()
+                    .map(Transazione::getData)
+                    .filter(d -> d != null)
+                    .max(Comparator.naturalOrder())
+                    .orElse(referenceDate);
+        }
+
+        final List<MonthTotals> result = new ArrayList<>();
+        final YearMonth end = YearMonth.from(referenceDate);
+        for (int i = months - 1; i >= 0; i--) {
+            final YearMonth currentMonth = end.minusMonths(i);
+            BigDecimal income = BigDecimal.ZERO;
+            BigDecimal expense = BigDecimal.ZERO;
+            for (Transazione transazione : transazioni) {
+                if (transazione.getData() == null || !YearMonth.from(transazione.getData()).equals(currentMonth)) {
+                    continue;
+                }
+                if (transazione.getTipo() == TipoTransazione.ENTRATA) {
+                    income = income.add(transazione.getImporto());
+                } else {
+                    expense = expense.add(transazione.getImporto());
+                }
+            }
+            String label = currentMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ITALIAN);
+            if (!label.isEmpty()) {
+                label = Character.toUpperCase(label.charAt(0)) + label.substring(1).replace(".", "");
+            }
+            result.add(new MonthTotals(label, income, expense));
+        }
+        return result;
+    }
+
+    private LinkedHashMap<String, BigDecimal> buildExpenseDistribution(final List<Transazione> transazioni,
+            final Map<Long, String> categoryNames) {
+        final Map<String, BigDecimal> totals = new HashMap<>();
+        for (Transazione transazione : transazioni) {
+            if (transazione.getTipo() != TipoTransazione.SPESA) {
+                continue;
+            }
+            String category = transazione.getIdCategoria() == null
+                    ? "Senza categoria"
+                    : categoryNames.getOrDefault(transazione.getIdCategoria(), "Categoria " + transazione.getIdCategoria());
+            totals.merge(category, transazione.getImporto(), BigDecimal::add);
+        }
+
+        List<Map.Entry<String, BigDecimal>> sorted = new ArrayList<>(totals.entrySet());
+        sorted.sort((left, right) -> right.getValue().compareTo(left.getValue()));
+
+        LinkedHashMap<String, BigDecimal> result = new LinkedHashMap<>();
+        BigDecimal other = BigDecimal.ZERO;
+        int limit = 5;
+        for (int i = 0; i < sorted.size(); i++) {
+            Map.Entry<String, BigDecimal> entry = sorted.get(i);
+            if (i < limit) {
+                result.put(entry.getKey(), entry.getValue());
+            } else {
+                other = other.add(entry.getValue());
+            }
+        }
+        if (other.signum() > 0) {
+            result.put("Altro", other);
+        }
+        return result;
+    }
+
+    private Color chartColor(final int index) {
+        Color[] colors = {
+            AppTheme.PRIMARY,
+            AppTheme.ACCENT,
+            AppTheme.BUDGET,
+            AppTheme.EXPENSE,
+            AppTheme.INCOME,
+            new Color(124, 58, 237),
+            new Color(14, 165, 233)
+        };
+        return colors[index % colors.length];
+    }
+
+    private String formatCompactAmount(final double value) {
+        if (value >= 1000.0) {
+            return String.format(Locale.US, "%.1fk", value / 1000.0).replace('.', ',');
+        }
+        return String.format(Locale.US, "%.0f", value).replace('.', ',');
     }
 
     private JPanel createMetricBox(String title, String value, Color accent) {
@@ -1360,48 +1938,58 @@ public class DashboardPanel extends AppBackgroundPanel {
         root.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
         root.setBackground(Color.WHITE);
 
+        JTextField name = createDialogTextField();
         JTextField amount = createDialogTextField();
         JTextField frequency = createDialogTextField("30");
         JTextField start = createDialogTextField(LocalDate.now().toString());
-        JTextField next = createDialogTextField(LocalDate.now().toString());
         JTextField end = createDialogTextField();
         JComboBox<Categoria> category = createCategoryCombo(categories);
 
         JPanel form = createDialogFormPanel();
+        addFormRow(form, "Nome", name);
         addFormRow(form, "Importo", amount);
-        addFormRow(form, "Frequenza giorni", frequency);
-        addFormRow(form, "Data inizio", start);
-        addFormRow(form, "Prossima scadenza", next);
+        addFormRow(form, "Frequenza giorni (30 = mensile)", frequency);
+        addFormRow(form, "Data inizio / prima spesa", start);
         addFormRow(form, "Fine opzionale", end);
         addFormRow(form, "Categoria", category);
 
+        JLabel historyNote = new JLabel(
+                "Le scadenze gia' maturate dalla data iniziale vengono aggiunte automaticamente.");
+        historyNote.setForeground(AppTheme.TEXT_MUTED);
+        historyNote.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        form.add(historyNote);
+
         SoftButton saveButton = createDialogButton("Salva", AppTheme.ACCENT);
         saveButton.addActionListener(e -> saveRecurringExpense(
-                dialog, amount, frequency, start, next, end, category));
+                dialog, name, amount, frequency, start, end, category));
 
         root.add(form, BorderLayout.CENTER);
         root.add(createDialogFooter(dialog, saveButton), BorderLayout.SOUTH);
         return root;
     }
 
-    private void saveRecurringExpense(final JDialog dialog, final JTextField amountField,
-            final JTextField frequencyField, final JTextField startField,
-            final JTextField nextField, final JTextField endField,
-            final JComboBox<Categoria> categoryField) {
+    private void saveRecurringExpense(final JDialog dialog, final JTextField nameField,
+            final JTextField amountField, final JTextField frequencyField, final JTextField startField,
+            final JTextField endField, final JComboBox<Categoria> categoryField) {
         try {
+            final String name = requireDescription(nameField);
             final BigDecimal amount = parseAmount(amountField);
             final int frequency = Integer.parseInt(frequencyField.getText().trim());
             if (frequency <= 0) {
                 throw new IllegalArgumentException("La frequenza deve essere positiva.");
             }
             final LocalDate start = LocalDate.parse(startField.getText().trim());
-            final LocalDate next = LocalDate.parse(nextField.getText().trim());
             final LocalDate end = parseOptionalDate(endField);
             final Categoria category = (Categoria) categoryField.getSelectedItem();
 
-            speseRicorrentiController.aggiungiRicorrenza(
-                    currentUser.getEmail(), amount, frequency, start, next, end, category.getId());
+            speseRicorrentiController.aggiungiRicorrenzaERegistraPrimaSpesa(
+                    currentUser.getEmail(), name, amount, frequency, start, start, end,
+                    category.getId(), LocalDate.now());
             dialog.dispose();
+            JOptionPane.showMessageDialog(this,
+                    "Ricorrenza salvata. Tutte le scadenze maturate sono state registrate nelle transazioni.",
+                    "Ricorrenza creata",
+                    JOptionPane.INFORMATION_MESSAGE);
             refreshContent("CARD_RECURRING");
         } catch (final Exception ex) {
             showRecurringError(ex);
@@ -1459,16 +2047,7 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private void addPersonalCategory() {
-        final String name = JOptionPane.showInputDialog(this, "Nome nuova categoria personale:");
-        if (name == null || name.trim().isEmpty()) {
-            return;
-        }
-        try {
-            movimentiController.aggiungiCategoriaPersonale(currentUser.getEmail(), name.trim());
-            refreshContent("CARD_CATEGORIES");
-        } catch (final SQLException ex) {
-            showLoadError("categorie", ex);
-        }
+        showClassificationEditor("Categoria", 0, "", "generic_category.png");
     }
 
     private void editSelectedTransaction(final JTable table) {
@@ -1633,28 +2212,338 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private void addPersonalTag() {
-        final String name = JOptionPane.showInputDialog(this, "Nome nuovo tag personale:");
-        if (name == null || name.trim().isEmpty()) {
-            return;
-        }
-        try {
-            movimentiController.aggiungiTagPersonale(currentUser.getEmail(), name.trim());
-            refreshContent("CARD_CATEGORIES");
-        } catch (final SQLException ex) {
-            showLoadError("tag", ex);
-        }
+        showClassificationEditor("Tag", 0, "", "generic_tag.png");
     }
 
     private void addPersonalSource() {
-        final String name = JOptionPane.showInputDialog(this, "Nome nuova fonte personale:");
-        if (name == null || name.trim().isEmpty()) {
+        showClassificationEditor("Fonte", 0, "", "generic_source.png");
+    }
+
+    private void editClassification(final String type, final long id,
+            final String oldName, final String oldIcon) {
+        showClassificationEditor(type, id, oldName, oldIcon);
+    }
+
+    private void showClassificationEditor(final String type, final long id,
+            final String initialName, final String initialIcon) {
+        final boolean category = "Categoria".equals(type);
+        final boolean source = "Fonte".equals(type);
+        final List<IconChoice> choices = category
+                ? CATEGORY_ICON_CHOICES
+                : (source ? SOURCE_ICON_CHOICES : TAG_ICON_CHOICES);
+        final String defaultIcon = category
+                ? "generic_category.png"
+                : (source ? "generic_source.png" : "generic_tag.png");
+        final JTextField nameField = createDialogTextField(initialName);
+        final IconSelectionPanel iconSelector = new IconSelectionPanel(
+                choices,
+                initialIcon == null || initialIcon.isBlank() ? defaultIcon : initialIcon);
+
+        final JPanel form = createDialogFormPanel();
+        addFormRow(form, "Nome", nameField);
+        addFormRow(form, "Icona", iconSelector);
+
+        final int result = JOptionPane.showConfirmDialog(this, form,
+                id == 0 ? "Nuovo " + type.toLowerCase() : "Modifica " + type.toLowerCase(),
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        final String name = nameField.getText() == null ? "" : nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Il nome e' obbligatorio.");
             return;
         }
         try {
-            movimentiController.aggiungiFontePersonale(currentUser.getEmail(), name.trim());
-            refreshContent("CARD_SOURCES");
+            final String iconReference = iconSelector.resolveIconReference();
+            if (category) {
+                if (id == 0) {
+                    movimentiController.aggiungiCategoriaPersonale(
+                            currentUser.getEmail(), name, iconReference);
+                } else {
+                    movimentiController.modificaCategoriaPersonale(
+                            currentUser.getEmail(), id, name, iconReference);
+                }
+            } else if (source) {
+                if (id == 0) {
+                    movimentiController.aggiungiFontePersonale(
+                            currentUser.getEmail(), name, iconReference);
+                } else {
+                    movimentiController.modificaFontePersonale(
+                            currentUser.getEmail(), id, name, iconReference);
+                }
+            } else {
+                if (id == 0) {
+                    movimentiController.aggiungiTagPersonale(
+                            currentUser.getEmail(), name, iconReference);
+                } else {
+                    movimentiController.modificaTagPersonale(
+                            currentUser.getEmail(), id, name, iconReference);
+                }
+            }
+            refreshContent(source ? "CARD_SOURCES" : "CARD_CATEGORIES");
         } catch (final SQLException ex) {
-            showLoadError("fonti", ex);
+            showLoadError(type.toLowerCase(), ex);
+        } catch (final IOException | IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Icona non salvata: " + ex.getMessage(),
+                    "Errore immagine",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private JComboBox<IconChoice> createIconChoiceCombo(final List<IconChoice> choices,
+            final String selectedIcon) {
+        final JComboBox<IconChoice> combo = new JComboBox<>(choices.toArray(new IconChoice[0]));
+        combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(final JList<?> list, final Object value,
+                    final int index, final boolean isSelected, final boolean cellHasFocus) {
+                final JLabel label = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, isSelected, cellHasFocus);
+                if (value instanceof IconChoice) {
+                    final IconChoice choice = (IconChoice) value;
+                    label.setText(choice.label);
+                    label.setIcon(loadIconFile(choice.fileName, 22));
+                    label.setIconTextGap(10);
+                }
+                return label;
+            }
+        });
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (combo.getItemAt(i).fileName.equals(selectedIcon)) {
+                combo.setSelectedIndex(i);
+                break;
+            }
+        }
+        return combo;
+    }
+
+    private ImageIcon loadIconFile(final String fileName, final int size) {
+        if (IconStorage.isCustomIconReference(fileName)) {
+            final Path customPath = IconStorage.resolveCustomIcon(fileName);
+            if (customPath == null || !Files.isRegularFile(customPath)) {
+                return null;
+            }
+            final ImageIcon customIcon = new ImageIcon(customPath.toString());
+            if (customIcon.getIconWidth() <= 0 || customIcon.getIconHeight() <= 0) {
+                return null;
+            }
+            return new ImageIcon(customIcon.getImage().getScaledInstance(
+                    size, size, Image.SCALE_SMOOTH));
+        }
+
+        final String resourcePath = "/it/unibo/sage/view/icons/" + fileName;
+        ImageIcon rawIcon = null;
+        final java.net.URL url = getClass().getResource(resourcePath);
+        if (url != null) {
+            rawIcon = new ImageIcon(url);
+        } else {
+            final String relativePath = resourcePath.substring(1).replace("/", java.io.File.separator);
+            for (java.nio.file.Path path : java.util.List.of(
+                    java.nio.file.Paths.get("src", relativePath),
+                    java.nio.file.Paths.get("bin", relativePath),
+                    java.nio.file.Paths.get("build", "classes", relativePath))) {
+                if (java.nio.file.Files.exists(path)) {
+                    rawIcon = new ImageIcon(path.toString());
+                    break;
+                }
+            }
+        }
+        if (rawIcon == null || rawIcon.getIconWidth() <= 0 || rawIcon.getIconHeight() <= 0) {
+            return null;
+        }
+        return new ImageIcon(rawIcon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
+    }
+
+    /**
+     * Selettore unico usato da categorie, tag e fonti. L'utente puo' scegliere
+     * un'icona inclusa nell'app oppure trascinare una propria immagine.
+     */
+    private final class IconSelectionPanel extends JPanel {
+
+        private final JComboBox<IconChoice> presetCombo;
+        private final JLabel previewLabel = new JLabel();
+        private final JLabel statusLabel = new JLabel();
+        private File pendingCustomFile;
+        private String selectedReference;
+
+        private IconSelectionPanel(final List<IconChoice> choices,
+                final String initialIcon) {
+            super(new BorderLayout(0, 8));
+            setOpaque(false);
+            setPreferredSize(new Dimension(390, 150));
+
+            presetCombo = createIconChoiceCombo(choices, initialIcon);
+            add(presetCombo, BorderLayout.NORTH);
+
+            final JPanel dropArea = new JPanel(new BorderLayout(10, 0));
+            dropArea.setOpaque(true);
+            dropArea.setBackground(new Color(248, 250, 252));
+            dropArea.setBorder(BorderFactory.createDashedBorder(
+                    AppTheme.BORDER, 1.5f, 5.0f, 3.0f, true));
+            dropArea.setPreferredSize(new Dimension(390, 96));
+            dropArea.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            previewLabel.setPreferredSize(new Dimension(62, 62));
+            previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            previewLabel.setVerticalAlignment(SwingConstants.CENTER);
+            previewLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+            final JPanel instructions = new JPanel();
+            instructions.setOpaque(false);
+            instructions.setLayout(new BoxLayout(instructions, BoxLayout.Y_AXIS));
+
+            final JLabel title = new JLabel("Trascina qui una tua immagine");
+            title.setFont(new Font("SansSerif", Font.BOLD, 12));
+            title.setForeground(AppTheme.TEXT);
+
+            statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            statusLabel.setForeground(AppTheme.TEXT_MUTED);
+
+            final JButton chooseButton = new JButton("Scegli file");
+            chooseButton.setFocusable(false);
+            chooseButton.addActionListener(e -> chooseCustomImage());
+
+            instructions.add(Box.createVerticalGlue());
+            instructions.add(title);
+            instructions.add(Box.createVerticalStrut(4));
+            instructions.add(statusLabel);
+            instructions.add(Box.createVerticalStrut(6));
+            instructions.add(chooseButton);
+            instructions.add(Box.createVerticalGlue());
+
+            dropArea.add(previewLabel, BorderLayout.WEST);
+            dropArea.add(instructions, BorderLayout.CENTER);
+            add(dropArea, BorderLayout.CENTER);
+
+            final TransferHandler dropHandler = createImageDropHandler();
+            installTransferHandler(dropArea, dropHandler);
+
+            selectedReference = initialIcon;
+            if (IconStorage.isCustomIconReference(initialIcon)) {
+                final ImageIcon currentIcon = loadIconFile(initialIcon, 50);
+                if (currentIcon != null) {
+                    previewLabel.setIcon(currentIcon);
+                    statusLabel.setText("Icona personalizzata attuale");
+                } else {
+                    selectPreset((IconChoice) presetCombo.getSelectedItem());
+                }
+            } else {
+                selectPreset((IconChoice) presetCombo.getSelectedItem());
+            }
+
+            presetCombo.addActionListener(e ->
+                    selectPreset((IconChoice) presetCombo.getSelectedItem()));
+        }
+
+        private void selectPreset(final IconChoice choice) {
+            if (choice == null) {
+                return;
+            }
+            pendingCustomFile = null;
+            selectedReference = choice.fileName;
+            previewLabel.setIcon(loadIconFile(choice.fileName, 50));
+            statusLabel.setText("Predefinita: " + choice.label
+                    + " - oppure trascina PNG/JPG/GIF/BMP");
+        }
+
+        private void chooseCustomImage() {
+            final JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Scegli icona personalizzata");
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                    "Immagini (PNG, JPG, GIF, BMP)", "png", "jpg", "jpeg", "gif", "bmp"));
+            if (chooser.showOpenDialog(DashboardPanel.this) == JFileChooser.APPROVE_OPTION) {
+                selectCustomFile(chooser.getSelectedFile());
+            }
+        }
+
+        private TransferHandler createImageDropHandler() {
+            return new TransferHandler() {
+                @Override
+                public boolean canImport(final TransferSupport support) {
+                    return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
+                }
+
+                @Override
+                public boolean importData(final TransferSupport support) {
+                    if (!canImport(support)) {
+                        return false;
+                    }
+                    try {
+                        final Object data = support.getTransferable().getTransferData(
+                                DataFlavor.javaFileListFlavor);
+                        if (!(data instanceof java.util.List<?>)) {
+                            return false;
+                        }
+                        final java.util.List<?> files = (java.util.List<?>) data;
+                        if (files.isEmpty() || !(files.get(0) instanceof File)) {
+                            return false;
+                        }
+                        selectCustomFile((File) files.get(0));
+                        return true;
+                    } catch (final Exception ex) {
+                        showImageSelectionError(ex.getMessage());
+                        return false;
+                    }
+                }
+            };
+        }
+
+        private void installTransferHandler(final Component component,
+                final TransferHandler handler) {
+            if (component instanceof JComponent) {
+                ((JComponent) component).setTransferHandler(handler);
+            }
+            if (component instanceof Container) {
+                for (Component child : ((Container) component).getComponents()) {
+                    installTransferHandler(child, handler);
+                }
+            }
+        }
+
+        private void selectCustomFile(final File file) {
+            try {
+                if (file == null || !file.isFile()) {
+                    throw new IOException("File non valido");
+                }
+                if (file.length() > 10L * 1024L * 1024L) {
+                    throw new IOException("L'immagine supera il limite di 10 MB");
+                }
+                final ImageIcon rawIcon = new ImageIcon(file.getAbsolutePath());
+                if (rawIcon.getIconWidth() <= 0 || rawIcon.getIconHeight() <= 0) {
+                    throw new IOException("Formato immagine non supportato");
+                }
+                pendingCustomFile = file;
+                selectedReference = null;
+                previewLabel.setIcon(new ImageIcon(rawIcon.getImage().getScaledInstance(
+                        50, 50, Image.SCALE_SMOOTH)));
+                statusLabel.setText("Personalizzata: " + file.getName());
+            } catch (final IOException ex) {
+                showImageSelectionError(ex.getMessage());
+            }
+        }
+
+        private void showImageSelectionError(final String message) {
+            JOptionPane.showMessageDialog(DashboardPanel.this,
+                    "Immagine non valida: " + message,
+                    "Errore immagine",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+
+        private String resolveIconReference() throws IOException {
+            if (pendingCustomFile != null) {
+                return IconStorage.saveCustomIcon(pendingCustomFile);
+            }
+            if (selectedReference == null || selectedReference.isBlank()) {
+                final IconChoice choice = (IconChoice) presetCombo.getSelectedItem();
+                if (choice == null) {
+                    throw new IOException("Seleziona un'icona");
+                }
+                return choice.fileName;
+            }
+            return selectedReference;
         }
     }
 
@@ -1737,12 +2626,21 @@ public class DashboardPanel extends AppBackgroundPanel {
         deleteClassification(type, id);
     }
 
+    private void generateDueRecurringExpensesOnStartup() {
+        try {
+            speseRicorrentiController.generaSpeseScadute(currentUser.getEmail(), LocalDate.now());
+        } catch (final SQLException ex) {
+            System.err.println("Generazione automatica delle ricorrenze non completata: "
+                    + ex.getMessage());
+        }
+    }
+
     private List<Transazione> loadTransactions() {
         try {
             return movimentiController.caricaTransazioni(
                     currentUser.getEmail(),
-                    LocalDate.of(2026, 1, 1),
-                    LocalDate.of(2026, 12, 31));
+                    LocalDate.of(1900, 1, 1),
+                    LocalDate.of(2100, 12, 31));
         } catch (final SQLException ex) {
             showLoadError("transazioni", ex);
             return List.of();
@@ -1837,5 +2735,295 @@ public class DashboardPanel extends AppBackgroundPanel {
                 "Errore durante il caricamento di " + dataType + ": " + ex.getMessage(),
                 "Errore database",
                 JOptionPane.ERROR_MESSAGE);
+    }
+
+    private enum OverviewFilter {
+        MONTH,
+        YEAR,
+        ALL
+    }
+
+    private static final class DayExpense {
+        private final int day;
+        private final BigDecimal income;
+        private final BigDecimal expense;
+
+        private DayExpense(final int day, final BigDecimal income, final BigDecimal expense) {
+            this.day = day;
+            this.income = income;
+            this.expense = expense;
+        }
+    }
+
+    private final class DailyExpenseChartPanel extends JPanel {
+        private final List<DayExpense> dailyExpenses;
+
+        private DailyExpenseChartPanel(final List<DayExpense> dailyExpenses) {
+            this.dailyExpenses = dailyExpenses;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(final Graphics graphics) {
+            super.paintComponent(graphics);
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            int width = getWidth();
+            int height = getHeight();
+            int left = 42;
+            int right = 16;
+            int top = 18;
+            int bottom = 32;
+            int chartWidth = width - left - right;
+            int chartHeight = height - top - bottom;
+
+            double maxValue = 0.0;
+            for (DayExpense dayExpense : dailyExpenses) {
+                maxValue = Math.max(maxValue, dayExpense.income.doubleValue());
+                maxValue = Math.max(maxValue, dayExpense.expense.doubleValue());
+            }
+            if (maxValue <= 0.0) {
+                g2.setColor(AppTheme.TEXT_MUTED);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                g2.drawString("Nessuna entrata o spesa registrata nel mese selezionato.", 16, height / 2);
+                g2.dispose();
+                return;
+            }
+
+            for (int i = 0; i <= 4; i++) {
+                int y = top + (int) Math.round(chartHeight * i / 4.0);
+                g2.setColor(new Color(225, 232, 240));
+                g2.drawLine(left, y, width - right, y);
+
+                double labelValue = maxValue * (4 - i) / 4.0;
+                g2.setColor(AppTheme.TEXT_MUTED);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+                g2.drawString(formatCompactAmount(labelValue), 4, y + 4);
+            }
+
+            int days = Math.max(1, dailyExpenses.size());
+            double slotWidth = chartWidth / (double) days;
+            int barWidth = Math.max(2, Math.min(8, (int) Math.floor(slotWidth * 0.34)));
+            int chartBottom = top + chartHeight;
+
+            for (int i = 0; i < dailyExpenses.size(); i++) {
+                DayExpense dayExpense = dailyExpenses.get(i);
+                int groupWidth = barWidth * 2 + 2;
+                int baseX = left + (int) Math.round(i * slotWidth + (slotWidth - groupWidth) / 2.0);
+                int incomeHeight = (int) Math.round(chartHeight * (dayExpense.income.doubleValue() / maxValue));
+                int expenseHeight = (int) Math.round(chartHeight * (dayExpense.expense.doubleValue() / maxValue));
+
+                if (incomeHeight > 0) {
+                    g2.setColor(AppTheme.INCOME);
+                    g2.fillRoundRect(baseX, chartBottom - incomeHeight, barWidth, incomeHeight, 5, 5);
+                }
+                if (expenseHeight > 0) {
+                    g2.setColor(AppTheme.EXPENSE);
+                    g2.fillRoundRect(baseX + barWidth + 2, chartBottom - expenseHeight,
+                            barWidth, expenseHeight, 5, 5);
+                }
+
+                boolean showLabel = dayExpense.day == 1
+                        || dayExpense.day == dailyExpenses.size()
+                        || dayExpense.day % 5 == 0;
+                if (showLabel) {
+                    String label = String.valueOf(dayExpense.day);
+                    g2.setColor(AppTheme.TEXT_MUTED);
+                    g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
+                    int labelWidth = g2.getFontMetrics().stringWidth(label);
+                    int labelX = left + (int) Math.round((i + 0.5) * slotWidth) - labelWidth / 2;
+                    g2.drawString(label, labelX, height - 8);
+                }
+            }
+
+            g2.setColor(AppTheme.INCOME);
+            g2.fillRoundRect(width - 130, 4, 12, 12, 4, 4);
+            g2.setColor(AppTheme.TEXT_MUTED);
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            g2.drawString("Entrate", width - 112, 14);
+            g2.setColor(AppTheme.EXPENSE);
+            g2.fillRoundRect(width - 62, 4, 12, 12, 4, 4);
+            g2.setColor(AppTheme.TEXT_MUTED);
+            g2.drawString("Spese", width - 44, 14);
+
+            g2.dispose();
+        }
+    }
+
+    private static final class MonthTotals {
+        private final String label;
+        private final BigDecimal income;
+        private final BigDecimal expense;
+
+        private MonthTotals(final String label, final BigDecimal income, final BigDecimal expense) {
+            this.label = label;
+            this.income = income;
+            this.expense = expense;
+        }
+    }
+
+    private final class MonthlyTrendChartPanel extends JPanel {
+        private final List<MonthTotals> monthTotals;
+
+        private MonthlyTrendChartPanel(final List<MonthTotals> monthTotals) {
+            this.monthTotals = monthTotals;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(final Graphics graphics) {
+            super.paintComponent(graphics);
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            int width = getWidth();
+            int height = getHeight();
+            int left = 42;
+            int right = 16;
+            int top = 18;
+            int bottom = 32;
+            int chartWidth = width - left - right;
+            int chartHeight = height - top - bottom;
+
+            double maxValue = 0.0;
+            for (MonthTotals totals : monthTotals) {
+                maxValue = Math.max(maxValue, totals.income.doubleValue());
+                maxValue = Math.max(maxValue, totals.expense.doubleValue());
+            }
+            if (maxValue <= 0.0) {
+                g2.setColor(AppTheme.TEXT_MUTED);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                g2.drawString("Nessun dato disponibile per il grafico.", 16, height / 2);
+                g2.dispose();
+                return;
+            }
+
+            g2.setColor(new Color(225, 232, 240));
+            for (int i = 0; i <= 4; i++) {
+                int y = top + (int) Math.round(chartHeight * i / 4.0);
+                g2.drawLine(left, y, width - right, y);
+                double labelValue = maxValue * (4 - i) / 4.0;
+                g2.setColor(AppTheme.TEXT_MUTED);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+                g2.drawString(formatCompactAmount(labelValue), 4, y + 4);
+                g2.setColor(new Color(225, 232, 240));
+            }
+
+            int months = Math.max(1, monthTotals.size());
+            int groupWidth = Math.max(32, chartWidth / months);
+            int barWidth = Math.max(10, Math.min(24, (groupWidth - 12) / 2));
+            int chartBottom = top + chartHeight;
+
+            for (int i = 0; i < monthTotals.size(); i++) {
+                MonthTotals totals = monthTotals.get(i);
+                int baseX = left + i * groupWidth + Math.max(6, (groupWidth - (barWidth * 2 + 6)) / 2);
+                int incomeHeight = (int) Math.round(chartHeight * (totals.income.doubleValue() / maxValue));
+                int expenseHeight = (int) Math.round(chartHeight * (totals.expense.doubleValue() / maxValue));
+
+                g2.setColor(AppTheme.INCOME);
+                g2.fillRoundRect(baseX, chartBottom - incomeHeight, barWidth, incomeHeight, 8, 8);
+                g2.setColor(AppTheme.EXPENSE);
+                g2.fillRoundRect(baseX + barWidth + 6, chartBottom - expenseHeight, barWidth, expenseHeight, 8, 8);
+
+                g2.setColor(AppTheme.TEXT_MUTED);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+                int labelWidth = g2.getFontMetrics().stringWidth(totals.label);
+                int labelX = left + i * groupWidth + (groupWidth - labelWidth) / 2;
+                g2.drawString(totals.label, labelX, height - 8);
+            }
+
+            g2.setColor(AppTheme.INCOME);
+            g2.fillRoundRect(width - 130, 4, 12, 12, 4, 4);
+            g2.setColor(AppTheme.TEXT_MUTED);
+            g2.drawString("Entrate", width - 112, 14);
+            g2.setColor(AppTheme.EXPENSE);
+            g2.fillRoundRect(width - 62, 4, 12, 12, 4, 4);
+            g2.setColor(AppTheme.TEXT_MUTED);
+            g2.drawString("Spese", width - 44, 14);
+
+            g2.dispose();
+        }
+    }
+
+    private final class ExpenseDistributionChartPanel extends JPanel {
+        private final List<Map.Entry<String, BigDecimal>> slices;
+
+        private ExpenseDistributionChartPanel(final LinkedHashMap<String, BigDecimal> expensesByCategory) {
+            this.slices = new ArrayList<>(expensesByCategory.entrySet());
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(final Graphics graphics) {
+            super.paintComponent(graphics);
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            if (slices.isEmpty()) {
+                g2.setColor(AppTheme.TEXT_MUTED);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                g2.drawString("Nessuna spesa disponibile.", 12, getHeight() / 2);
+                g2.dispose();
+                return;
+            }
+
+            int size = Math.min(getWidth(), getHeight()) - 28;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+            BigDecimal total = BigDecimal.ZERO;
+            for (Map.Entry<String, BigDecimal> entry : slices) {
+                total = total.add(entry.getValue());
+            }
+
+            double startAngle = 90.0;
+            for (int i = 0; i < slices.size(); i++) {
+                Map.Entry<String, BigDecimal> entry = slices.get(i);
+                double angle = entry.getValue().doubleValue() * 360.0 / total.doubleValue();
+                g2.setColor(chartColor(i));
+                g2.fillArc(x, y, size, size, (int) Math.round(startAngle), (int) -Math.round(angle));
+                startAngle -= angle;
+            }
+
+            int innerSize = (int) (size * 0.56);
+            int innerX = x + (size - innerSize) / 2;
+            int innerY = y + (size - innerSize) / 2;
+            g2.setColor(new Color(255, 255, 255, 235));
+            g2.fillOval(innerX, innerY, innerSize, innerSize);
+
+            g2.setColor(AppTheme.TEXT_MUTED);
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            String line1 = "Totale spese";
+            String line2 = formatEuro(total);
+            FontMetrics fm = g2.getFontMetrics();
+            int line1Width = fm.stringWidth(line1);
+            g2.drawString(line1, getWidth() / 2 - line1Width / 2, getHeight() / 2 - 6);
+
+            g2.setColor(AppTheme.TEXT);
+            g2.setFont(new Font("SansSerif", Font.BOLD, 14));
+            fm = g2.getFontMetrics();
+            int line2Width = fm.stringWidth(line2);
+            g2.drawString(line2, getWidth() / 2 - line2Width / 2, getHeight() / 2 + 14);
+
+            g2.dispose();
+        }
+    }
+
+    private static final class IconChoice {
+        private final String label;
+        private final String fileName;
+
+        private IconChoice(final String label, final String fileName) {
+            this.label = label;
+            this.fileName = fileName;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 }

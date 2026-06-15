@@ -38,6 +38,10 @@ public final class TestSuite {
         run("DashboardSourceInspectionTest", () -> DashboardSourceInspectionTest.runAll());
         passed++;
 
+        run("RequestedFeaturesSourceInspectionTest",
+                () -> RequestedFeaturesSourceInspectionTest.runAll());
+        passed++;
+
         run("IconResourceTest", () -> IconResourceTest.runAll());
         passed++;
 

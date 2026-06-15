@@ -11,10 +11,14 @@ import java.util.List;
 public class JdbcCategoriaDAO implements CategoriaDAO {
 
     private static final String FIND_DISPONIBILI_SQL =
-            "SELECT ID_Categoria, Nome, is_system, Email_Proprietario "
-            + "FROM CATEGORIA "
-            + "WHERE is_system = TRUE OR Email_Proprietario = ? "
-            + "ORDER BY is_system DESC, Nome";
+            "SELECT C.ID_Categoria, C.Nome, C.is_system, C.Email_Proprietario, C.Icona "
+            + "FROM CATEGORIA C "
+            + "WHERE (C.is_system = TRUE OR C.Email_Proprietario = ?) "
+            + "AND NOT (C.is_system = FALSE AND EXISTS ("
+            + "SELECT 1 FROM CATEGORIA CS "
+            + "WHERE CS.is_system = TRUE "
+            + "AND LOWER(TRIM(CS.Nome)) = LOWER(TRIM(C.Nome)))) "
+            + "ORDER BY C.is_system DESC, C.Nome";
 
     private final Connection connection;
 
@@ -42,6 +46,7 @@ public class JdbcCategoriaDAO implements CategoriaDAO {
                 resultSet.getLong("ID_Categoria"),
                 resultSet.getString("Nome"),
                 resultSet.getBoolean("is_system"),
-                resultSet.getString("Email_Proprietario"));
+                resultSet.getString("Email_Proprietario"),
+                resultSet.getString("Icona"));
     }
 }

@@ -14,14 +14,14 @@ import java.util.List;
 public class JdbcSpesaRicorrenteDAO implements SpesaRicorrenteDAO {
 
     private static final String FIND_BY_EMAIL_SQL =
-            "SELECT ID_Ricorrenza, Importo_Previsto, Frequenza_Giorni, Data_Inizio, "
+            "SELECT ID_Ricorrenza, Nome, Importo_Previsto, Frequenza_Giorni, Data_Inizio, "
             + "Data_Prossima_Scadenza, Scadenza, ID_Categoria, Email "
             + "FROM SPESA_RICORRENTE "
             + "WHERE Email = ? "
             + "ORDER BY Data_Prossima_Scadenza, ID_Ricorrenza";
 
     private static final String FIND_SCADUTE_SQL =
-            "SELECT ID_Ricorrenza, Importo_Previsto, Frequenza_Giorni, Data_Inizio, "
+            "SELECT ID_Ricorrenza, Nome, Importo_Previsto, Frequenza_Giorni, Data_Inizio, "
             + "Data_Prossima_Scadenza, Scadenza, ID_Categoria, Email "
             + "FROM SPESA_RICORRENTE "
             + "WHERE Email = ? "
@@ -31,9 +31,9 @@ public class JdbcSpesaRicorrenteDAO implements SpesaRicorrenteDAO {
 
     private static final String INSERT_SQL =
             "INSERT INTO SPESA_RICORRENTE "
-            + "(Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza, "
+            + "(Nome, Importo_Previsto, Frequenza_Giorni, Data_Inizio, Data_Prossima_Scadenza, "
             + "Scadenza, ID_Categoria, Email) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String UPDATE_NEXT_DATE_SQL =
             "UPDATE SPESA_RICORRENTE "
@@ -83,13 +83,14 @@ public class JdbcSpesaRicorrenteDAO implements SpesaRicorrenteDAO {
     public long inserisci(final SpesaRicorrente spesaRicorrente) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
                 INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
-            statement.setBigDecimal(1, spesaRicorrente.getImportoPrevisto());
-            statement.setInt(2, spesaRicorrente.getFrequenzaGiorni());
-            statement.setDate(3, Date.valueOf(spesaRicorrente.getDataInizio()));
-            statement.setDate(4, Date.valueOf(spesaRicorrente.getDataProssimaScadenza()));
-            setNullableDate(statement, 5, spesaRicorrente.getScadenza());
-            statement.setLong(6, spesaRicorrente.getIdCategoria());
-            statement.setString(7, spesaRicorrente.getEmail());
+            statement.setString(1, spesaRicorrente.getNome());
+            statement.setBigDecimal(2, spesaRicorrente.getImportoPrevisto());
+            statement.setInt(3, spesaRicorrente.getFrequenzaGiorni());
+            statement.setDate(4, Date.valueOf(spesaRicorrente.getDataInizio()));
+            statement.setDate(5, Date.valueOf(spesaRicorrente.getDataProssimaScadenza()));
+            setNullableDate(statement, 6, spesaRicorrente.getScadenza());
+            statement.setLong(7, spesaRicorrente.getIdCategoria());
+            statement.setString(8, spesaRicorrente.getEmail());
             statement.executeUpdate();
 
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -128,6 +129,7 @@ public class JdbcSpesaRicorrenteDAO implements SpesaRicorrenteDAO {
     private SpesaRicorrente mapSpesaRicorrente(final ResultSet resultSet) throws SQLException {
         return new SpesaRicorrente(
                 resultSet.getLong("ID_Ricorrenza"),
+                resultSet.getString("Nome"),
                 resultSet.getBigDecimal("Importo_Previsto"),
                 resultSet.getInt("Frequenza_Giorni"),
                 resultSet.getDate("Data_Inizio").toLocalDate(),

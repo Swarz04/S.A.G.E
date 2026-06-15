@@ -6,6 +6,7 @@ import java.time.LocalDate;
 public class SpesaRicorrente {
 
     private long id;
+    private String nome;
     private BigDecimal importoPrevisto;
     private int frequenzaGiorni;
     private LocalDate dataInizio;
@@ -18,7 +19,16 @@ public class SpesaRicorrente {
             final int frequenzaGiorni, final LocalDate dataInizio,
             final LocalDate dataProssimaScadenza, final LocalDate scadenza,
             final long idCategoria, final String email) {
+        this(id, "Spesa ricorrente", importoPrevisto, frequenzaGiorni, dataInizio,
+                dataProssimaScadenza, scadenza, idCategoria, email);
+    }
+
+    public SpesaRicorrente(final long id, final String nome, final BigDecimal importoPrevisto,
+            final int frequenzaGiorni, final LocalDate dataInizio,
+            final LocalDate dataProssimaScadenza, final LocalDate scadenza,
+            final long idCategoria, final String email) {
         this.id = id;
+        this.nome = nome;
         this.importoPrevisto = importoPrevisto;
         this.frequenzaGiorni = frequenzaGiorni;
         this.dataInizio = dataInizio;
@@ -30,6 +40,10 @@ public class SpesaRicorrente {
 
     public long getId() {
         return id;
+    }
+
+    public String getNome() {
+        return nome;
     }
 
     public BigDecimal getImportoPrevisto() {

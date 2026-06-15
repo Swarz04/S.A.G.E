@@ -12,7 +12,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 public class ConfigurazioneInizialeService {
@@ -22,7 +21,8 @@ public class ConfigurazioneInizialeService {
 
     private static final String EXISTS_CATEGORIA_SQL =
             "SELECT 1 FROM CATEGORIA "
-            + "WHERE Nome = ? AND is_system = FALSE AND Email_Proprietario = ? "
+            + "WHERE LOWER(TRIM(Nome)) = LOWER(TRIM(?)) "
+            + "AND (is_system = TRUE OR Email_Proprietario = ?) "
             + "LIMIT 1";
 
     private static final String INSERT_CATEGORIA_SQL =
@@ -40,7 +40,8 @@ public class ConfigurazioneInizialeService {
 
     private static final String EXISTS_TAG_SQL =
             "SELECT 1 FROM TAG "
-            + "WHERE Nome = ? AND is_system = FALSE AND Email_Proprietario = ? "
+            + "WHERE LOWER(TRIM(Nome)) = LOWER(TRIM(?)) "
+            + "AND (is_system = TRUE OR Email_Proprietario = ?) "
             + "LIMIT 1";
 
     private static final String INSERT_TAG_SQL =
@@ -113,18 +114,16 @@ public class ConfigurazioneInizialeService {
 
     private List<String> tagPerGruppo(final String gruppoTag) {
         if ("studio".equalsIgnoreCase(gruppoTag)) {
-            return List.of("Studio", "Essenziale", "Extra");
+            return List.of("Studio", "Esame", "Extra");
         }
         if ("lavoro".equalsIgnoreCase(gruppoTag)) {
-            return List.of("Lavoro", "Essenziale", "Extra");
+            return List.of("Lavoro", "Extra");
         }
-        if ("essenziali".equalsIgnoreCase(gruppoTag)) {
-            return List.of("Essenziale", "Casa", "Trasporti");
+        if ("casa e trasporti".equalsIgnoreCase(gruppoTag)
+                || "essenziali".equalsIgnoreCase(gruppoTag)) {
+            return List.of("Casa", "Trasporti");
         }
-        final List<String> base = new ArrayList<>();
-        base.add("Essenziale");
-        base.add("Extra");
-        return base;
+        return List.of("Extra", "Da rivedere");
     }
 
     private void salvaBudgetMensile(final Connection connection, final String email,

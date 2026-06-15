@@ -29,17 +29,37 @@ public class MovimentiController {
         movimentiService.aggiungiCategoriaPersonale(email, nome);
     }
 
+    public void aggiungiCategoriaPersonale(final String email, final String nome,
+            final String icona) throws SQLException {
+        movimentiService.aggiungiCategoriaPersonale(email, nome, icona);
+    }
+
     public void aggiungiTagPersonale(final String email, final String nome) throws SQLException {
         movimentiService.aggiungiTagPersonale(email, nome);
+    }
+
+    public void aggiungiTagPersonale(final String email, final String nome,
+            final String icona) throws SQLException {
+        movimentiService.aggiungiTagPersonale(email, nome, icona);
     }
 
     public void aggiungiFontePersonale(final String email, final String nome) throws SQLException {
         movimentiService.aggiungiFontePersonale(email, nome);
     }
 
+    public void aggiungiFontePersonale(final String email, final String nome,
+            final String icona) throws SQLException {
+        movimentiService.aggiungiFontePersonale(email, nome, icona);
+    }
+
     public void rinominaCategoriaPersonale(final String email, final long idCategoria,
             final String nome) throws SQLException {
         movimentiService.rinominaCategoriaPersonale(email, idCategoria, nome);
+    }
+
+    public void modificaCategoriaPersonale(final String email, final long idCategoria,
+            final String nome, final String icona) throws SQLException {
+        movimentiService.modificaCategoriaPersonale(email, idCategoria, nome, icona);
     }
 
     public void eliminaCategoriaPersonale(final String email, final long idCategoria)
@@ -52,6 +72,11 @@ public class MovimentiController {
         movimentiService.rinominaTagPersonale(email, idTag, nome);
     }
 
+    public void modificaTagPersonale(final String email, final long idTag,
+            final String nome, final String icona) throws SQLException {
+        movimentiService.modificaTagPersonale(email, idTag, nome, icona);
+    }
+
     public void eliminaTagPersonale(final String email, final long idTag) throws SQLException {
         movimentiService.eliminaTagPersonale(email, idTag);
     }
@@ -59,6 +84,11 @@ public class MovimentiController {
     public void rinominaFontePersonale(final String email, final long idFonte,
             final String nome) throws SQLException {
         movimentiService.rinominaFontePersonale(email, idFonte, nome);
+    }
+
+    public void modificaFontePersonale(final String email, final long idFonte,
+            final String nome, final String icona) throws SQLException {
+        movimentiService.modificaFontePersonale(email, idFonte, nome, icona);
     }
 
     public void eliminaFontePersonale(final String email, final long idFonte) throws SQLException {
