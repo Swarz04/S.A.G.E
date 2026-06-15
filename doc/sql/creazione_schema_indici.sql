@@ -1,5 +1,7 @@
--- Script generato dal modello concettuale e ritoccato per MySQL.
--- Lo tengo come traccia della prima trasformazione verso lo schema relazionale.
+-- SCRIPT STORICO, NON UFFICIALE PER L'ESECUZIONE.
+-- Lo schema ufficiale del progetto e' doc/sql/schema_completo.sql.
+-- Questo file resta solo come traccia della prima trasformazione dal modello
+-- concettuale verso uno schema relazionale.
 
 DROP DATABASE IF EXISTS Concettuale_Sistema_di_Analisi_e_Gestione_delle_spese_personali;
 CREATE DATABASE Concettuale_Sistema_di_Analisi_e_Gestione_delle_spese_personali;

@@ -14,18 +14,22 @@ public final class DashboardSourceInspectionTest {
         testDashboardGestisceClickSuCategoriaTagFonte();
         testDashboardMappaIconePrincipali();
         testDashboardHaFallbackIcone();
+        testDashboardPermetteSceltaIcone();
+        testDashboardPermetteIconeFonteETrascinamento();
+        testDashboardMostraNomeRicorrenza();
     }
 
     private static void testDashboardGestisceClickSuCategoriaTagFonte() throws IOException {
-        final String source = readDashboard();
+        final String source = readDashboard()
+                + readSource("src/it/unibo/sage/service/DashboardDataService.java");
         TestAssertions.assertTrue(source.contains("showClassificationTransactions"),
                 "DashboardPanel deve contenere il metodo per mostrare transazioni correlate");
         TestAssertions.assertTrue(source.contains("caricaTransazioniPerCategoria"),
-                "DashboardPanel deve caricare transazioni per categoria al click");
+                "La dashboard deve caricare transazioni per categoria al click");
         TestAssertions.assertTrue(source.contains("caricaTransazioniPerTag"),
-                "DashboardPanel deve caricare transazioni per tag al click");
+                "La dashboard deve caricare transazioni per tag al click");
         TestAssertions.assertTrue(source.contains("caricaTransazioniPerFonte"),
-                "DashboardPanel deve caricare transazioni per fonte al click");
+                "La dashboard deve caricare transazioni per fonte al click");
     }
 
     private static void testDashboardMappaIconePrincipali() throws IOException {
@@ -51,9 +55,48 @@ public final class DashboardSourceInspectionTest {
                 "DashboardPanel deve provare più percorsi per caricare risorse icona");
     }
 
+    private static void testDashboardPermetteSceltaIcone() throws IOException {
+        final String source = readDashboard();
+        TestAssertions.assertTrue(source.contains("CATEGORY_ICON_CHOICES"),
+                "DashboardPanel deve offrire icone selezionabili per le categorie");
+        TestAssertions.assertTrue(source.contains("TAG_ICON_CHOICES"),
+                "DashboardPanel deve offrire icone selezionabili per i tag");
+        TestAssertions.assertTrue(source.contains("createIconChoiceCombo"),
+                "DashboardPanel deve mostrare il selettore delle icone");
+        TestAssertions.assertTrue(source.contains("modificaCategoriaPersonale")
+                        && source.contains("modificaTagPersonale"),
+                "Il nome e l'icona devono poter essere aggiornati insieme");
+    }
+
+    private static void testDashboardPermetteIconeFonteETrascinamento() throws IOException {
+        final String source = readDashboard();
+        TestAssertions.assertTrue(source.contains("SOURCE_ICON_CHOICES")
+                        && source.contains("modificaFontePersonale"),
+                "Le fonti devono permettere scelta e modifica dell'icona");
+        TestAssertions.assertTrue(source.contains("DataFlavor.javaFileListFlavor")
+                        && source.contains("Trascina qui una tua immagine")
+                        && source.contains("IconStorage.saveCustomIcon"),
+                "Categorie, tag e fonti devono accettare immagini trascinate");
+    }
+
+    private static void testDashboardMostraNomeRicorrenza() throws IOException {
+        final String source = readDashboard();
+        TestAssertions.assertTrue(source.contains("ricorrenza.getNome()"),
+                "La tabella delle ricorrenze deve mostrare il nome, ad esempio Netflix");
+        TestAssertions.assertTrue(source.contains("addFormRow(form, \"Nome\""),
+                "Il form delle ricorrenze deve chiedere un nome leggibile");
+        TestAssertions.assertTrue(source.contains("generateDueRecurringExpensesOnStartup"),
+                "Le ricorrenze scadute devono generare transazioni automaticamente");
+    }
+
     private static String readDashboard() throws IOException {
-        final Path path = Path.of("src", "it", "unibo", "sage", "view", "DashboardPanel.java");
-        TestAssertions.assertTrue(Files.isRegularFile(path), "DashboardPanel.java deve esistere");
+        return readSource("src/it/unibo/sage/view/dashboard/DashboardPanel.java")
+                + readSource("src/it/unibo/sage/view/dashboard/ClassificationIconSupport.java");
+    }
+
+    private static String readSource(final String fileName) throws IOException {
+        final Path path = Path.of(fileName);
+        TestAssertions.assertTrue(Files.isRegularFile(path), "File sorgente mancante: " + path);
         return Files.readString(path, StandardCharsets.UTF_8);
     }
 }

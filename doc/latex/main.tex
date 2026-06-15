@@ -413,7 +413,7 @@ L'email è scelta come chiave primaria di \textsc{UTENTE}, perché identifica di
 Le associazioni 1:N sono tradotte tramite chiavi esterne. Le associazioni N:M, come quella tra spese e tag, sono tradotte tramite tabella ponte. I vincoli applicativi più specifici sono rafforzati tramite trigger e controlli SQL.
 
 \subsection{Schema relazionale finale}
-Lo schema relazionale finale comprende le relazioni \textsc{UTENTE}, \textsc{PERIODO}, \textsc{CATEGORIA}, \textsc{FONTE}, \textsc{TAG}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} e \textsc{SPESA\_RICORRENTE}. La struttura è coerente con lo script \texttt{schema.sql}, che definisce chiavi primarie, chiavi esterne, vincoli CHECK e indici.
+Lo schema relazionale finale comprende le relazioni \textsc{UTENTE}, \textsc{PERIODO}, \textsc{CATEGORIA}, \textsc{FONTE}, \textsc{TAG}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} e \textsc{SPESA\_RICORRENTE}. La struttura è coerente con lo script ufficiale \texttt{doc/sql/schema\_completo.sql}, che definisce chiavi primarie, chiavi esterne, vincoli CHECK e indici.
 
 \subsection{Vincoli di integrità}
 I vincoli principali sono:
@@ -666,10 +666,10 @@ Sviluppi futuri includono:
 
 \appendix
 \section{Script SQL completo}
-Gli script completi sono mantenuti nella cartella \texttt{doc/schemes}. In particolare, \texttt{schema.sql} contiene la versione pulita dello schema, mentre gli altri file raccolgono popolamento, trigger, viste e query operative.
+Gli script completi sono mantenuti nella cartella \texttt{doc/sql}. In particolare, \texttt{schema\_completo.sql} contiene la versione pulita e ufficiale dello schema, mentre \texttt{popolamento.sql}, \texttt{trigger\_viste.sql} e \texttt{query\_operazioni.sql} raccolgono dati demo, trigger, viste e query operative. Il file \texttt{creazione\_schema\_indici.sql} resta solo come traccia storica della prima trasformazione e non è lo script da eseguire per la consegna.
 
 \section{Query SQL complete}
-Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{Querry\_Operazioni\_SAGE.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
+Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{doc/sql/query\_operazioni.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
 
 \section{Screenshot dell'applicazione}
 Gli screenshot dell'applicazione possono essere inseriti in questa sezione durante la consegna finale. Le schermate più rilevanti sono login, dashboard, budget e gestione documenti.

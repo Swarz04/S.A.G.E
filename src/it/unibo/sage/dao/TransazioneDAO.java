@@ -26,6 +26,8 @@ public interface TransazioneDAO {
 
     List<Long> findTagIds(long idTransazione, String email) throws SQLException;
 
+    List<LocalDate> findDateByRicorrenza(String email, long idRicorrenza) throws SQLException;
+
     void aggiorna(Transazione transazione) throws SQLException;
 
     void eliminaTag(long idTransazione) throws SQLException;

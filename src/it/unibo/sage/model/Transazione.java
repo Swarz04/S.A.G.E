@@ -14,10 +14,18 @@ public class Transazione {
     private Long idCategoria;
     private long idPeriodo;
     private Long idFonte;
+    private Long idRicorrenza;
 
     public Transazione(final long id, final TipoTransazione tipo, final BigDecimal importo,
             final LocalDate data, final String descrizione, final String email,
             final Long idCategoria, final long idPeriodo, final Long idFonte) {
+        this(id, tipo, importo, data, descrizione, email, idCategoria, idPeriodo, idFonte, null);
+    }
+
+    public Transazione(final long id, final TipoTransazione tipo, final BigDecimal importo,
+            final LocalDate data, final String descrizione, final String email,
+            final Long idCategoria, final long idPeriodo, final Long idFonte,
+            final Long idRicorrenza) {
         this.id = id;
         this.tipo = tipo;
         this.importo = importo;
@@ -27,6 +35,7 @@ public class Transazione {
         this.idCategoria = idCategoria;
         this.idPeriodo = idPeriodo;
         this.idFonte = idFonte;
+        this.idRicorrenza = idRicorrenza;
     }
 
     public long getId() {
@@ -63,5 +72,9 @@ public class Transazione {
 
     public Long getIdFonte() {
         return idFonte;
+    }
+
+    public Long getIdRicorrenza() {
+        return idRicorrenza;
     }
 }

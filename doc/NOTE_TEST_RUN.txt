@@ -13,3 +13,9 @@ Aggiunti test aggiuntivi rispetto alla prima versione:
 - DatabaseContentSmokeTest opzionale con DB reale
 
 La suite base ora passa senza database. I test con database si attivano solo con -Dsage.db.tests=true.
+
+Aggiornamento funzioni richieste:
+- aggiunto RequestedFeaturesSourceInspectionTest;
+- estesi i test per nome ricorrenza, ID_Ricorrenza, icone e rimozione di Essenziale;
+- estesi i controlli sugli script SQL e sulla migrazione incrementale;
+- suite base verificata: 13 gruppi superati, test DB opzionali esclusi.

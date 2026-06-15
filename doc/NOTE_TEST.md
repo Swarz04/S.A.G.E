@@ -21,9 +21,10 @@ test/it/unibo/sage/test/
 - `SpeseRicorrentiServiceTest`: test sulla logica delle ricorrenze e validazioni.
 - `ConfigurazioneInizialeMappingTest`: test sulle mappature automatiche della configurazione iniziale.
 - `DaoContractTest`: verifica che i DAO espongano i metodi usati da service e UI.
-- `DashboardSourceInspectionTest`: verifica cablaggio click categoria/tag/fonte e fallback icone.
+- `DashboardSourceInspectionTest`: verifica cablaggio click categoria/tag/fonte, selettori icone e nome delle ricorrenze.
+- `RequestedFeaturesSourceInspectionTest`: verifica che le ricorrenze creino transazioni collegate e che i duplicati siano bloccati.
 - `IconResourceTest`: verifica presenza delle icone PNG essenziali.
-- `SqlScriptConsistencyTest`: verifica coerenza minima degli script SQL principali.
+- `SqlScriptConsistencyTest`: verifica coerenza degli script SQL principali, delle nuove colonne e della migrazione.
 - `DatabaseConnectionSmokeTest`: opzionale, richiede XAMPP/MySQL acceso.
 - `DatabaseContentSmokeTest`: opzionale, richiede database popolato.
 

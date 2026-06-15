@@ -62,14 +62,14 @@
 \contentsline {subsubsection}{\numberline {6.7.5}Analisi percentuale}{10}{subsubsection.6.7.5}%
 \contentsline {subsubsection}{\numberline {6.7.6}Query di supporto}{11}{subsubsection.6.7.6}%
 \contentsline {subsubsection}{\numberline {6.7.7}Motivazioni}{11}{subsubsection.6.7.7}%
-\contentsline {section}{\numberline {7}Progettazione dell’applicazione}{12}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Architettura generale dell’applicazione}{12}{subsection.7.1}%
-\contentsline {subsection}{\numberline {7.2}Tecnologie usate}{12}{subsection.7.2}%
-\contentsline {subsection}{\numberline {7.3}Struttura dei package Java}{12}{subsection.7.3}%
-\contentsline {subsection}{\numberline {7.4}Collegamento al database tramite JDBC}{12}{subsection.7.4}%
-\contentsline {subsection}{\numberline {7.5}Organizzazione delle classi principali}{12}{subsection.7.5}%
-\contentsline {subsection}{\numberline {7.6}Gestione degli errori e validazione input}{12}{subsection.7.6}%
-\contentsline {subsection}{\numberline {7.7}Interfaccia grafica Java Swing}{12}{subsection.7.7}%
+\contentsline {section}{\numberline {7}Progettazione dell’applicazione}{11}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Architettura generale dell’applicazione}{11}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Tecnologie usate}{11}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Struttura dei package Java}{11}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Collegamento al database tramite JDBC}{11}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Organizzazione delle classi principali}{11}{subsection.7.5}%
+\contentsline {subsection}{\numberline {7.6}Gestione degli errori e validazione input}{11}{subsection.7.6}%
+\contentsline {subsection}{\numberline {7.7}Interfaccia grafica Java Swing}{11}{subsection.7.7}%
 \contentsline {subsection}{\numberline {7.8}Schermate principali}{12}{subsection.7.8}%
 \contentsline {subsection}{\numberline {7.9}Flussi d’uso principali}{12}{subsection.7.9}%
 \contentsline {section}{\numberline {8}Test e validazione}{12}{section.8}%
@@ -83,7 +83,7 @@
 \contentsline {subsection}{\numberline {9.2}Scelte progettuali principali}{13}{subsection.9.2}%
 \contentsline {subsection}{\numberline {9.3}Possibili sviluppi futuri}{13}{subsection.9.3}%
 \contentsline {section}{\numberline {A}Script SQL completo}{13}{appendix.Alph1}%
-\contentsline {section}{\numberline {B}Query SQL complete}{13}{appendix.Alph2}%
+\contentsline {section}{\numberline {B}Query SQL complete}{14}{appendix.Alph2}%
 \contentsline {section}{\numberline {C}Screenshot dell'applicazione}{14}{appendix.Alph3}%
 \contentsline {section}{\numberline {D}Manuale utente sintetico}{14}{appendix.Alph4}%
 \contentsline {section}{\numberline {E}Eventuale link al repository}{14}{appendix.Alph5}%

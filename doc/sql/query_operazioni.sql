@@ -311,15 +311,28 @@ ORDER BY Numero_Utilizzi DESC;
 
 SELECT
     SR.ID_Ricorrenza,
+    SR.Nome,
     SR.Importo_Previsto,
     SR.Frequenza_Giorni,
     SR.Data_Inizio,
+    SR.Data_Prossima_Scadenza,
     SR.Scadenza,
-    C.Nome AS Categoria
+    C.Nome AS Categoria,
+    COUNT(T.ID_Transizione) AS Transazioni_Generate
 FROM SPESA_RICORRENTE SR
 JOIN CATEGORIA C ON SR.ID_Categoria = C.ID_Categoria
+LEFT JOIN TRANSIZIONE T ON T.ID_Ricorrenza = SR.ID_Ricorrenza
 WHERE SR.Email = @email_utente
-ORDER BY SR.Scadenza;
+GROUP BY
+    SR.ID_Ricorrenza,
+    SR.Nome,
+    SR.Importo_Previsto,
+    SR.Frequenza_Giorni,
+    SR.Data_Inizio,
+    SR.Data_Prossima_Scadenza,
+    SR.Scadenza,
+    C.Nome
+ORDER BY SR.Data_Prossima_Scadenza;
 
 -- Statistiche per l'amministratore: aggregate, quindi senza dettagli personali.
 
