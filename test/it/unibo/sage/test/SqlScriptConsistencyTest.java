@@ -20,6 +20,8 @@ public final class SqlScriptConsistencyTest {
         testPopolamentoNonContieneEssenziale();
         testAggiornamentoRicorrenzePresente();
         testMigrazioneFunzioniRichiestePresente();
+        testDocumentoUnicoPerTransazione();
+        testDocumentazioneIndicaScriptUfficiali();
     }
 
     private static void testSchemaContieneTabelleFondamentali() throws IOException {
@@ -51,6 +53,17 @@ public final class SqlScriptConsistencyTest {
                 "La stessa ricorrenza non deve generare due volte la stessa data");
     }
 
+    private static void testDocumentoUnicoPerTransazione() throws IOException {
+        final String schema = readSql("schema_completo.sql").toUpperCase();
+        final String migration = readSql("aggiornamento_funzioni_richieste.sql").toUpperCase();
+        TestAssertions.assertTrue(schema.contains("UQ_DOCUMENTO_TRANSIZIONE")
+                        && schema.contains("ON DOCUMENTO (ID_TRANSIZIONE)"),
+                "Lo schema deve impedire piu' documenti sulla stessa transazione");
+        TestAssertions.assertTrue(migration.contains("UQ_DOCUMENTO_TRANSIZIONE")
+                        && migration.contains("CREATE UNIQUE INDEX UQ_DOCUMENTO_TRANSIZIONE"),
+                "La migrazione deve aggiungere il vincolo unico sui documenti");
+    }
+
     private static void testTriggerVisteContieneVistePrincipali() throws IOException {
         final String triggerViews = readSql("trigger_viste.sql").toUpperCase();
         TestAssertions.assertTrue(triggerViews.contains("V_BUDGET_STATO"),
@@ -66,8 +79,10 @@ public final class SqlScriptConsistencyTest {
     private static void testTriggerBloccanoDuplicatiERicorrenzeIncoerenti() throws IOException {
         final String triggerViews = readSql("trigger_viste.sql").toUpperCase();
         TestAssertions.assertTrue(triggerViews.contains("TRG_CATEGORIA_INSERT_NO_DUPLICATI")
-                        && triggerViews.contains("TRG_TAG_INSERT_NO_DUPLICATI"),
-                "Il database deve bloccare categorie e tag duplicati");
+                        && triggerViews.contains("TRG_TAG_INSERT_NO_DUPLICATI")
+                        && triggerViews.contains("TRG_FONTE_INSERT_NO_DUPLICATI")
+                        && triggerViews.contains("TRG_FONTE_UPDATE_NO_DUPLICATI"),
+                "Il database deve bloccare categorie, tag e fonti duplicati");
         TestAssertions.assertTrue(triggerViews.contains("NEW.ID_RICORRENZA IS NOT NULL")
                         && triggerViews.contains("RICORRENZA NON COERENTE"),
                 "Il database deve validare le transazioni generate da ricorrenze");
@@ -124,6 +139,22 @@ public final class SqlScriptConsistencyTest {
         TestAssertions.assertTrue(migration.contains("DELETE FROM TAG")
                         && migration.contains("ESSENZIALE"),
                 "La migrazione deve eliminare il vecchio tag Essenziale");
+        TestAssertions.assertTrue(migration.contains("TRG_FONTE_INSERT_NO_DUPLICATI")
+                        && migration.contains("TRG_FONTE_UPDATE_NO_DUPLICATI"),
+                "La migrazione deve aggiungere i trigger anti-duplicato per le fonti");
+    }
+
+    private static void testDocumentazioneIndicaScriptUfficiali() throws IOException {
+        final String latex = Files.readString(Path.of("doc", "latex", "main.tex"),
+                StandardCharsets.UTF_8);
+        final String legacy = readSql("creazione_schema_indici.sql").toUpperCase();
+        TestAssertions.assertTrue(latex.contains("doc/sql/schema\\_completo.sql")
+                        && latex.contains("doc/sql/query\\_operazioni.sql")
+                        && latex.contains("trigger\\_viste.sql"),
+                "Il LaTeX deve indicare gli script SQL ufficiali corretti");
+        TestAssertions.assertTrue(legacy.contains("SCRIPT STORICO")
+                        && legacy.contains("NON UFFICIALE"),
+                "Lo script vecchio deve essere marcato come storico e non ufficiale");
     }
 
     private static String readSql(final String fileName) throws IOException {

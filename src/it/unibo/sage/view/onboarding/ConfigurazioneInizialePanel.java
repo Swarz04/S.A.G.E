@@ -1,7 +1,13 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.onboarding;
 
 import it.unibo.sage.controller.ConfigurazioneInizialeController;
 import it.unibo.sage.model.Utente;
+import it.unibo.sage.view.MainFrame;
+import it.unibo.sage.view.components.AppBackgroundPanel;
+import it.unibo.sage.view.components.ButtonHoverAdapter;
+import it.unibo.sage.view.components.GlassPanel;
+import it.unibo.sage.view.components.SoftButton;
+import it.unibo.sage.view.theme.AppTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;

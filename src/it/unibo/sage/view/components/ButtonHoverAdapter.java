@@ -1,4 +1,4 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.components;
 
 import javax.swing.*;
 import java.awt.*;

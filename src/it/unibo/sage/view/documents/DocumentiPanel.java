@@ -1,9 +1,13 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.documents;
 
 import it.unibo.sage.controller.DocumentiController;
 import it.unibo.sage.model.DocumentoDettaglio;
 import it.unibo.sage.model.SpesaDocumentabile;
 import it.unibo.sage.model.Utente;
+import it.unibo.sage.view.components.ButtonHoverAdapter;
+import it.unibo.sage.view.components.NotificationGlassPanel;
+import it.unibo.sage.view.components.SoftButton;
+import it.unibo.sage.view.theme.AppTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;

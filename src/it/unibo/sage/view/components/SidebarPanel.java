@@ -1,5 +1,6 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.components;
 
+import it.unibo.sage.view.theme.AppTheme;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;

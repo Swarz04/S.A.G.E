@@ -11,10 +11,14 @@ import java.util.List;
 public class JdbcFonteDAO implements FonteDAO {
 
     private static final String FIND_DISPONIBILI_SQL =
-            "SELECT ID_Fonte, Nome, Icona, is_system, Email_Proprietario "
-            + "FROM FONTE "
-            + "WHERE is_system = TRUE OR Email_Proprietario = ? "
-            + "ORDER BY is_system DESC, Nome";
+            "SELECT F.ID_Fonte, F.Nome, F.Icona, F.is_system, F.Email_Proprietario "
+            + "FROM FONTE F "
+            + "WHERE (F.is_system = TRUE OR F.Email_Proprietario = ?) "
+            + "AND NOT (F.is_system = FALSE AND EXISTS ("
+            + "SELECT 1 FROM FONTE FS "
+            + "WHERE FS.is_system = TRUE "
+            + "AND LOWER(TRIM(FS.Nome)) = LOWER(TRIM(F.Nome)))) "
+            + "ORDER BY F.is_system DESC, F.Nome";
 
     private final Connection connection;
 

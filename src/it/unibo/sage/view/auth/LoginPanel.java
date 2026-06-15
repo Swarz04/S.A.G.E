@@ -1,7 +1,13 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.auth;
 
 import it.unibo.sage.controller.LoginController;
 import it.unibo.sage.model.Utente;
+import it.unibo.sage.view.MainFrame;
+import it.unibo.sage.view.components.AppBackgroundPanel;
+import it.unibo.sage.view.components.ButtonHoverAdapter;
+import it.unibo.sage.view.components.GlassPanel;
+import it.unibo.sage.view.components.SoftButton;
+import it.unibo.sage.view.theme.AppTheme;
 import javax.swing.*;
 import java.awt.*;
 import java.util.Arrays;

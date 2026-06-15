@@ -1,4 +1,4 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.theme;
 
 import java.awt.*;
 import java.lang.reflect.Method;

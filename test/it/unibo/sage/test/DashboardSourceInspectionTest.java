@@ -20,15 +20,16 @@ public final class DashboardSourceInspectionTest {
     }
 
     private static void testDashboardGestisceClickSuCategoriaTagFonte() throws IOException {
-        final String source = readDashboard();
+        final String source = readDashboard()
+                + readSource("src/it/unibo/sage/service/DashboardDataService.java");
         TestAssertions.assertTrue(source.contains("showClassificationTransactions"),
                 "DashboardPanel deve contenere il metodo per mostrare transazioni correlate");
         TestAssertions.assertTrue(source.contains("caricaTransazioniPerCategoria"),
-                "DashboardPanel deve caricare transazioni per categoria al click");
+                "La dashboard deve caricare transazioni per categoria al click");
         TestAssertions.assertTrue(source.contains("caricaTransazioniPerTag"),
-                "DashboardPanel deve caricare transazioni per tag al click");
+                "La dashboard deve caricare transazioni per tag al click");
         TestAssertions.assertTrue(source.contains("caricaTransazioniPerFonte"),
-                "DashboardPanel deve caricare transazioni per fonte al click");
+                "La dashboard deve caricare transazioni per fonte al click");
     }
 
     private static void testDashboardMappaIconePrincipali() throws IOException {
@@ -89,8 +90,13 @@ public final class DashboardSourceInspectionTest {
     }
 
     private static String readDashboard() throws IOException {
-        final Path path = Path.of("src", "it", "unibo", "sage", "view", "DashboardPanel.java");
-        TestAssertions.assertTrue(Files.isRegularFile(path), "DashboardPanel.java deve esistere");
+        return readSource("src/it/unibo/sage/view/dashboard/DashboardPanel.java")
+                + readSource("src/it/unibo/sage/view/dashboard/ClassificationIconSupport.java");
+    }
+
+    private static String readSource(final String fileName) throws IOException {
+        final Path path = Path.of(fileName);
+        TestAssertions.assertTrue(Files.isRegularFile(path), "File sorgente mancante: " + path);
         return Files.readString(path, StandardCharsets.UTF_8);
     }
 }

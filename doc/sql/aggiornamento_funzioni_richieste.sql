@@ -183,6 +183,21 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+SET @idx_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'DOCUMENTO'
+      AND INDEX_NAME = 'UQ_DOCUMENTO_TRANSIZIONE'
+);
+SET @sql = IF(
+    @idx_exists = 0,
+    'CREATE UNIQUE INDEX UQ_DOCUMENTO_TRANSIZIONE ON DOCUMENTO (ID_Transizione)',
+    'SELECT ''UQ_DOCUMENTO_TRANSIZIONE gia presente'' AS Messaggio'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 SET @check_exists = (
     SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
     WHERE CONSTRAINT_SCHEMA = DATABASE()
@@ -215,13 +230,15 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ---------------------------------------------------------------------------
--- Trigger anti-duplicato per categorie e tag
+-- Trigger anti-duplicato per categorie, tag e fonti
 -- ---------------------------------------------------------------------------
 
 DROP TRIGGER IF EXISTS trg_categoria_insert_no_duplicati;
 DROP TRIGGER IF EXISTS trg_categoria_update_no_duplicati;
 DROP TRIGGER IF EXISTS trg_tag_insert_no_duplicati;
 DROP TRIGGER IF EXISTS trg_tag_update_no_duplicati;
+DROP TRIGGER IF EXISTS trg_fonte_insert_no_duplicati;
+DROP TRIGGER IF EXISTS trg_fonte_update_no_duplicati;
 DROP TRIGGER IF EXISTS trg_transizione_insert_check;
 DROP TRIGGER IF EXISTS trg_transizione_update_check;
 
@@ -314,6 +331,51 @@ BEGIN
     ) THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Esiste già un tag con questo nome';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_fonte_insert_no_duplicati
+BEFORE INSERT ON FONTE
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM FONTE F
+        WHERE LOWER(TRIM(F.Nome)) = LOWER(TRIM(NEW.Nome))
+          AND (
+                NEW.is_system = TRUE
+                OR
+                (NEW.is_system = FALSE AND (
+                    F.is_system = TRUE
+                    OR (F.is_system = FALSE
+                        AND F.Email_Proprietario = NEW.Email_Proprietario)
+                ))
+              )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Esiste gia'' una fonte con questo nome';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_fonte_update_no_duplicati
+BEFORE UPDATE ON FONTE
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM FONTE F
+        WHERE F.ID_Fonte <> NEW.ID_Fonte
+          AND LOWER(TRIM(F.Nome)) = LOWER(TRIM(NEW.Nome))
+          AND (
+                NEW.is_system = TRUE
+                OR
+                (NEW.is_system = FALSE AND (
+                    F.is_system = TRUE
+                    OR (F.is_system = FALSE
+                        AND F.Email_Proprietario = NEW.Email_Proprietario)
+                ))
+              )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Esiste gia'' una fonte con questo nome';
     END IF;
 END$$
 

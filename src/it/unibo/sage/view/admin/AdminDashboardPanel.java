@@ -1,8 +1,11 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.admin;
 
 import it.unibo.sage.model.Utente;
 import it.unibo.sage.service.AdminService;
 import it.unibo.sage.service.AdminService.TableData;
+import it.unibo.sage.view.components.AppBackgroundPanel;
+import it.unibo.sage.view.components.GlassPanel;
+import it.unibo.sage.view.theme.AppTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;

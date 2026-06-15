@@ -17,7 +17,6 @@ import java.util.List;
 public class ConfigurazioneInizialeService {
 
     private static final String NONE = "nessuna";
-    private static final String NO_BUDGET = "nessuno";
 
     private static final String EXISTS_CATEGORIA_SQL =
             "SELECT 1 FROM CATEGORIA "
@@ -31,7 +30,8 @@ public class ConfigurazioneInizialeService {
 
     private static final String EXISTS_FONTE_SQL =
             "SELECT 1 FROM FONTE "
-            + "WHERE Nome = ? AND is_system = FALSE AND Email_Proprietario = ? "
+            + "WHERE LOWER(TRIM(Nome)) = LOWER(TRIM(?)) "
+            + "AND (is_system = TRUE OR Email_Proprietario = ?) "
             + "LIMIT 1";
 
     private static final String INSERT_FONTE_SQL =

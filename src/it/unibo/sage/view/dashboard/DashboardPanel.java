@@ -1,6 +1,5 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.dashboard;
 
-import it.unibo.sage.controller.BudgetController;
 import it.unibo.sage.controller.MovimentiController;
 import it.unibo.sage.controller.SpeseRicorrentiController;
 import it.unibo.sage.model.Budget;
@@ -11,24 +10,27 @@ import it.unibo.sage.model.Tag;
 import it.unibo.sage.model.TipoTransazione;
 import it.unibo.sage.model.Transazione;
 import it.unibo.sage.model.Utente;
-import it.unibo.sage.utils.IconStorage;
+import it.unibo.sage.service.DashboardData;
+import it.unibo.sage.service.DashboardDataService;
+import it.unibo.sage.service.DashboardOverviewCalculator;
+import it.unibo.sage.service.DashboardOverviewCalculator.DayExpense;
+import it.unibo.sage.service.DashboardOverviewCalculator.MonthTotals;
+import it.unibo.sage.service.DashboardOverviewCalculator.OverviewFilter;
+import it.unibo.sage.view.components.AppBackgroundPanel;
+import it.unibo.sage.view.components.ButtonHoverAdapter;
+import it.unibo.sage.view.components.GlassPanel;
+import it.unibo.sage.view.components.SidebarPanel;
+import it.unibo.sage.view.components.SoftButton;
+import it.unibo.sage.view.documents.DocumentiPanel;
+import it.unibo.sage.view.theme.AppTheme;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.TextStyle;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.awt.datatransfer.DataFlavor;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -43,52 +45,14 @@ public class DashboardPanel extends AppBackgroundPanel {
     private static final int SIDEBAR_WIDTH = 300;
     private static final int MENU_BUTTON_HEIGHT = 56;
 
-    private static final List<IconChoice> CATEGORY_ICON_CHOICES = List.of(
-            new IconChoice("Generica", "generic_category.png"),
-            new IconChoice("Casa", "house.png"),
-            new IconChoice("Cibo", "food.png"),
-            new IconChoice("Trasporti", "transport.png"),
-            new IconChoice("Salute", "health.png"),
-            new IconChoice("Studio", "study.png"),
-            new IconChoice("Lavoro", "work.png"),
-            new IconChoice("Risparmi", "savings.png"),
-            new IconChoice("Shopping", "shopping.png"),
-            new IconChoice("Svago", "leisure.png"),
-            new IconChoice("Bollette", "bill.png"),
-            new IconChoice("Palestra", "gym.png"),
-            new IconChoice("Viaggi", "travel.png"),
-            new IconChoice("Regalo", "gift.png"));
-
-    private static final List<IconChoice> TAG_ICON_CHOICES = List.of(
-            new IconChoice("Generica", "generic_tag.png"),
-            new IconChoice("Urgente", "urgent.png"),
-            new IconChoice("Studio", "study.png"),
-            new IconChoice("Palestra", "gym.png"),
-            new IconChoice("Lavoro", "work.png"),
-            new IconChoice("Famiglia", "family.png"),
-            new IconChoice("Viaggi", "travel.png"),
-            new IconChoice("Regalo", "gift.png"),
-            new IconChoice("Risparmi", "savings.png"),
-            new IconChoice("Shopping", "shopping.png"),
-            new IconChoice("Svago", "leisure.png"));
-
-    private static final List<IconChoice> SOURCE_ICON_CHOICES = List.of(
-            new IconChoice("Generica", "generic_source.png"),
-            new IconChoice("Stipendio", "salary.png"),
-            new IconChoice("Borsa di studio", "scholarship.png"),
-            new IconChoice("Regalo", "gift.png"),
-            new IconChoice("Rimborso", "refund.png"),
-            new IconChoice("Ripetizioni", "tutoring.png"),
-            new IconChoice("Lavoro", "work.png"),
-            new IconChoice("Famiglia", "family.png"),
-            new IconChoice("Risparmi", "savings.png"));
-
     private final CardLayout contentLayout;
     private final JPanel contentPanel;
     private final Utente currentUser;
     private final MovimentiController movimentiController = new MovimentiController();
-    private final BudgetController budgetController = new BudgetController();
     private final SpeseRicorrentiController speseRicorrentiController = new SpeseRicorrentiController();
+    private final DashboardDataService dashboardDataService = new DashboardDataService();
+    private final DashboardOverviewCalculator overviewCalculator = new DashboardOverviewCalculator();
+    private DashboardData dashboardData = DashboardData.empty();
     private JButton selectedMenuButton;
     private OverviewFilter overviewFilter = OverviewFilter.MONTH;
 
@@ -104,6 +68,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         add(createMainPanel(), BorderLayout.CENTER);
 
         generateDueRecurringExpensesOnStartup();
+        reloadDashboardData();
         initContentCards();
         contentLayout.show(contentPanel, "CARD_OVERVIEW");
     }
@@ -314,6 +279,7 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private void refreshContent(final String cardName) {
+        reloadDashboardData();
         contentPanel.removeAll();
         initContentCards();
         contentPanel.revalidate();
@@ -321,15 +287,27 @@ public class DashboardPanel extends AppBackgroundPanel {
         contentLayout.show(contentPanel, cardName);
     }
 
+    private void reloadDashboardData() {
+        try {
+            dashboardData = dashboardDataService.loadForUser(currentUser.getEmail());
+        } catch (final SQLException ex) {
+            dashboardData = DashboardData.empty();
+            showLoadError("dashboard", ex);
+        }
+    }
+
     private JPanel createOverviewCard() {
         final List<Transazione> allTransactions = loadTransactions();
-        final List<Transazione> transazioni = filterOverviewTransactions(allTransactions);
+        final List<Transazione> transazioni =
+                overviewCalculator.filterTransactions(allTransactions, overviewFilter);
         final List<Budget> budgets = loadBudgets();
         final Map<Long, String> categoryNames = loadCategoryNames();
-        final BigDecimal entrate = sumByType(transazioni, TipoTransazione.ENTRATA);
-        final BigDecimal spese = sumByType(transazioni, TipoTransazione.SPESA);
+        final BigDecimal entrate = overviewCalculator.sumByType(
+                transazioni, TipoTransazione.ENTRATA);
+        final BigDecimal spese = overviewCalculator.sumByType(
+                transazioni, TipoTransazione.SPESA);
         final BigDecimal saldo = entrate.subtract(spese);
-        final String budgetUsage = calculateBudgetUsage(budgets);
+        final String budgetUsage = overviewCalculator.calculateBudgetUsage(budgets);
 
         JPanel panel = new JPanel();
         panel.setOpaque(false);
@@ -661,14 +639,9 @@ public class DashboardPanel extends AppBackgroundPanel {
     private void showTransactionsForClassification(final String type, final long id,
             final String name) {
         try {
-            final List<Transazione> transazioni;
-            if ("Categoria".equals(type)) {
-                transazioni = movimentiController.caricaTransazioniPerCategoria(currentUser.getEmail(), id);
-            } else if ("Fonte".equals(type)) {
-                transazioni = movimentiController.caricaTransazioniPerFonte(currentUser.getEmail(), id);
-            } else {
-                transazioni = movimentiController.caricaTransazioniPerTag(currentUser.getEmail(), id);
-            }
+            final List<Transazione> transazioni =
+                    dashboardDataService.loadTransactionsForClassification(
+                            currentUser.getEmail(), type, id);
             showClassificationTransactionsDialog(type, name, transazioni);
         } catch (final SQLException ex) {
             showLoadError("movimenti collegati a " + name, ex);
@@ -762,181 +735,16 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private String buildTransactionsSummary(final List<Transazione> transazioni) {
-        final BigDecimal entrate = sumByType(transazioni, TipoTransazione.ENTRATA);
-        final BigDecimal spese = sumByType(transazioni, TipoTransazione.SPESA);
+        final BigDecimal entrate = overviewCalculator.sumByType(
+                transazioni, TipoTransazione.ENTRATA);
+        final BigDecimal spese = overviewCalculator.sumByType(
+                transazioni, TipoTransazione.SPESA);
         return "Entrate: " + formatEuro(entrate) + "    Spese: " + formatEuro(spese);
     }
 
     private JComponent createClassificationIcon(final String type, final String name,
             final String iconName) {
-        final ImageIcon icon = loadClassificationIcon(type, name, iconName);
-        return new JComponent() {
-            @Override
-            public Dimension getPreferredSize() {
-                return new Dimension(56, 56);
-            }
-
-            @Override
-            protected void paintComponent(final Graphics graphics) {
-                Graphics2D graphics2D = (Graphics2D) graphics.create();
-                graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                graphics2D.setColor(classificationBackground(type));
-                graphics2D.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
-
-                if (icon != null) {
-                    int x = (getWidth() - icon.getIconWidth()) / 2;
-                    int y = (getHeight() - icon.getIconHeight()) / 2;
-                    icon.paintIcon(this, graphics2D, x, y);
-                } else {
-                    paintFallbackClassificationIcon(graphics2D, type, getWidth(), getHeight());
-                }
-                graphics2D.dispose();
-            }
-        };
-    }
-
-    private ImageIcon loadClassificationIcon(final String type, final String name,
-            final String iconName) {
-        if (IconStorage.isCustomIconReference(iconName)) {
-            final ImageIcon customIcon = loadIconFile(iconName, 30);
-            if (customIcon != null) {
-                return customIcon;
-            }
-        }
-
-        final String resourcePath = getClassificationIconPath(type, name, iconName);
-        ImageIcon rawIcon = null;
-
-        final java.net.URL url = getClass().getResource(resourcePath);
-        if (url != null) {
-            rawIcon = new ImageIcon(url);
-        } else {
-            final String relativePath = resourcePath.substring(1).replace("/", java.io.File.separator);
-            final java.util.List<java.nio.file.Path> possiblePaths = java.util.List.of(
-                    java.nio.file.Paths.get("src", relativePath),
-                    java.nio.file.Paths.get("bin", relativePath),
-                    java.nio.file.Paths.get("build", "classes", relativePath));
-
-            for (java.nio.file.Path path : possiblePaths) {
-                if (java.nio.file.Files.exists(path)) {
-                    rawIcon = new ImageIcon(path.toString());
-                    break;
-                }
-            }
-        }
-
-        if (rawIcon == null || rawIcon.getIconWidth() <= 0 || rawIcon.getIconHeight() <= 0) {
-            return null;
-        }
-
-        final Image scaledImage = rawIcon.getImage().getScaledInstance(30, 30, Image.SCALE_SMOOTH);
-        return new ImageIcon(scaledImage);
-    }
-
-    private String getClassificationIconPath(final String type, final String name,
-            final String iconName) {
-        if (iconName != null && !iconName.isBlank()
-                && iconName.matches("[a-z0-9_-]+\\.png")) {
-            return "/it/unibo/sage/view/icons/" + iconName;
-        }
-        final String normalized = normalizeClassificationName(name);
-        if ("Categoria".equals(type)) {
-            switch (normalized) {
-                case "casa":
-                case "affitto":
-                    return "/it/unibo/sage/view/icons/house.png";
-                case "spesa":
-                case "cibo":
-                case "alimentari":
-                case "alimentazione":
-                    return "/it/unibo/sage/view/icons/food.png";
-                case "trasporti":
-                case "trasporto":
-                case "bus":
-                case "treno":
-                    return "/it/unibo/sage/view/icons/transport.png";
-                case "salute":
-                case "medicina":
-                case "farmacia":
-                    return "/it/unibo/sage/view/icons/health.png";
-                case "studio":
-                case "universita":
-                case "libri":
-                    return "/it/unibo/sage/view/icons/study.png";
-                case "stipendio":
-                case "entrate":
-                case "lavoro":
-                    return "/it/unibo/sage/view/icons/work.png";
-                case "risparmi":
-                case "risparmio":
-                    return "/it/unibo/sage/view/icons/savings.png";
-                case "shopping":
-                case "acquisti":
-                    return "/it/unibo/sage/view/icons/shopping.png";
-                case "svago":
-                case "tempo libero":
-                    return "/it/unibo/sage/view/icons/leisure.png";
-                case "bollette":
-                case "utenze":
-                    return "/it/unibo/sage/view/icons/bill.png";
-                default:
-                    return "/it/unibo/sage/view/icons/generic_category.png";
-            }
-        }
-        if ("Fonte".equals(type)) {
-            switch (normalized) {
-                case "stipendio":
-                case "salario":
-                case "lavoro":
-                    return "/it/unibo/sage/view/icons/salary.png";
-                case "borsa di studio":
-                case "borsa studio":
-                case "universita":
-                    return "/it/unibo/sage/view/icons/scholarship.png";
-                case "regalo":
-                case "regali":
-                    return "/it/unibo/sage/view/icons/gift.png";
-                case "rimborso":
-                case "rimborsi":
-                    return "/it/unibo/sage/view/icons/refund.png";
-                case "ripetizioni private":
-                case "ripetizioni":
-                case "lezioni":
-                    return "/it/unibo/sage/view/icons/tutoring.png";
-                case "lavoretto weekend":
-                case "lavoretto":
-                case "lavoro occasionale":
-                    return "/it/unibo/sage/view/icons/work.png";
-                case "famiglia":
-                case "aiuto famiglia":
-                    return "/it/unibo/sage/view/icons/family.png";
-                default:
-                    return "/it/unibo/sage/view/icons/generic_source.png";
-            }
-        }
-        switch (normalized) {
-            case "urgente":
-            case "importante":
-                return "/it/unibo/sage/view/icons/urgent.png";
-            case "universita":
-            case "esami":
-            case "studio":
-                return "/it/unibo/sage/view/icons/study.png";
-            case "palestra":
-            case "gym":
-            case "sport":
-                return "/it/unibo/sage/view/icons/gym.png";
-            case "lavoro":
-                return "/it/unibo/sage/view/icons/work.png";
-            case "famiglia":
-                return "/it/unibo/sage/view/icons/family.png";
-            case "viaggio":
-            case "viaggi":
-            case "travel":
-                return "/it/unibo/sage/view/icons/travel.png";
-            default:
-                return "/it/unibo/sage/view/icons/generic_tag.png";
-        }
+        return ClassificationIconSupport.createClassificationIcon(type, name, iconName);
     }
 
     private String normalizeClassificationName(final String name) {
@@ -950,39 +758,6 @@ public class DashboardPanel extends AppBackgroundPanel {
                 .replace("ì", "i")
                 .replace("ò", "o")
                 .replace("ù", "u");
-    }
-
-    private Color classificationBackground(final String type) {
-        if ("Categoria".equals(type)) {
-            return new Color(37, 99, 235, 34);
-        }
-        if ("Fonte".equals(type)) {
-            return new Color(245, 158, 11, 38);
-        }
-        return new Color(20, 184, 166, 38);
-    }
-
-    private Color classificationAccent(final String type) {
-        if ("Categoria".equals(type)) {
-            return AppTheme.PRIMARY;
-        }
-        if ("Fonte".equals(type)) {
-            return new Color(217, 119, 6);
-        }
-        return AppTheme.ACCENT_HOVER;
-    }
-
-    private void paintFallbackClassificationIcon(final Graphics2D graphics2D, final String type,
-            final int width, final int height) {
-        graphics2D.setColor(classificationAccent(type));
-        graphics2D.fillOval(width / 2 - 9, height / 2 - 9, 18, 18);
-        graphics2D.setFont(new Font("SansSerif", Font.BOLD, 18));
-        graphics2D.setColor(Color.WHITE);
-        final String letter = "Categoria".equals(type) ? "C" : ("Fonte".equals(type) ? "F" : "T");
-        FontMetrics metrics = graphics2D.getFontMetrics();
-        int x = (width - metrics.stringWidth(letter)) / 2;
-        int y = (height - metrics.getHeight()) / 2 + metrics.getAscent();
-        graphics2D.drawString(letter, x, y);
     }
 
     private SoftButton createTinyActionButton(final String text) {
@@ -1009,7 +784,7 @@ public class DashboardPanel extends AppBackgroundPanel {
         title.setForeground(AppTheme.TEXT);
         title.setFont(new Font("SansSerif", Font.BOLD, 14));
 
-        JLabel description = new JLabel(overviewPeriodDescription());
+        JLabel description = new JLabel(overviewCalculator.periodDescription(overviewFilter));
         description.setForeground(AppTheme.TEXT_MUTED);
         description.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
@@ -1049,45 +824,6 @@ public class DashboardPanel extends AppBackgroundPanel {
         return button;
     }
 
-    private List<Transazione> filterOverviewTransactions(final List<Transazione> transazioni) {
-        if (overviewFilter == OverviewFilter.ALL) {
-            return transazioni;
-        }
-
-        final LocalDate today = LocalDate.now();
-        final List<Transazione> filtered = new ArrayList<>();
-        for (Transazione transazione : transazioni) {
-            final LocalDate date = transazione.getData();
-            if (date == null) {
-                continue;
-            }
-            if (overviewFilter == OverviewFilter.MONTH
-                    && date.getYear() == today.getYear()
-                    && date.getMonthValue() == today.getMonthValue()) {
-                filtered.add(transazione);
-            } else if (overviewFilter == OverviewFilter.YEAR
-                    && date.getYear() == today.getYear()) {
-                filtered.add(transazione);
-            }
-        }
-        return filtered;
-    }
-
-    private String overviewPeriodDescription() {
-        final LocalDate today = LocalDate.now();
-        if (overviewFilter == OverviewFilter.MONTH) {
-            String month = today.getMonth().getDisplayName(TextStyle.FULL, Locale.ITALIAN);
-            if (!month.isEmpty()) {
-                month = Character.toUpperCase(month.charAt(0)) + month.substring(1);
-            }
-            return month + " " + today.getYear();
-        }
-        if (overviewFilter == OverviewFilter.YEAR) {
-            return "Anno " + today.getYear();
-        }
-        return "Intero storico disponibile";
-    }
-
     private JPanel createAnalyticsCard(final String title, final String subtitle, final JComponent content) {
         JPanel panel = new GlassPanel(new BorderLayout(0, 14));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -1116,14 +852,12 @@ public class DashboardPanel extends AppBackgroundPanel {
     private JPanel createMonthlyTrendCard(final List<Transazione> transazioni) {
         if (overviewFilter == OverviewFilter.MONTH) {
             final YearMonth currentMonth = YearMonth.now();
-            final List<DayExpense> dailyExpenses = buildDailyExpenses(transazioni, currentMonth);
-            final DailyExpenseChartPanel chartPanel = new DailyExpenseChartPanel(dailyExpenses);
+            final List<DayExpense> dailyExpenses =
+                    overviewCalculator.buildDailyExpenses(transazioni, currentMonth);
+            final JPanel chartPanel = DashboardCharts.dailyExpenses(dailyExpenses);
             chartPanel.setPreferredSize(new Dimension(340, 240));
 
-            String monthName = currentMonth.getMonth().getDisplayName(TextStyle.FULL, Locale.ITALIAN);
-            if (!monthName.isEmpty()) {
-                monthName = Character.toUpperCase(monthName.charAt(0)) + monthName.substring(1);
-            }
+            final String monthName = overviewCalculator.monthName(currentMonth);
             return createAnalyticsCard(
                     "Andamento mensile",
                     "Entrate e spese giorno per giorno di " + monthName + " " + currentMonth.getYear() + ".",
@@ -1131,9 +865,9 @@ public class DashboardPanel extends AppBackgroundPanel {
         }
 
         final List<MonthTotals> monthTotals = overviewFilter == OverviewFilter.YEAR
-                ? buildYearMonthlyTotals(transazioni, LocalDate.now().getYear())
-                : buildMonthlyTotals(transazioni, 6);
-        final MonthlyTrendChartPanel chartPanel = new MonthlyTrendChartPanel(monthTotals);
+                ? overviewCalculator.buildYearMonthlyTotals(transazioni, LocalDate.now().getYear())
+                : overviewCalculator.buildMonthlyTotals(transazioni, 6);
+        final JPanel chartPanel = DashboardCharts.monthlyTrend(monthTotals);
         chartPanel.setPreferredSize(new Dimension(340, 240));
         return createAnalyticsCard(
                 "Andamento mensile",
@@ -1145,11 +879,12 @@ public class DashboardPanel extends AppBackgroundPanel {
 
     private JPanel createExpenseDistributionCard(final List<Transazione> transazioni,
             final Map<Long, String> categoryNames) {
-        final LinkedHashMap<String, BigDecimal> expensesByCategory = buildExpenseDistribution(transazioni, categoryNames);
+        final LinkedHashMap<String, BigDecimal> expensesByCategory =
+                overviewCalculator.buildExpenseDistribution(transazioni, categoryNames);
         final JPanel content = new JPanel(new BorderLayout(12, 0));
         content.setOpaque(false);
 
-        final ExpenseDistributionChartPanel chartPanel = new ExpenseDistributionChartPanel(expensesByCategory);
+        final JPanel chartPanel = DashboardCharts.expenseDistribution(expensesByCategory);
         chartPanel.setPreferredSize(new Dimension(220, 220));
         content.add(chartPanel, BorderLayout.CENTER);
         content.add(createLegendPanel(expensesByCategory), BorderLayout.EAST);
@@ -1309,7 +1044,7 @@ public class DashboardPanel extends AppBackgroundPanel {
 
             JPanel swatch = new JPanel();
             swatch.setOpaque(true);
-            swatch.setBackground(chartColor(index));
+            swatch.setBackground(DashboardCharts.chartColor(index));
             swatch.setPreferredSize(new Dimension(12, 12));
             swatch.setMinimumSize(new Dimension(12, 12));
             swatch.setMaximumSize(new Dimension(12, 12));
@@ -1335,156 +1070,6 @@ public class DashboardPanel extends AppBackgroundPanel {
             index++;
         }
         return legend;
-    }
-
-    private List<DayExpense> buildDailyExpenses(final List<Transazione> transazioni,
-            final YearMonth month) {
-        final BigDecimal[] incomes = new BigDecimal[month.lengthOfMonth()];
-        final BigDecimal[] expenses = new BigDecimal[month.lengthOfMonth()];
-        for (int i = 0; i < month.lengthOfMonth(); i++) {
-            incomes[i] = BigDecimal.ZERO;
-            expenses[i] = BigDecimal.ZERO;
-        }
-
-        for (Transazione transazione : transazioni) {
-            if (transazione.getData() == null
-                    || !YearMonth.from(transazione.getData()).equals(month)) {
-                continue;
-            }
-
-            final int dayIndex = transazione.getData().getDayOfMonth() - 1;
-            if (transazione.getTipo() == TipoTransazione.ENTRATA) {
-                incomes[dayIndex] = incomes[dayIndex].add(transazione.getImporto());
-            } else {
-                expenses[dayIndex] = expenses[dayIndex].add(transazione.getImporto());
-            }
-        }
-
-        final List<DayExpense> result = new ArrayList<>();
-        for (int i = 0; i < month.lengthOfMonth(); i++) {
-            result.add(new DayExpense(i + 1, incomes[i], expenses[i]));
-        }
-        return result;
-    }
-
-    private List<MonthTotals> buildYearMonthlyTotals(final List<Transazione> transazioni,
-            final int year) {
-        final List<MonthTotals> result = new ArrayList<>();
-        for (int monthNumber = 1; monthNumber <= 12; monthNumber++) {
-            final YearMonth currentMonth = YearMonth.of(year, monthNumber);
-            BigDecimal income = BigDecimal.ZERO;
-            BigDecimal expense = BigDecimal.ZERO;
-            for (Transazione transazione : transazioni) {
-                if (transazione.getData() == null
-                        || !YearMonth.from(transazione.getData()).equals(currentMonth)) {
-                    continue;
-                }
-                if (transazione.getTipo() == TipoTransazione.ENTRATA) {
-                    income = income.add(transazione.getImporto());
-                } else {
-                    expense = expense.add(transazione.getImporto());
-                }
-            }
-            String label = currentMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ITALIAN);
-            if (!label.isEmpty()) {
-                label = Character.toUpperCase(label.charAt(0)) + label.substring(1).replace(".", "");
-            }
-            result.add(new MonthTotals(label, income, expense));
-        }
-        return result;
-    }
-
-    private List<MonthTotals> buildMonthlyTotals(final List<Transazione> transazioni, final int months) {
-        LocalDate referenceDate = LocalDate.now();
-        for (Transazione transazione : transazioni) {
-            if (transazione.getData() != null && transazione.getData().isAfter(referenceDate)) {
-                referenceDate = transazione.getData();
-            }
-        }
-        if (!transazioni.isEmpty()) {
-            referenceDate = transazioni.stream()
-                    .map(Transazione::getData)
-                    .filter(d -> d != null)
-                    .max(Comparator.naturalOrder())
-                    .orElse(referenceDate);
-        }
-
-        final List<MonthTotals> result = new ArrayList<>();
-        final YearMonth end = YearMonth.from(referenceDate);
-        for (int i = months - 1; i >= 0; i--) {
-            final YearMonth currentMonth = end.minusMonths(i);
-            BigDecimal income = BigDecimal.ZERO;
-            BigDecimal expense = BigDecimal.ZERO;
-            for (Transazione transazione : transazioni) {
-                if (transazione.getData() == null || !YearMonth.from(transazione.getData()).equals(currentMonth)) {
-                    continue;
-                }
-                if (transazione.getTipo() == TipoTransazione.ENTRATA) {
-                    income = income.add(transazione.getImporto());
-                } else {
-                    expense = expense.add(transazione.getImporto());
-                }
-            }
-            String label = currentMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ITALIAN);
-            if (!label.isEmpty()) {
-                label = Character.toUpperCase(label.charAt(0)) + label.substring(1).replace(".", "");
-            }
-            result.add(new MonthTotals(label, income, expense));
-        }
-        return result;
-    }
-
-    private LinkedHashMap<String, BigDecimal> buildExpenseDistribution(final List<Transazione> transazioni,
-            final Map<Long, String> categoryNames) {
-        final Map<String, BigDecimal> totals = new HashMap<>();
-        for (Transazione transazione : transazioni) {
-            if (transazione.getTipo() != TipoTransazione.SPESA) {
-                continue;
-            }
-            String category = transazione.getIdCategoria() == null
-                    ? "Senza categoria"
-                    : categoryNames.getOrDefault(transazione.getIdCategoria(), "Categoria " + transazione.getIdCategoria());
-            totals.merge(category, transazione.getImporto(), BigDecimal::add);
-        }
-
-        List<Map.Entry<String, BigDecimal>> sorted = new ArrayList<>(totals.entrySet());
-        sorted.sort((left, right) -> right.getValue().compareTo(left.getValue()));
-
-        LinkedHashMap<String, BigDecimal> result = new LinkedHashMap<>();
-        BigDecimal other = BigDecimal.ZERO;
-        int limit = 5;
-        for (int i = 0; i < sorted.size(); i++) {
-            Map.Entry<String, BigDecimal> entry = sorted.get(i);
-            if (i < limit) {
-                result.put(entry.getKey(), entry.getValue());
-            } else {
-                other = other.add(entry.getValue());
-            }
-        }
-        if (other.signum() > 0) {
-            result.put("Altro", other);
-        }
-        return result;
-    }
-
-    private Color chartColor(final int index) {
-        Color[] colors = {
-            AppTheme.PRIMARY,
-            AppTheme.ACCENT,
-            AppTheme.BUDGET,
-            AppTheme.EXPENSE,
-            AppTheme.INCOME,
-            new Color(124, 58, 237),
-            new Color(14, 165, 233)
-        };
-        return colors[index % colors.length];
-    }
-
-    private String formatCompactAmount(final double value) {
-        if (value >= 1000.0) {
-            return String.format(Locale.US, "%.1fk", value / 1000.0).replace('.', ',');
-        }
-        return String.format(Locale.US, "%.0f", value).replace('.', ',');
     }
 
     private JPanel createMetricBox(String title, String value, Color accent) {
@@ -2183,7 +1768,7 @@ public class DashboardPanel extends AppBackgroundPanel {
 
     private List<Long> loadTransactionTagIds(final long idTransazione) {
         try {
-            return movimentiController.caricaTagTransazione(currentUser.getEmail(), idTransazione);
+            return dashboardDataService.loadTransactionTagIds(currentUser.getEmail(), idTransazione);
         } catch (final SQLException ex) {
             showLoadError("tag della transazione", ex);
             return List.of();
@@ -2228,16 +1813,15 @@ public class DashboardPanel extends AppBackgroundPanel {
             final String initialName, final String initialIcon) {
         final boolean category = "Categoria".equals(type);
         final boolean source = "Fonte".equals(type);
-        final List<IconChoice> choices = category
-                ? CATEGORY_ICON_CHOICES
-                : (source ? SOURCE_ICON_CHOICES : TAG_ICON_CHOICES);
-        final String defaultIcon = category
-                ? "generic_category.png"
-                : (source ? "generic_source.png" : "generic_tag.png");
+        final List<ClassificationIconSupport.IconChoice> choices =
+                ClassificationIconSupport.iconChoices(type);
+        final String defaultIcon = ClassificationIconSupport.defaultIcon(type);
         final JTextField nameField = createDialogTextField(initialName);
-        final IconSelectionPanel iconSelector = new IconSelectionPanel(
-                choices,
-                initialIcon == null || initialIcon.isBlank() ? defaultIcon : initialIcon);
+        final ClassificationIconSupport.IconSelectionPanel iconSelector =
+                new ClassificationIconSupport.IconSelectionPanel(
+                        this,
+                        choices,
+                        initialIcon == null || initialIcon.isBlank() ? defaultIcon : initialIcon);
 
         final JPanel form = createDialogFormPanel();
         addFormRow(form, "Nome", nameField);
@@ -2290,260 +1874,6 @@ public class DashboardPanel extends AppBackgroundPanel {
                     "Icona non salvata: " + ex.getMessage(),
                     "Errore immagine",
                     JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private JComboBox<IconChoice> createIconChoiceCombo(final List<IconChoice> choices,
-            final String selectedIcon) {
-        final JComboBox<IconChoice> combo = new JComboBox<>(choices.toArray(new IconChoice[0]));
-        combo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(final JList<?> list, final Object value,
-                    final int index, final boolean isSelected, final boolean cellHasFocus) {
-                final JLabel label = (JLabel) super.getListCellRendererComponent(
-                        list, value, index, isSelected, cellHasFocus);
-                if (value instanceof IconChoice) {
-                    final IconChoice choice = (IconChoice) value;
-                    label.setText(choice.label);
-                    label.setIcon(loadIconFile(choice.fileName, 22));
-                    label.setIconTextGap(10);
-                }
-                return label;
-            }
-        });
-        for (int i = 0; i < combo.getItemCount(); i++) {
-            if (combo.getItemAt(i).fileName.equals(selectedIcon)) {
-                combo.setSelectedIndex(i);
-                break;
-            }
-        }
-        return combo;
-    }
-
-    private ImageIcon loadIconFile(final String fileName, final int size) {
-        if (IconStorage.isCustomIconReference(fileName)) {
-            final Path customPath = IconStorage.resolveCustomIcon(fileName);
-            if (customPath == null || !Files.isRegularFile(customPath)) {
-                return null;
-            }
-            final ImageIcon customIcon = new ImageIcon(customPath.toString());
-            if (customIcon.getIconWidth() <= 0 || customIcon.getIconHeight() <= 0) {
-                return null;
-            }
-            return new ImageIcon(customIcon.getImage().getScaledInstance(
-                    size, size, Image.SCALE_SMOOTH));
-        }
-
-        final String resourcePath = "/it/unibo/sage/view/icons/" + fileName;
-        ImageIcon rawIcon = null;
-        final java.net.URL url = getClass().getResource(resourcePath);
-        if (url != null) {
-            rawIcon = new ImageIcon(url);
-        } else {
-            final String relativePath = resourcePath.substring(1).replace("/", java.io.File.separator);
-            for (java.nio.file.Path path : java.util.List.of(
-                    java.nio.file.Paths.get("src", relativePath),
-                    java.nio.file.Paths.get("bin", relativePath),
-                    java.nio.file.Paths.get("build", "classes", relativePath))) {
-                if (java.nio.file.Files.exists(path)) {
-                    rawIcon = new ImageIcon(path.toString());
-                    break;
-                }
-            }
-        }
-        if (rawIcon == null || rawIcon.getIconWidth() <= 0 || rawIcon.getIconHeight() <= 0) {
-            return null;
-        }
-        return new ImageIcon(rawIcon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
-    }
-
-    /**
-     * Selettore unico usato da categorie, tag e fonti. L'utente puo' scegliere
-     * un'icona inclusa nell'app oppure trascinare una propria immagine.
-     */
-    private final class IconSelectionPanel extends JPanel {
-
-        private final JComboBox<IconChoice> presetCombo;
-        private final JLabel previewLabel = new JLabel();
-        private final JLabel statusLabel = new JLabel();
-        private File pendingCustomFile;
-        private String selectedReference;
-
-        private IconSelectionPanel(final List<IconChoice> choices,
-                final String initialIcon) {
-            super(new BorderLayout(0, 8));
-            setOpaque(false);
-            setPreferredSize(new Dimension(390, 150));
-
-            presetCombo = createIconChoiceCombo(choices, initialIcon);
-            add(presetCombo, BorderLayout.NORTH);
-
-            final JPanel dropArea = new JPanel(new BorderLayout(10, 0));
-            dropArea.setOpaque(true);
-            dropArea.setBackground(new Color(248, 250, 252));
-            dropArea.setBorder(BorderFactory.createDashedBorder(
-                    AppTheme.BORDER, 1.5f, 5.0f, 3.0f, true));
-            dropArea.setPreferredSize(new Dimension(390, 96));
-            dropArea.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-            previewLabel.setPreferredSize(new Dimension(62, 62));
-            previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            previewLabel.setVerticalAlignment(SwingConstants.CENTER);
-            previewLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-
-            final JPanel instructions = new JPanel();
-            instructions.setOpaque(false);
-            instructions.setLayout(new BoxLayout(instructions, BoxLayout.Y_AXIS));
-
-            final JLabel title = new JLabel("Trascina qui una tua immagine");
-            title.setFont(new Font("SansSerif", Font.BOLD, 12));
-            title.setForeground(AppTheme.TEXT);
-
-            statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
-            statusLabel.setForeground(AppTheme.TEXT_MUTED);
-
-            final JButton chooseButton = new JButton("Scegli file");
-            chooseButton.setFocusable(false);
-            chooseButton.addActionListener(e -> chooseCustomImage());
-
-            instructions.add(Box.createVerticalGlue());
-            instructions.add(title);
-            instructions.add(Box.createVerticalStrut(4));
-            instructions.add(statusLabel);
-            instructions.add(Box.createVerticalStrut(6));
-            instructions.add(chooseButton);
-            instructions.add(Box.createVerticalGlue());
-
-            dropArea.add(previewLabel, BorderLayout.WEST);
-            dropArea.add(instructions, BorderLayout.CENTER);
-            add(dropArea, BorderLayout.CENTER);
-
-            final TransferHandler dropHandler = createImageDropHandler();
-            installTransferHandler(dropArea, dropHandler);
-
-            selectedReference = initialIcon;
-            if (IconStorage.isCustomIconReference(initialIcon)) {
-                final ImageIcon currentIcon = loadIconFile(initialIcon, 50);
-                if (currentIcon != null) {
-                    previewLabel.setIcon(currentIcon);
-                    statusLabel.setText("Icona personalizzata attuale");
-                } else {
-                    selectPreset((IconChoice) presetCombo.getSelectedItem());
-                }
-            } else {
-                selectPreset((IconChoice) presetCombo.getSelectedItem());
-            }
-
-            presetCombo.addActionListener(e ->
-                    selectPreset((IconChoice) presetCombo.getSelectedItem()));
-        }
-
-        private void selectPreset(final IconChoice choice) {
-            if (choice == null) {
-                return;
-            }
-            pendingCustomFile = null;
-            selectedReference = choice.fileName;
-            previewLabel.setIcon(loadIconFile(choice.fileName, 50));
-            statusLabel.setText("Predefinita: " + choice.label
-                    + " - oppure trascina PNG/JPG/GIF/BMP");
-        }
-
-        private void chooseCustomImage() {
-            final JFileChooser chooser = new JFileChooser();
-            chooser.setDialogTitle("Scegli icona personalizzata");
-            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                    "Immagini (PNG, JPG, GIF, BMP)", "png", "jpg", "jpeg", "gif", "bmp"));
-            if (chooser.showOpenDialog(DashboardPanel.this) == JFileChooser.APPROVE_OPTION) {
-                selectCustomFile(chooser.getSelectedFile());
-            }
-        }
-
-        private TransferHandler createImageDropHandler() {
-            return new TransferHandler() {
-                @Override
-                public boolean canImport(final TransferSupport support) {
-                    return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
-                }
-
-                @Override
-                public boolean importData(final TransferSupport support) {
-                    if (!canImport(support)) {
-                        return false;
-                    }
-                    try {
-                        final Object data = support.getTransferable().getTransferData(
-                                DataFlavor.javaFileListFlavor);
-                        if (!(data instanceof java.util.List<?>)) {
-                            return false;
-                        }
-                        final java.util.List<?> files = (java.util.List<?>) data;
-                        if (files.isEmpty() || !(files.get(0) instanceof File)) {
-                            return false;
-                        }
-                        selectCustomFile((File) files.get(0));
-                        return true;
-                    } catch (final Exception ex) {
-                        showImageSelectionError(ex.getMessage());
-                        return false;
-                    }
-                }
-            };
-        }
-
-        private void installTransferHandler(final Component component,
-                final TransferHandler handler) {
-            if (component instanceof JComponent) {
-                ((JComponent) component).setTransferHandler(handler);
-            }
-            if (component instanceof Container) {
-                for (Component child : ((Container) component).getComponents()) {
-                    installTransferHandler(child, handler);
-                }
-            }
-        }
-
-        private void selectCustomFile(final File file) {
-            try {
-                if (file == null || !file.isFile()) {
-                    throw new IOException("File non valido");
-                }
-                if (file.length() > 10L * 1024L * 1024L) {
-                    throw new IOException("L'immagine supera il limite di 10 MB");
-                }
-                final ImageIcon rawIcon = new ImageIcon(file.getAbsolutePath());
-                if (rawIcon.getIconWidth() <= 0 || rawIcon.getIconHeight() <= 0) {
-                    throw new IOException("Formato immagine non supportato");
-                }
-                pendingCustomFile = file;
-                selectedReference = null;
-                previewLabel.setIcon(new ImageIcon(rawIcon.getImage().getScaledInstance(
-                        50, 50, Image.SCALE_SMOOTH)));
-                statusLabel.setText("Personalizzata: " + file.getName());
-            } catch (final IOException ex) {
-                showImageSelectionError(ex.getMessage());
-            }
-        }
-
-        private void showImageSelectionError(final String message) {
-            JOptionPane.showMessageDialog(DashboardPanel.this,
-                    "Immagine non valida: " + message,
-                    "Errore immagine",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-
-        private String resolveIconReference() throws IOException {
-            if (pendingCustomFile != null) {
-                return IconStorage.saveCustomIcon(pendingCustomFile);
-            }
-            if (selectedReference == null || selectedReference.isBlank()) {
-                final IconChoice choice = (IconChoice) presetCombo.getSelectedItem();
-                if (choice == null) {
-                    throw new IOException("Seleziona un'icona");
-                }
-                return choice.fileName;
-            }
-            return selectedReference;
         }
     }
 
@@ -2628,7 +1958,7 @@ public class DashboardPanel extends AppBackgroundPanel {
 
     private void generateDueRecurringExpensesOnStartup() {
         try {
-            speseRicorrentiController.generaSpeseScadute(currentUser.getEmail(), LocalDate.now());
+            dashboardDataService.generateDueRecurringExpenses(currentUser.getEmail(), LocalDate.now());
         } catch (final SQLException ex) {
             System.err.println("Generazione automatica delle ricorrenze non completata: "
                     + ex.getMessage());
@@ -2636,90 +1966,31 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private List<Transazione> loadTransactions() {
-        try {
-            return movimentiController.caricaTransazioni(
-                    currentUser.getEmail(),
-                    LocalDate.of(1900, 1, 1),
-                    LocalDate.of(2100, 12, 31));
-        } catch (final SQLException ex) {
-            showLoadError("transazioni", ex);
-            return List.of();
-        }
+        return dashboardData.getTransazioni();
     }
 
     private List<Budget> loadBudgets() {
-        try {
-            return budgetController.caricaBudget(currentUser.getEmail());
-        } catch (final SQLException ex) {
-            showLoadError("budget", ex);
-            return List.of();
-        }
+        return dashboardData.getBudget();
     }
 
     private List<SpesaRicorrente> loadRecurringExpenses() {
-        try {
-            return speseRicorrentiController.caricaRicorrenze(currentUser.getEmail());
-        } catch (final SQLException ex) {
-            showLoadError("spese ricorrenti", ex);
-            return List.of();
-        }
+        return dashboardData.getRicorrenze();
     }
 
     private List<Categoria> loadCategories() {
-        try {
-            return movimentiController.caricaCategorieDisponibili(currentUser.getEmail());
-        } catch (final SQLException ex) {
-            showLoadError("categorie", ex);
-            return List.of();
-        }
+        return dashboardData.getCategorie();
     }
 
     private Map<Long, String> loadCategoryNames() {
-        final Map<Long, String> names = new HashMap<>();
-        for (Categoria categoria : loadCategories()) {
-            names.put(categoria.getId(), categoria.getNome());
-        }
-        return names;
+        return dashboardData.getNomiCategorie();
     }
 
     private List<Tag> loadTags() {
-        try {
-            return movimentiController.caricaTagDisponibili(currentUser.getEmail());
-        } catch (final SQLException ex) {
-            showLoadError("tag", ex);
-            return List.of();
-        }
+        return dashboardData.getTag();
     }
 
     private List<Fonte> loadSources() {
-        try {
-            return movimentiController.caricaFontiDisponibili(currentUser.getEmail());
-        } catch (final SQLException ex) {
-            showLoadError("fonti", ex);
-            return List.of();
-        }
-    }
-
-    private BigDecimal sumByType(final List<Transazione> transazioni, final TipoTransazione tipo) {
-        BigDecimal totale = BigDecimal.ZERO;
-        for (Transazione transazione : transazioni) {
-            if (transazione.getTipo() == tipo) {
-                totale = totale.add(transazione.getImporto());
-            }
-        }
-        return totale;
-    }
-
-    private String calculateBudgetUsage(final List<Budget> budgets) {
-        for (Budget budget : budgets) {
-            if (budget.getIdCategoria() == null && budget.getImportoLimite().signum() > 0) {
-                return budget.getTotaleSpesoAttuale()
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(budget.getImportoLimite(), 0, java.math.RoundingMode.HALF_UP)
-                        + "%";
-            }
-        }
-        return "0%";
+        return dashboardData.getFonti();
     }
 
     private String formatEuro(final BigDecimal value) {
@@ -2737,293 +2008,4 @@ public class DashboardPanel extends AppBackgroundPanel {
                 JOptionPane.ERROR_MESSAGE);
     }
 
-    private enum OverviewFilter {
-        MONTH,
-        YEAR,
-        ALL
-    }
-
-    private static final class DayExpense {
-        private final int day;
-        private final BigDecimal income;
-        private final BigDecimal expense;
-
-        private DayExpense(final int day, final BigDecimal income, final BigDecimal expense) {
-            this.day = day;
-            this.income = income;
-            this.expense = expense;
-        }
-    }
-
-    private final class DailyExpenseChartPanel extends JPanel {
-        private final List<DayExpense> dailyExpenses;
-
-        private DailyExpenseChartPanel(final List<DayExpense> dailyExpenses) {
-            this.dailyExpenses = dailyExpenses;
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(final Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D g2 = (Graphics2D) graphics.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            int width = getWidth();
-            int height = getHeight();
-            int left = 42;
-            int right = 16;
-            int top = 18;
-            int bottom = 32;
-            int chartWidth = width - left - right;
-            int chartHeight = height - top - bottom;
-
-            double maxValue = 0.0;
-            for (DayExpense dayExpense : dailyExpenses) {
-                maxValue = Math.max(maxValue, dayExpense.income.doubleValue());
-                maxValue = Math.max(maxValue, dayExpense.expense.doubleValue());
-            }
-            if (maxValue <= 0.0) {
-                g2.setColor(AppTheme.TEXT_MUTED);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                g2.drawString("Nessuna entrata o spesa registrata nel mese selezionato.", 16, height / 2);
-                g2.dispose();
-                return;
-            }
-
-            for (int i = 0; i <= 4; i++) {
-                int y = top + (int) Math.round(chartHeight * i / 4.0);
-                g2.setColor(new Color(225, 232, 240));
-                g2.drawLine(left, y, width - right, y);
-
-                double labelValue = maxValue * (4 - i) / 4.0;
-                g2.setColor(AppTheme.TEXT_MUTED);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
-                g2.drawString(formatCompactAmount(labelValue), 4, y + 4);
-            }
-
-            int days = Math.max(1, dailyExpenses.size());
-            double slotWidth = chartWidth / (double) days;
-            int barWidth = Math.max(2, Math.min(8, (int) Math.floor(slotWidth * 0.34)));
-            int chartBottom = top + chartHeight;
-
-            for (int i = 0; i < dailyExpenses.size(); i++) {
-                DayExpense dayExpense = dailyExpenses.get(i);
-                int groupWidth = barWidth * 2 + 2;
-                int baseX = left + (int) Math.round(i * slotWidth + (slotWidth - groupWidth) / 2.0);
-                int incomeHeight = (int) Math.round(chartHeight * (dayExpense.income.doubleValue() / maxValue));
-                int expenseHeight = (int) Math.round(chartHeight * (dayExpense.expense.doubleValue() / maxValue));
-
-                if (incomeHeight > 0) {
-                    g2.setColor(AppTheme.INCOME);
-                    g2.fillRoundRect(baseX, chartBottom - incomeHeight, barWidth, incomeHeight, 5, 5);
-                }
-                if (expenseHeight > 0) {
-                    g2.setColor(AppTheme.EXPENSE);
-                    g2.fillRoundRect(baseX + barWidth + 2, chartBottom - expenseHeight,
-                            barWidth, expenseHeight, 5, 5);
-                }
-
-                boolean showLabel = dayExpense.day == 1
-                        || dayExpense.day == dailyExpenses.size()
-                        || dayExpense.day % 5 == 0;
-                if (showLabel) {
-                    String label = String.valueOf(dayExpense.day);
-                    g2.setColor(AppTheme.TEXT_MUTED);
-                    g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
-                    int labelWidth = g2.getFontMetrics().stringWidth(label);
-                    int labelX = left + (int) Math.round((i + 0.5) * slotWidth) - labelWidth / 2;
-                    g2.drawString(label, labelX, height - 8);
-                }
-            }
-
-            g2.setColor(AppTheme.INCOME);
-            g2.fillRoundRect(width - 130, 4, 12, 12, 4, 4);
-            g2.setColor(AppTheme.TEXT_MUTED);
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
-            g2.drawString("Entrate", width - 112, 14);
-            g2.setColor(AppTheme.EXPENSE);
-            g2.fillRoundRect(width - 62, 4, 12, 12, 4, 4);
-            g2.setColor(AppTheme.TEXT_MUTED);
-            g2.drawString("Spese", width - 44, 14);
-
-            g2.dispose();
-        }
-    }
-
-    private static final class MonthTotals {
-        private final String label;
-        private final BigDecimal income;
-        private final BigDecimal expense;
-
-        private MonthTotals(final String label, final BigDecimal income, final BigDecimal expense) {
-            this.label = label;
-            this.income = income;
-            this.expense = expense;
-        }
-    }
-
-    private final class MonthlyTrendChartPanel extends JPanel {
-        private final List<MonthTotals> monthTotals;
-
-        private MonthlyTrendChartPanel(final List<MonthTotals> monthTotals) {
-            this.monthTotals = monthTotals;
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(final Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D g2 = (Graphics2D) graphics.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            int width = getWidth();
-            int height = getHeight();
-            int left = 42;
-            int right = 16;
-            int top = 18;
-            int bottom = 32;
-            int chartWidth = width - left - right;
-            int chartHeight = height - top - bottom;
-
-            double maxValue = 0.0;
-            for (MonthTotals totals : monthTotals) {
-                maxValue = Math.max(maxValue, totals.income.doubleValue());
-                maxValue = Math.max(maxValue, totals.expense.doubleValue());
-            }
-            if (maxValue <= 0.0) {
-                g2.setColor(AppTheme.TEXT_MUTED);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                g2.drawString("Nessun dato disponibile per il grafico.", 16, height / 2);
-                g2.dispose();
-                return;
-            }
-
-            g2.setColor(new Color(225, 232, 240));
-            for (int i = 0; i <= 4; i++) {
-                int y = top + (int) Math.round(chartHeight * i / 4.0);
-                g2.drawLine(left, y, width - right, y);
-                double labelValue = maxValue * (4 - i) / 4.0;
-                g2.setColor(AppTheme.TEXT_MUTED);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
-                g2.drawString(formatCompactAmount(labelValue), 4, y + 4);
-                g2.setColor(new Color(225, 232, 240));
-            }
-
-            int months = Math.max(1, monthTotals.size());
-            int groupWidth = Math.max(32, chartWidth / months);
-            int barWidth = Math.max(10, Math.min(24, (groupWidth - 12) / 2));
-            int chartBottom = top + chartHeight;
-
-            for (int i = 0; i < monthTotals.size(); i++) {
-                MonthTotals totals = monthTotals.get(i);
-                int baseX = left + i * groupWidth + Math.max(6, (groupWidth - (barWidth * 2 + 6)) / 2);
-                int incomeHeight = (int) Math.round(chartHeight * (totals.income.doubleValue() / maxValue));
-                int expenseHeight = (int) Math.round(chartHeight * (totals.expense.doubleValue() / maxValue));
-
-                g2.setColor(AppTheme.INCOME);
-                g2.fillRoundRect(baseX, chartBottom - incomeHeight, barWidth, incomeHeight, 8, 8);
-                g2.setColor(AppTheme.EXPENSE);
-                g2.fillRoundRect(baseX + barWidth + 6, chartBottom - expenseHeight, barWidth, expenseHeight, 8, 8);
-
-                g2.setColor(AppTheme.TEXT_MUTED);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
-                int labelWidth = g2.getFontMetrics().stringWidth(totals.label);
-                int labelX = left + i * groupWidth + (groupWidth - labelWidth) / 2;
-                g2.drawString(totals.label, labelX, height - 8);
-            }
-
-            g2.setColor(AppTheme.INCOME);
-            g2.fillRoundRect(width - 130, 4, 12, 12, 4, 4);
-            g2.setColor(AppTheme.TEXT_MUTED);
-            g2.drawString("Entrate", width - 112, 14);
-            g2.setColor(AppTheme.EXPENSE);
-            g2.fillRoundRect(width - 62, 4, 12, 12, 4, 4);
-            g2.setColor(AppTheme.TEXT_MUTED);
-            g2.drawString("Spese", width - 44, 14);
-
-            g2.dispose();
-        }
-    }
-
-    private final class ExpenseDistributionChartPanel extends JPanel {
-        private final List<Map.Entry<String, BigDecimal>> slices;
-
-        private ExpenseDistributionChartPanel(final LinkedHashMap<String, BigDecimal> expensesByCategory) {
-            this.slices = new ArrayList<>(expensesByCategory.entrySet());
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(final Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D g2 = (Graphics2D) graphics.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            if (slices.isEmpty()) {
-                g2.setColor(AppTheme.TEXT_MUTED);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                g2.drawString("Nessuna spesa disponibile.", 12, getHeight() / 2);
-                g2.dispose();
-                return;
-            }
-
-            int size = Math.min(getWidth(), getHeight()) - 28;
-            int x = (getWidth() - size) / 2;
-            int y = (getHeight() - size) / 2;
-            BigDecimal total = BigDecimal.ZERO;
-            for (Map.Entry<String, BigDecimal> entry : slices) {
-                total = total.add(entry.getValue());
-            }
-
-            double startAngle = 90.0;
-            for (int i = 0; i < slices.size(); i++) {
-                Map.Entry<String, BigDecimal> entry = slices.get(i);
-                double angle = entry.getValue().doubleValue() * 360.0 / total.doubleValue();
-                g2.setColor(chartColor(i));
-                g2.fillArc(x, y, size, size, (int) Math.round(startAngle), (int) -Math.round(angle));
-                startAngle -= angle;
-            }
-
-            int innerSize = (int) (size * 0.56);
-            int innerX = x + (size - innerSize) / 2;
-            int innerY = y + (size - innerSize) / 2;
-            g2.setColor(new Color(255, 255, 255, 235));
-            g2.fillOval(innerX, innerY, innerSize, innerSize);
-
-            g2.setColor(AppTheme.TEXT_MUTED);
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
-            String line1 = "Totale spese";
-            String line2 = formatEuro(total);
-            FontMetrics fm = g2.getFontMetrics();
-            int line1Width = fm.stringWidth(line1);
-            g2.drawString(line1, getWidth() / 2 - line1Width / 2, getHeight() / 2 - 6);
-
-            g2.setColor(AppTheme.TEXT);
-            g2.setFont(new Font("SansSerif", Font.BOLD, 14));
-            fm = g2.getFontMetrics();
-            int line2Width = fm.stringWidth(line2);
-            g2.drawString(line2, getWidth() / 2 - line2Width / 2, getHeight() / 2 + 14);
-
-            g2.dispose();
-        }
-    }
-
-    private static final class IconChoice {
-        private final String label;
-        private final String fileName;
-
-        private IconChoice(final String label, final String fileName) {
-            this.label = label;
-            this.fileName = fileName;
-        }
-
-        @Override
-        public String toString() {
-            return label;
-        }
-    }
 }

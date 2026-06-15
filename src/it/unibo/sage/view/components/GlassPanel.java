@@ -1,5 +1,6 @@
-package it.unibo.sage.view;
+package it.unibo.sage.view.components;
 
+import it.unibo.sage.view.theme.AppTheme;
 import javax.swing.*;
 import java.awt.*;
 

@@ -2,6 +2,11 @@ package it.unibo.sage.view;
 
 import it.unibo.sage.model.Ruolo;
 import it.unibo.sage.model.Utente;
+import it.unibo.sage.view.admin.AdminDashboardPanel;
+import it.unibo.sage.view.auth.LoginPanel;
+import it.unibo.sage.view.dashboard.DashboardPanel;
+import it.unibo.sage.view.onboarding.ConfigurazioneInizialePanel;
+import it.unibo.sage.view.theme.AppTheme;
 import javax.swing.*;
 import java.awt.*;
 

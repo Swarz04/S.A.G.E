@@ -7,7 +7,7 @@ Avvio rapido S.A.G.E.
    doc/sql/popolamento.sql
 3) Da PowerShell:
    cd "c:\Users\schar\Music\S.A.G.E-local"
-   $env:SAGE_DB_USER="root"; $env:SAGE_DB_PASSWORD="LA_TUA_PASSWORD_MYSQL"
+   $env:SAGE_DB_USER="root"; $env:SAGE_DB_PASSWORD=""
    javac -d bin -sourcepath src src/it/unibo/sage/Main.java
    java -cp "bin;lib/*" it.unibo.sage.Main
 

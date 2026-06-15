@@ -424,7 +424,7 @@ public class MovimentiService {
             budgetDAO.aggiungiSpesaAiBudget(email, idPeriodo, idCategoria, importo);
             connection.commit();
             return idTransazione;
-        } catch (final SQLException ex) {
+        } catch (final SQLException | RuntimeException ex) {
             rollbackSilenzioso(connection);
             throw ex;
         } finally {
@@ -457,7 +457,7 @@ public class MovimentiService {
             final long idTransazione = transazioneDAO.inserisci(entrata);
             connection.commit();
             return idTransazione;
-        } catch (final SQLException ex) {
+        } catch (final SQLException | RuntimeException ex) {
             rollbackSilenzioso(connection);
             throw ex;
         } finally {
@@ -508,7 +508,7 @@ public class MovimentiService {
             }
             aggiornaBudgetDopoModifica(budgetDAO, precedente, aggiornata);
             connection.commit();
-        } catch (final SQLException ex) {
+        } catch (final SQLException | RuntimeException ex) {
             rollbackSilenzioso(connection);
             throw ex;
         } finally {
@@ -530,7 +530,7 @@ public class MovimentiService {
             transazioneDAO.elimina(idTransazione, email);
             sottraiDaBudgetSeSpesa(budgetDAO, transazione);
             connection.commit();
-        } catch (final SQLException ex) {
+        } catch (final SQLException | RuntimeException ex) {
             rollbackSilenzioso(connection);
             throw ex;
         } finally {

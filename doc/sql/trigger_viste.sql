@@ -105,6 +105,55 @@ BEGIN
     END IF;
 END$$
 
+-- Stessa regola anche per le fonti: una fonte personale non deve duplicare
+-- una fonte di sistema o un'altra fonte dello stesso utente.
+CREATE TRIGGER trg_fonte_insert_no_duplicati
+BEFORE INSERT ON FONTE
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM FONTE F
+        WHERE LOWER(TRIM(F.Nome)) = LOWER(TRIM(NEW.Nome))
+          AND (
+                NEW.is_system = TRUE
+                OR
+                (NEW.is_system = FALSE AND (
+                    F.is_system = TRUE
+                    OR (F.is_system = FALSE
+                        AND F.Email_Proprietario = NEW.Email_Proprietario)
+                ))
+              )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Esiste gia'' una fonte con questo nome';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_fonte_update_no_duplicati
+BEFORE UPDATE ON FONTE
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM FONTE F
+        WHERE F.ID_Fonte <> NEW.ID_Fonte
+          AND LOWER(TRIM(F.Nome)) = LOWER(TRIM(NEW.Nome))
+          AND (
+                NEW.is_system = TRUE
+                OR
+                (NEW.is_system = FALSE AND (
+                    F.is_system = TRUE
+                    OR (F.is_system = FALSE
+                        AND F.Email_Proprietario = NEW.Email_Proprietario)
+                ))
+              )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Esiste gia'' una fonte con questo nome';
+    END IF;
+END$$
+
 -- Quando inserisco una transazione, verifico che categoria o fonte appartengano
 -- all'utente oppure siano elementi di sistema. Se nasce da una ricorrenza,
 -- verifico anche il collegamento al relativo modello.
