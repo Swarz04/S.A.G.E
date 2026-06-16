@@ -1,3 +1,6 @@
+-- S.A.G.E. - query operative e dimostrative
+-- Questo file non e necessario per avviare l'applicazione.
+
 -- Query operative usate per simulare le funzioni principali dell'app.
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;

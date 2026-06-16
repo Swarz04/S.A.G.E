@@ -1,3 +1,6 @@
+-- S.A.G.E. - dati dimostrativi
+-- Eseguire dopo 01_schema_completo.sql soltanto se servono utenti e movimenti demo.
+
 -- Dati iniziali per provare S.A.G.E. con utenti, categorie e movimenti demo.
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;

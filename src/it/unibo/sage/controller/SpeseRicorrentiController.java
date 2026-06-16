@@ -41,6 +41,14 @@ public class SpeseRicorrentiController {
                 dataProssimaScadenza, scadenza, idCategoria, dataRegistrazione);
     }
 
+    public void modificaRicorrenza(final String email, final long idRicorrenza,
+            final String nome, final BigDecimal importo, final int frequenzaGiorni,
+            final LocalDate dataInizio, final LocalDate dataProssimaScadenza,
+            final LocalDate scadenza, final long idCategoria) throws SQLException {
+        speseRicorrentiService.modificaRicorrenza(email, idRicorrenza, nome, importo,
+                frequenzaGiorni, dataInizio, dataProssimaScadenza, scadenza, idCategoria);
+    }
+
     public void eliminaRicorrenza(final String email, final long idRicorrenza)
             throws SQLException {
         speseRicorrentiService.eliminaRicorrenza(email, idRicorrenza);

@@ -8,9 +8,12 @@ import it.unibo.sage.view.theme.AppTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -21,13 +24,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 import javax.imageio.ImageIO;
+import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 
 public class DocumentiListPanel extends JPanel {
 
@@ -35,8 +41,9 @@ public class DocumentiListPanel extends JPanel {
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final NumberFormat MONEY_FORMATTER =
             NumberFormat.getCurrencyInstance(Locale.ITALY);
-    private static final int PREVIEW_SIZE = 92;
-    private static final int ACTION_SIZE = 42;
+    private static final int PREVIEW_SIZE = 76;
+    private static final int ACTION_WIDTH = 86;
+    private static final int ACTION_HEIGHT = 34;
 
     private final Consumer<DocumentoDettaglio> onOpen;
     private final Consumer<DocumentoDettaglio> onEdit;
@@ -52,11 +59,14 @@ public class DocumentiListPanel extends JPanel {
         this.onDelete = onDelete;
 
         setOpaque(false);
-        listPanel = new JPanel();
+        listPanel = new JPanel(new GridLayout(0, 2, 14, 14));
         listPanel.setOpaque(false);
-        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
 
-        final JScrollPane scrollPane = new JScrollPane(listPanel);
+        final JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(listPanel, BorderLayout.NORTH);
+
+        final JScrollPane scrollPane = new JScrollPane(wrapper);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -76,7 +86,6 @@ public class DocumentiListPanel extends JPanel {
         } else {
             for (final DocumentoDettaglio documento : documenti) {
                 listPanel.add(createDocumentoCard(documento));
-                listPanel.add(Box.createVerticalStrut(12));
             }
         }
 
@@ -91,8 +100,10 @@ public class DocumentiListPanel extends JPanel {
 
     private JPanel createDocumentoCard(final DocumentoDettaglio documento) {
         final JPanel card = new GlassPanel(new BorderLayout(18, 0));
-        card.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 20));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+        card.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        card.setPreferredSize(new Dimension(0, 126));
+        card.setMinimumSize(new Dimension(0, 126));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 126));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         final JPanel details = new JPanel();
@@ -132,42 +143,62 @@ public class DocumentiListPanel extends JPanel {
         card.add(createPreviewButton(documento), BorderLayout.WEST);
         card.add(details, BorderLayout.CENTER);
         card.add(createActionPanel(documento), BorderLayout.EAST);
+        installOpenClick(card, documento);
         return card;
     }
 
     private JPanel createActionPanel(final DocumentoDettaglio documento) {
-        final JPanel actions = new JPanel();
+        final JPanel actions = new JPanel(new GridLayout(2, 1, 0, 8));
         actions.setOpaque(false);
-        actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
-        actions.add(createActionButton("A", "Apri file", AppTheme.PRIMARY,
-                event -> onOpen.accept(documento)));
-        actions.add(Box.createHorizontalStrut(8));
-        actions.add(createActionButton("M", "Modifica documento", AppTheme.ACCENT,
+        actions.add(createActionButton("Modifica", "Modifica documento",
                 event -> onEdit.accept(documento)));
-        actions.add(Box.createHorizontalStrut(8));
-        actions.add(createActionButton("X", "Elimina documento", AppTheme.EXPENSE,
+        actions.add(createActionButton("Elimina", "Elimina documento",
                 event -> onDelete.accept(documento)));
         return actions;
     }
 
     private SoftButton createActionButton(final String text, final String tooltip,
-            final Color color, final java.awt.event.ActionListener listener) {
+            final java.awt.event.ActionListener listener) {
         final SoftButton button = new SoftButton(text);
         button.setBackground(AppTheme.SURFACE_MUTED);
-        button.setForeground(color);
-        button.setFont(new Font("SansSerif", Font.BOLD, 14));
+        button.setForeground(AppTheme.TEXT);
+        button.setFont(new Font("SansSerif", Font.BOLD, 11));
         button.setToolTipText(tooltip);
-        button.setPreferredSize(new Dimension(ACTION_SIZE, ACTION_SIZE));
-        button.setMinimumSize(new Dimension(ACTION_SIZE, ACTION_SIZE));
-        button.setMaximumSize(new Dimension(ACTION_SIZE, ACTION_SIZE));
-        button.setBorder(BorderFactory.createEmptyBorder());
+        button.setPreferredSize(new Dimension(ACTION_WIDTH, ACTION_HEIGHT));
+        button.setMinimumSize(new Dimension(ACTION_WIDTH, ACTION_HEIGHT));
+        button.setMaximumSize(new Dimension(ACTION_WIDTH, ACTION_HEIGHT));
+        button.setBorder(BorderFactory.createEmptyBorder(7, 10, 7, 10));
         button.setArc(12);
         button.addMouseListener(new ButtonHoverAdapter(
                 button,
                 AppTheme.SURFACE_MUTED,
-                AppTheme.BACKGROUND_COOL_GLOW));
+                AppTheme.BADGE_BACKGROUND));
         button.addActionListener(listener);
         return button;
+    }
+
+    private void installOpenClick(final Component component,
+            final DocumentoDettaglio documento) {
+        if (component instanceof AbstractButton) {
+            return;
+        }
+        component.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (component instanceof JComponent) {
+            ((JComponent) component).setToolTipText("Apri documento");
+        }
+        component.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(final java.awt.event.MouseEvent event) {
+                if (SwingUtilities.isLeftMouseButton(event)) {
+                    onOpen.accept(documento);
+                }
+            }
+        });
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                installOpenClick(child, documento);
+            }
+        }
     }
 
     private SoftButton createPreviewButton(final DocumentoDettaglio documento) {

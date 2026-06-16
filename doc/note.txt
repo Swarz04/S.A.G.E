@@ -1,6 +1,7 @@
 Avvio rapido S.A.G.E.
 
 1) Avvia MySQL sulla porta 3306.
+<<<<<<< HEAD
 2) In MySQL Workbench esegui, in ordine:
    doc/sql/schema_completo.sql
    doc/sql/trigger_viste.sql
@@ -10,6 +11,14 @@ Avvio rapido S.A.G.E.
    $env:SAGE_DB_USER="root"; $env:SAGE_DB_PASSWORD=""
    javac -d bin -sourcepath src src/it/unibo/sage/Main.java
    java -cp "bin;lib/*" it.unibo.sage.Main
+=======
+2) Per un database nuovo esegui, in ordine:
+   doc/sql/01_schema_completo.sql
+   doc/sql/02_popolamento_demo.sql
+   Per un database gia esistente esegui invece solo:
+   doc/sql/03_migrazione_database_esistente.sql
+3) Da PowerShell avvia il progetto tramite la configurazione Run S.A.G.E.
+>>>>>>> 3351d66 (aggiornamento interfaccia)
 
 Login demo utente: studente1@mail.com / password1
 Login demo utente 2: studente2@mail.com / password2

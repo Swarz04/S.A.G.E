@@ -25,7 +25,7 @@ public final class SqlScriptConsistencyTest {
     }
 
     private static void testSchemaContieneTabelleFondamentali() throws IOException {
-        final String schema = readSql("schema_completo.sql").toUpperCase();
+        final String schema = readSql("01_schema_completo.sql").toUpperCase();
         final List<String> tables = List.of("UTENTE", "PERIODO", "CATEGORIA", "TAG", "FONTE",
                 "TRANSIZIONE", "SPESA_TAG", "BUDGET", "DOCUMENTO", "SPESA_RICORRENTE");
         for (final String table : tables) {
@@ -37,7 +37,7 @@ public final class SqlScriptConsistencyTest {
 
 
     private static void testSchemaContieneNuoveRelazioniEIcone() throws IOException {
-        final String schema = readSql("schema_completo.sql").toUpperCase();
+        final String schema = readSql("01_schema_completo.sql").toUpperCase();
         TestAssertions.assertTrue(schema.contains("ICONA VARCHAR(255)"),
                 "Categorie, tag e fonti devono salvare anche riferimenti a icone personalizzate");
         final int iconColumns = schema.split("ICONA VARCHAR\\(255\\)", -1).length - 1;
@@ -54,8 +54,13 @@ public final class SqlScriptConsistencyTest {
     }
 
     private static void testDocumentoUnicoPerTransazione() throws IOException {
+<<<<<<< HEAD
         final String schema = readSql("schema_completo.sql").toUpperCase();
         final String migration = readSql("aggiornamento_funzioni_richieste.sql").toUpperCase();
+=======
+        final String schema = readSql("01_schema_completo.sql").toUpperCase();
+        final String migration = readSql("03_migrazione_database_esistente.sql").toUpperCase();
+>>>>>>> 3351d66 (aggiornamento interfaccia)
         TestAssertions.assertTrue(schema.contains("UQ_DOCUMENTO_TRANSIZIONE")
                         && schema.contains("ON DOCUMENTO (ID_TRANSIZIONE)"),
                 "Lo schema deve impedire piu' documenti sulla stessa transazione");
@@ -65,19 +70,19 @@ public final class SqlScriptConsistencyTest {
     }
 
     private static void testTriggerVisteContieneVistePrincipali() throws IOException {
-        final String triggerViews = readSql("trigger_viste.sql").toUpperCase();
+        final String triggerViews = readSql("01_schema_completo.sql").toUpperCase();
         TestAssertions.assertTrue(triggerViews.contains("V_BUDGET_STATO"),
-                "trigger_viste.sql deve contenere la vista v_budget_stato");
+                "01_schema_completo.sql deve contenere la vista v_budget_stato");
         TestAssertions.assertTrue(triggerViews.contains("V_STATISTICHE_AGGREGATE_ADMIN"),
-                "trigger_viste.sql deve contenere la vista v_statistiche_aggregate_admin");
+                "01_schema_completo.sql deve contenere la vista v_statistiche_aggregate_admin");
         TestAssertions.assertTrue(triggerViews.contains("TRG_TRANSIZIONE_INSERT_CHECK")
                         || triggerViews.contains("BEFORE INSERT"),
-                "trigger_viste.sql deve contenere almeno un trigger di inserimento transazione");
+                "01_schema_completo.sql deve contenere almeno un trigger di inserimento transazione");
     }
 
 
     private static void testTriggerBloccanoDuplicatiERicorrenzeIncoerenti() throws IOException {
-        final String triggerViews = readSql("trigger_viste.sql").toUpperCase();
+        final String triggerViews = readSql("01_schema_completo.sql").toUpperCase();
         TestAssertions.assertTrue(triggerViews.contains("TRG_CATEGORIA_INSERT_NO_DUPLICATI")
                         && triggerViews.contains("TRG_TAG_INSERT_NO_DUPLICATI")
                         && triggerViews.contains("TRG_FONTE_INSERT_NO_DUPLICATI")
@@ -92,18 +97,18 @@ public final class SqlScriptConsistencyTest {
     }
 
     private static void testPopolamentoContieneDatiDemo() throws IOException {
-        final String popolamento = readSql("popolamento.sql").toLowerCase();
+        final String popolamento = readSql("02_popolamento_demo.sql").toLowerCase();
         TestAssertions.assertTrue(popolamento.contains("studente1@mail.com"),
-                "popolamento.sql deve contenere l'utente demo studente1@mail.com");
+                "02_popolamento_demo.sql deve contenere l'utente demo studente1@mail.com");
         TestAssertions.assertTrue(popolamento.contains("admin@sage.com"),
-                "popolamento.sql deve contenere l'utente demo admin@sage.com");
+                "02_popolamento_demo.sql deve contenere l'utente demo admin@sage.com");
         TestAssertions.assertTrue(popolamento.contains("alimentari") && popolamento.contains("stipendio"),
-                "popolamento.sql deve contenere categorie e fonti di base");
+                "02_popolamento_demo.sql deve contenere categorie e fonti di base");
     }
 
 
     private static void testPopolamentoNonContieneEssenziale() throws IOException {
-        final String popolamento = readSql("popolamento.sql").toLowerCase();
+        final String popolamento = readSql("02_popolamento_demo.sql").toLowerCase();
         TestAssertions.assertFalse(popolamento.contains("essenziale"),
                 "Il tag Essenziale deve essere rimosso dal popolamento");
         TestAssertions.assertTrue(popolamento.contains("abbonamento autobus")
@@ -114,21 +119,21 @@ public final class SqlScriptConsistencyTest {
     }
 
     private static void testAggiornamentoRicorrenzePresente() throws IOException {
-        final Path path = Path.of("doc", "sql", "aggiornamento_spese_ricorrenti.sql");
+        final Path path = Path.of("doc", "sql", "03_migrazione_database_esistente.sql");
         if (!Files.exists(path)) {
             return;
         }
         final String update = Files.readString(path, StandardCharsets.UTF_8).toUpperCase();
         TestAssertions.assertTrue(update.contains("SPESA_RICORRENTE"),
-                "aggiornamento_spese_ricorrenti.sql deve riferirsi a SPESA_RICORRENTE");
+                "03_migrazione_database_esistente.sql deve riferirsi a SPESA_RICORRENTE");
         TestAssertions.assertTrue(update.contains("V_SPESE_RICORRENTI_SCADUTE")
                         || update.contains("IDX_RICORRENTE"),
-                "aggiornamento_spese_ricorrenti.sql deve creare vista o indice per ricorrenze");
+                "03_migrazione_database_esistente.sql deve creare vista o indice per ricorrenze");
     }
 
 
     private static void testMigrazioneFunzioniRichiestePresente() throws IOException {
-        final String migration = readSql("aggiornamento_funzioni_richieste.sql").toUpperCase();
+        final String migration = readSql("03_migrazione_database_esistente.sql").toUpperCase();
         TestAssertions.assertTrue(migration.contains("CATEGORIA ADD COLUMN ICONA")
                         && migration.contains("TAG ADD COLUMN ICONA")
                         && migration.contains("FONTE ADD COLUMN ICONA"),
@@ -147,6 +152,7 @@ public final class SqlScriptConsistencyTest {
     private static void testDocumentazioneIndicaScriptUfficiali() throws IOException {
         final String latex = Files.readString(Path.of("doc", "latex", "main.tex"),
                 StandardCharsets.UTF_8);
+<<<<<<< HEAD
         final String legacy = readSql("creazione_schema_indici.sql").toUpperCase();
         TestAssertions.assertTrue(latex.contains("doc/sql/schema\\_completo.sql")
                         && latex.contains("doc/sql/query\\_operazioni.sql")
@@ -155,6 +161,24 @@ public final class SqlScriptConsistencyTest {
         TestAssertions.assertTrue(legacy.contains("SCRIPT STORICO")
                         && legacy.contains("NON UFFICIALE"),
                 "Lo script vecchio deve essere marcato come storico e non ufficiale");
+=======
+        final String readme = Files.readString(Path.of("doc", "sql", "README.md"),
+                StandardCharsets.UTF_8);
+        TestAssertions.assertTrue(latex.contains("01\\_schema\\_completo.sql")
+                        && latex.contains("04\\_query\\_operazioni.sql")
+                        && latex.contains("02\\_popolamento\\_demo.sql"),
+                "Il LaTeX deve indicare i quattro script SQL consolidati");
+        TestAssertions.assertTrue(readme.contains("03_migrazione_database_esistente.sql")
+                        && readme.contains("quattro script"),
+                "Il README SQL deve spiegare installazione e migrazione consolidate");
+        try (java.util.stream.Stream<Path> files = Files.list(Path.of("doc", "sql"))) {
+            final long sqlCount = files
+                    .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    .count();
+            TestAssertions.assertTrue(sqlCount <= 5,
+                    "La cartella doc/sql deve contenere al massimo cinque file SQL");
+        }
+>>>>>>> 3351d66 (aggiornamento interfaccia)
     }
 
     private static String readSql(final String fileName) throws IOException {

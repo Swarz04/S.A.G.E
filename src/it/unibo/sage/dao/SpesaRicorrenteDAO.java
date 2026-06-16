@@ -16,5 +16,7 @@ public interface SpesaRicorrenteDAO {
     void aggiornaProssimaScadenza(long idRicorrenza, String email, LocalDate nuovaScadenza)
             throws SQLException;
 
+    void aggiorna(SpesaRicorrente spesaRicorrente) throws SQLException;
+
     void elimina(long idRicorrenza, String email) throws SQLException;
 }

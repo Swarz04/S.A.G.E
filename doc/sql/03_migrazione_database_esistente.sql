@@ -1,3 +1,7 @@
+-- S.A.G.E. - migrazione cumulativa per database gia esistenti
+-- Sostituisce i precedenti script separati per ricorrenze, icone e funzioni richieste.
+-- Eseguire una sola volta su un database creato con una versione precedente.
+
 -- Migrazione incrementale per un database S.A.G.E. già esistente.
 -- Aggiunge:
 --   1) nome alle spese ricorrenti;
