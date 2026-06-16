@@ -40,6 +40,13 @@ public class JdbcSpesaRicorrenteDAO implements SpesaRicorrenteDAO {
             + "SET Data_Prossima_Scadenza = ? "
             + "WHERE ID_Ricorrenza = ? AND Email = ?";
 
+    private static final String UPDATE_SQL =
+            "UPDATE SPESA_RICORRENTE "
+            + "SET Nome = ?, Importo_Previsto = ?, Frequenza_Giorni = ?, "
+            + "Data_Inizio = ?, Data_Prossima_Scadenza = ?, Scadenza = ?, "
+            + "ID_Categoria = ? "
+            + "WHERE ID_Ricorrenza = ? AND Email = ?";
+
     private static final String DELETE_SQL =
             "DELETE FROM SPESA_RICORRENTE WHERE ID_Ricorrenza = ? AND Email = ?";
 
@@ -109,6 +116,24 @@ public class JdbcSpesaRicorrenteDAO implements SpesaRicorrenteDAO {
             statement.setDate(1, Date.valueOf(nuovaScadenza));
             statement.setLong(2, idRicorrenza);
             statement.setString(3, email);
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Spesa ricorrente inesistente o non appartenente all'utente");
+            }
+        }
+    }
+
+    @Override
+    public void aggiorna(final SpesaRicorrente spesaRicorrente) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
+            statement.setString(1, spesaRicorrente.getNome());
+            statement.setBigDecimal(2, spesaRicorrente.getImportoPrevisto());
+            statement.setInt(3, spesaRicorrente.getFrequenzaGiorni());
+            statement.setDate(4, Date.valueOf(spesaRicorrente.getDataInizio()));
+            statement.setDate(5, Date.valueOf(spesaRicorrente.getDataProssimaScadenza()));
+            setNullableDate(statement, 6, spesaRicorrente.getScadenza());
+            statement.setLong(7, spesaRicorrente.getIdCategoria());
+            statement.setLong(8, spesaRicorrente.getId());
+            statement.setString(9, spesaRicorrente.getEmail());
             if (statement.executeUpdate() == 0) {
                 throw new SQLException("Spesa ricorrente inesistente o non appartenente all'utente");
             }

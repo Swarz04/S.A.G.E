@@ -59,6 +59,14 @@ public class DashboardDataService {
         return movimentiService.caricaTransazioniPerTag(email, id);
     }
 
+<<<<<<< HEAD
+=======
+    public List<Transazione> loadTransactionsForRecurringExpense(
+            final String email, final long idRicorrenza) throws SQLException {
+        return movimentiService.caricaTransazioniPerRicorrenza(email, idRicorrenza);
+    }
+
+>>>>>>> 3351d66 (aggiornamento interfaccia)
     public List<Long> loadTransactionTagIds(final String email, final long idTransazione)
             throws SQLException {
         return movimentiService.caricaTagTransazione(email, idTransazione);

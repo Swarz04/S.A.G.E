@@ -57,6 +57,13 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
             + "WHERE Email = ? AND ID_Fonte = ? "
             + "ORDER BY Data DESC, ID_Transizione DESC";
 
+    private static final String FIND_BY_RICORRENZA_SQL =
+            "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
+            + "ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza "
+            + "FROM TRANSIZIONE "
+            + "WHERE Email = ? AND ID_Ricorrenza = ? "
+            + "ORDER BY Data DESC, ID_Transizione DESC";
+
     private static final String FIND_BY_ID_SQL =
             "SELECT ID_Transizione, TipoTransazione, Importo, Data, Descrizione, Email, "
             + "ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza "
@@ -195,6 +202,23 @@ public class JdbcTransazioneDAO implements TransazioneDAO {
         try (PreparedStatement statement = connection.prepareStatement(FIND_BY_FONTE_SQL)) {
             statement.setString(1, email);
             statement.setLong(2, idFonte);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    transazioni.add(mapTransazione(resultSet));
+                }
+            }
+        }
+        return transazioni;
+    }
+
+    @Override
+    public List<Transazione> findByRicorrenza(final String email, final long idRicorrenza)
+            throws SQLException {
+        final List<Transazione> transazioni = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(FIND_BY_RICORRENZA_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idRicorrenza);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {

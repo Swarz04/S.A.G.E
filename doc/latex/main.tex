@@ -666,10 +666,17 @@ Sviluppi futuri includono:
 
 \appendix
 \section{Script SQL completo}
+<<<<<<< HEAD
 Gli script completi sono mantenuti nella cartella \texttt{doc/sql}. In particolare, \texttt{schema\_completo.sql} contiene la versione pulita e ufficiale dello schema, mentre \texttt{popolamento.sql}, \texttt{trigger\_viste.sql} e \texttt{query\_operazioni.sql} raccolgono dati demo, trigger, viste e query operative. Il file \texttt{creazione\_schema\_indici.sql} resta solo come traccia storica della prima trasformazione e non è lo script da eseguire per la consegna.
 
 \section{Query SQL complete}
 Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{doc/sql/query\_operazioni.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
+=======
+Gli script SQL sono consolidati nella cartella \texttt{doc/sql}: \texttt{01\_schema\_completo.sql} crea schema, indici, trigger e viste; \texttt{02\_popolamento\_demo.sql} inserisce i dati dimostrativi; \texttt{03\_migrazione\_database\_esistente.sql} aggiorna installazioni precedenti; \texttt{04\_query\_operazioni.sql} raccoglie le query operative facoltative.
+
+\section{Query SQL complete}
+Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{doc/sql/04\_query\_operazioni.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
+>>>>>>> 3351d66 (aggiornamento interfaccia)
 
 \section{Screenshot dell'applicazione}
 Gli screenshot dell'applicazione possono essere inseriti in questa sezione durante la consegna finale. Le schermate più rilevanti sono login, dashboard, budget e gestione documenti.

@@ -384,6 +384,14 @@ public class MovimentiService {
         }
     }
 
+    public List<Transazione> caricaTransazioniPerRicorrenza(final String email,
+            final long idRicorrenza) throws SQLException {
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final TransazioneDAO transazioneDAO = new JdbcTransazioneDAO(connection);
+            return transazioneDAO.findByRicorrenza(email, idRicorrenza);
+        }
+    }
+
     public long registraSpesa(final String email, final BigDecimal importo,
             final LocalDate data, final String descrizione, final long idCategoria,
             final List<Long> idTag, final String documentoPath) throws SQLException {

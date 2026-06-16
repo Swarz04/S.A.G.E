@@ -133,6 +133,27 @@ public class SpeseRicorrentiService {
         }
     }
 
+    public void modificaRicorrenza(final String email, final long idRicorrenza,
+            final String nome, final BigDecimal importo, final int frequenzaGiorni,
+            final LocalDate dataInizio, final LocalDate dataProssimaScadenza,
+            final LocalDate scadenza, final long idCategoria) throws SQLException {
+        final String nomePulito = validaRicorrenza(nome, importo, frequenzaGiorni,
+                dataInizio, dataProssimaScadenza, scadenza);
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            final SpesaRicorrenteDAO dao = new JdbcSpesaRicorrenteDAO(connection);
+            dao.aggiorna(new SpesaRicorrente(
+                    idRicorrenza,
+                    nomePulito,
+                    importo,
+                    frequenzaGiorni,
+                    dataInizio,
+                    dataProssimaScadenza,
+                    scadenza,
+                    idCategoria,
+                    email));
+        }
+    }
+
     public void eliminaRicorrenza(final String email, final long idRicorrenza) throws SQLException {
         try (Connection connection = DatabaseConnection.getConnection()) {
             final SpesaRicorrenteDAO dao = new JdbcSpesaRicorrenteDAO(connection);

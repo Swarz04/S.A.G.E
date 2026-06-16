@@ -329,47 +329,70 @@ public class DashboardPanel extends AppBackgroundPanel {
         dashboardGrid.add(createBudgetProgressCard(budgets, categoryNames));
         dashboardGrid.add(createRecentTransactionsListCard(transazioni));
 
-        panel.add(createOverviewFilterPanel());
+        JPanel filterPanel = createOverviewFilterPanel();
+        filterPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                filterPanel.getPreferredSize().height));
+        metricsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+        dashboardGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                dashboardGrid.getPreferredSize().height));
+
+        panel.add(filterPanel);
         panel.add(Box.createVerticalStrut(14));
         panel.add(metricsPanel);
         panel.add(Box.createVerticalStrut(16));
         panel.add(dashboardGrid);
 
-        return panel;
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(panel, BorderLayout.NORTH);
+        return wrapper;
     }
 
     private JPanel createTransactionsCard() {
-        final String[] columns = {"ID", "Data", "Tipo", "Descrizione", "Importo"};
-        final DefaultTableModel model = new DefaultTableModel(columns, 0);
-        for (Transazione transazione : loadTransactions()) {
-            model.addRow(new Object[] {
-                transazione.getId(),
-                transazione.getData(),
-                labelTipo(transazione.getTipo()),
-                transazione.getDescrizione(),
-                formatEuro(transazione.getImporto())
-            });
+        final List<Transazione> transazioni = loadTransactions();
+        final Map<Long, Categoria> categoriesById = new LinkedHashMap<>();
+        for (Categoria categoria : loadCategories()) {
+            categoriesById.put(categoria.getId(), categoria);
+        }
+        final Map<Long, Fonte> sourcesById = new LinkedHashMap<>();
+        for (Fonte fonte : loadSources()) {
+            sourcesById.put(fonte.getId(), fonte);
         }
 
-        JTable table = new JTable(model);
-        table.setFillsViewportHeight(true);
-        table.setRowHeight(28);
-        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        actions.setOpaque(false);
-        SoftButton editButton = createSmallActionButton("Modifica");
-        SoftButton deleteButton = createSmallActionButton("Elimina");
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
 
-        editButton.addActionListener(e -> editSelectedTransaction(table));
-        deleteButton.addActionListener(e -> deleteSelectedTransaction(table));
+        JLabel titleLabel = new JLabel("Transazioni");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
 
-        actions.add(editButton);
-        actions.add(deleteButton);
+        JLabel subtitleLabel = new JLabel(
+                "Movimenti registrati per " + currentUser.getEmail()
+                + ". Ogni scheda puo' essere modificata o eliminata.");
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
 
-        return createTableCard("Transazioni", "Storico dei movimenti caricati per "
-                + currentUser.getEmail(), table, actions);
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(6));
+        titlePanel.add(subtitleLabel);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 14, 14));
+        grid.setOpaque(false);
+        for (Transazione transazione : transazioni) {
+            grid.add(createTransactionTile(transazione, categoriesById, sourcesById));
+        }
+
+        if (grid.getComponentCount() == 0) {
+            grid.add(createPlaceholderBox("Nessuna transazione",
+                    "Aggiungi il primo movimento con il pulsante Nuova transazione."));
+        }
+
+        panel.add(titlePanel, BorderLayout.NORTH);
+        panel.add(createClassificationScrollPane(grid), BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel createBudgetCard() {
@@ -391,46 +414,55 @@ public class DashboardPanel extends AppBackgroundPanel {
         return createTableCard("Budget demo", "Budget mensili e per categoria caricati dal database.", model);
     }
     private JPanel createRecurringCard() {
-        final String[] columns = {"ID", "Nome", "Categoria", "Importo", "Frequenza", "Inizio", "Prossima", "Fine"};
-        final DefaultTableModel model = new DefaultTableModel(columns, 0);
-        final Map<Long, String> categoryNames = loadCategoryNames();
-        for (SpesaRicorrente ricorrenza : loadRecurringExpenses()) {
-            model.addRow(new Object[] {
-                ricorrenza.getId(),
-                ricorrenza.getNome(),
-                categoryNames.getOrDefault(ricorrenza.getIdCategoria(),
-                        "Categoria " + ricorrenza.getIdCategoria()),
-                formatEuro(ricorrenza.getImportoPrevisto()),
-                ricorrenza.getFrequenzaGiorni() + " giorni",
-                ricorrenza.getDataInizio(),
-                ricorrenza.getDataProssimaScadenza(),
-                ricorrenza.getScadenza() == null ? "-" : ricorrenza.getScadenza()
-            });
+        final List<SpesaRicorrente> ricorrenze = loadRecurringExpenses();
+        final Map<Long, Categoria> categoriesById = new LinkedHashMap<>();
+        for (Categoria categoria : loadCategories()) {
+            categoriesById.put(categoria.getId(), categoria);
         }
-
-        JTable table = new JTable(model);
-        table.setFillsViewportHeight(true);
-        table.setRowHeight(28);
-        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         actions.setOpaque(false);
         SoftButton addButton = createSmallActionButton("+ Ricorrenza");
-        SoftButton generateButton = createSmallActionButton("Genera scadute");
-        SoftButton deleteButton = createSmallActionButton("Elimina");
         addButton.addActionListener(e -> showAddRecurringDialog());
-        generateButton.addActionListener(e -> generateDueRecurringExpenses());
-        deleteButton.addActionListener(e -> deleteSelectedRecurringExpense(table));
         actions.add(addButton);
-        actions.add(generateButton);
-        actions.add(deleteButton);
 
-        return createTableCard(
-                "Spese Ricorrenti",
-                "Modelli che generano automaticamente spese reali alla scadenza.",
-                table,
-                actions);
+        JPanel panel = new GlassPanel(new BorderLayout(0, 14));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel(new BorderLayout(12, 0));
+        header.setOpaque(false);
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel("Spese Ricorrenti");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel(
+                "Clicca una ricorrenza per vedere tutte le transazioni che ha generato.");
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(6));
+        titlePanel.add(subtitleLabel);
+        header.add(titlePanel, BorderLayout.CENTER);
+        header.add(actions, BorderLayout.EAST);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 14, 14));
+        grid.setOpaque(false);
+        for (SpesaRicorrente ricorrenza : ricorrenze) {
+            grid.add(createRecurringTile(ricorrenza, categoriesById));
+        }
+
+        if (grid.getComponentCount() == 0) {
+            grid.add(createPlaceholderBox("Nessuna ricorrenza",
+                    "Aggiungi una spesa periodica con il pulsante Ricorrenza."));
+        }
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(createClassificationScrollPane(grid), BorderLayout.CENTER);
+        return panel;
     }
 
 
@@ -607,6 +639,207 @@ public class DashboardPanel extends AppBackgroundPanel {
 
         installClassificationClick(tile, type, id, name);
         return tile;
+    }
+
+    private JPanel createTransactionTile(final Transazione transazione,
+            final Map<Long, Categoria> categoriesById, final Map<Long, Fonte> sourcesById) {
+        final JPanel tile = new GlassPanel(new BorderLayout(14, 0));
+        tile.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        tile.setPreferredSize(new Dimension(0, 122));
+
+        final boolean expense = transazione.getTipo() == TipoTransazione.SPESA;
+        final Categoria categoria = transazione.getIdCategoria() == null
+                ? null : categoriesById.get(transazione.getIdCategoria());
+        final Fonte fonte = transazione.getIdFonte() == null
+                ? null : sourcesById.get(transazione.getIdFonte());
+        final String classificationName = expense
+                ? (categoria == null ? "Senza categoria" : categoria.getNome())
+                : (fonte == null ? "Senza fonte" : fonte.getNome());
+        final String iconName = expense
+                ? (categoria == null ? "generic_category.png" : categoria.getIcona())
+                : (fonte == null ? "generic_source.png" : fonte.getIcona());
+        tile.add(createClassificationIcon(expense ? "Categoria" : "Fonte",
+                classificationName, iconName), BorderLayout.WEST);
+
+        JPanel textPanel = new JPanel();
+        textPanel.setOpaque(false);
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+
+        JLabel descriptionLabel = new JLabel(transazione.getDescrizione());
+        descriptionLabel.setFont(new Font("SansSerif", Font.BOLD, 17));
+        descriptionLabel.setForeground(AppTheme.TEXT);
+
+        JLabel amountLabel = new JLabel(formatEuro(transazione.getImporto()));
+        amountLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        amountLabel.setForeground(expense ? AppTheme.EXPENSE : AppTheme.INCOME);
+
+        String recurringText = transazione.getIdRicorrenza() == null ? "" : " - Ricorrente";
+        JLabel metaLabel = new JLabel(labelTipo(transazione.getTipo()) + " - "
+                + classificationName + recurringText);
+        metaLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        metaLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        JLabel dateLabel = new JLabel("Data: " + transazione.getData());
+        dateLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        dateLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        textPanel.add(Box.createVerticalGlue());
+        textPanel.add(descriptionLabel);
+        textPanel.add(Box.createVerticalStrut(5));
+        textPanel.add(amountLabel);
+        textPanel.add(Box.createVerticalStrut(5));
+        textPanel.add(metaLabel);
+        textPanel.add(Box.createVerticalStrut(3));
+        textPanel.add(dateLabel);
+        textPanel.add(Box.createVerticalGlue());
+        tile.add(textPanel, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
+        buttons.setOpaque(false);
+        SoftButton editButton = createTinyActionButton("Modifica");
+        SoftButton deleteButton = createTinyActionButton("Elimina");
+        editButton.addActionListener(e -> showEditDialog(transazione));
+        deleteButton.addActionListener(e -> deleteTransaction(transazione));
+        buttons.add(editButton);
+        buttons.add(deleteButton);
+        tile.add(buttons, BorderLayout.EAST);
+
+        return tile;
+    }
+
+    private JPanel createRecurringTile(final SpesaRicorrente ricorrenza,
+            final Map<Long, Categoria> categoriesById) {
+        final JPanel tile = new GlassPanel(new BorderLayout(14, 0));
+        tile.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        tile.setPreferredSize(new Dimension(0, 132));
+
+        final Categoria categoria = categoriesById.get(ricorrenza.getIdCategoria());
+        final String categoryName = categoria == null
+                ? "Categoria " + ricorrenza.getIdCategoria() : categoria.getNome();
+        final String iconName = categoria == null ? "generic_category.png" : categoria.getIcona();
+        tile.add(createClassificationIcon("Categoria", categoryName, iconName), BorderLayout.WEST);
+
+        JPanel textPanel = new JPanel();
+        textPanel.setOpaque(false);
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+
+        JLabel nameLabel = new JLabel(ricorrenza.getNome());
+        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 17));
+        nameLabel.setForeground(AppTheme.TEXT);
+
+        JLabel amountLabel = new JLabel(formatEuro(ricorrenza.getImportoPrevisto()));
+        amountLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        amountLabel.setForeground(AppTheme.EXPENSE);
+
+        JLabel metaLabel = new JLabel(categoryName + " - ogni "
+                + ricorrenza.getFrequenzaGiorni() + " giorni");
+        metaLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        metaLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        String endText = ricorrenza.getScadenza() == null ? "senza fine"
+                : "fino al " + ricorrenza.getScadenza();
+        JLabel datesLabel = new JLabel("Inizio " + ricorrenza.getDataInizio()
+                + " - prossima " + ricorrenza.getDataProssimaScadenza()
+                + " - " + endText);
+        datesLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        datesLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        textPanel.add(Box.createVerticalGlue());
+        textPanel.add(nameLabel);
+        textPanel.add(Box.createVerticalStrut(5));
+        textPanel.add(amountLabel);
+        textPanel.add(Box.createVerticalStrut(5));
+        textPanel.add(metaLabel);
+        textPanel.add(Box.createVerticalStrut(3));
+        textPanel.add(datesLabel);
+        textPanel.add(Box.createVerticalGlue());
+        tile.add(textPanel, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
+        buttons.setOpaque(false);
+        SoftButton editButton = createTinyActionButton("Modifica");
+        SoftButton deleteButton = createTinyActionButton("Elimina");
+        editButton.addActionListener(e -> showEditRecurringDialog(ricorrenza));
+        deleteButton.addActionListener(e -> deleteRecurringExpense(ricorrenza));
+        buttons.add(editButton);
+        buttons.add(deleteButton);
+        tile.add(buttons, BorderLayout.EAST);
+
+        installRecurringClick(tile, ricorrenza);
+        return tile;
+    }
+
+    private void installRecurringClick(final Component component,
+            final SpesaRicorrente ricorrenza) {
+        if (component instanceof AbstractButton) {
+            return;
+        }
+        component.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (component instanceof JComponent) {
+            ((JComponent) component).setToolTipText(
+                    "Mostra tutte le spese generate da " + ricorrenza.getNome());
+        }
+        component.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(final java.awt.event.MouseEvent event) {
+                if (SwingUtilities.isLeftMouseButton(event)) {
+                    showRecurringTransactions(ricorrenza);
+                }
+            }
+        });
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                installRecurringClick(child, ricorrenza);
+            }
+        }
+    }
+
+    private void showRecurringTransactions(final SpesaRicorrente ricorrenza) {
+        try {
+            final List<Transazione> transazioni =
+                    dashboardDataService.loadTransactionsForRecurringExpense(
+                            currentUser.getEmail(), ricorrenza.getId());
+            showClassificationTransactionsDialog(
+                    "Ricorrenza", ricorrenza.getNome(), transazioni);
+        } catch (final SQLException ex) {
+            showLoadError("spese generate da " + ricorrenza.getNome(), ex);
+        }
+    }
+
+    private void deleteTransaction(final Transazione transazione) {
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare definitivamente la transazione "
+                + transazione.getDescrizione() + " del " + transazione.getData() + "?",
+                "Conferma eliminazione",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            movimentiController.eliminaTransazione(
+                    currentUser.getEmail(), transazione.getId());
+            refreshContent("CARD_TRANSACTIONS");
+        } catch (final Exception ex) {
+            showLoadError("eliminazione transazione", new SQLException(ex.getMessage()));
+        }
+    }
+
+    private void deleteRecurringExpense(final SpesaRicorrente ricorrenza) {
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare la ricorrenza " + ricorrenza.getNome()
+                + "? Le transazioni gia' generate restano nello storico.",
+                "Conferma eliminazione",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            speseRicorrentiController.eliminaRicorrenza(
+                    currentUser.getEmail(), ricorrenza.getId());
+            refreshContent("CARD_RECURRING");
+        } catch (final Exception ex) {
+            showRecurringError(ex);
+        }
     }
 
     private void installClassificationClick(final Component component, final String type,
@@ -1575,6 +1808,100 @@ public class DashboardPanel extends AppBackgroundPanel {
                     "Ricorrenza salvata. Tutte le scadenze maturate sono state registrate nelle transazioni.",
                     "Ricorrenza creata",
                     JOptionPane.INFORMATION_MESSAGE);
+            refreshContent("CARD_RECURRING");
+        } catch (final Exception ex) {
+            showRecurringError(ex);
+        }
+    }
+
+    private void showEditRecurringDialog(final SpesaRicorrente ricorrenza) {
+        final List<Categoria> categories = loadCategories();
+        if (categories.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Serve almeno una categoria disponibile.",
+                    "Dati mancanti",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Modifica spesa ricorrente", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+        root.setBackground(Color.WHITE);
+
+        JTextField name = createDialogTextField(ricorrenza.getNome());
+        JTextField amount = createDialogTextField(ricorrenza.getImportoPrevisto().toString());
+        JTextField frequency = createDialogTextField(String.valueOf(ricorrenza.getFrequenzaGiorni()));
+        JTextField start = createDialogTextField(ricorrenza.getDataInizio().toString());
+        JTextField next = createDialogTextField(ricorrenza.getDataProssimaScadenza().toString());
+        JTextField end = createDialogTextField(
+                ricorrenza.getScadenza() == null ? "" : ricorrenza.getScadenza().toString());
+        JComboBox<Categoria> category = createCategoryCombo(categories);
+        selectCategory(category, ricorrenza.getIdCategoria());
+
+        JPanel form = createDialogFormPanel();
+        addFormRow(form, "Nome", name);
+        addFormRow(form, "Importo", amount);
+        addFormRow(form, "Frequenza giorni (30 = mensile)", frequency);
+        addFormRow(form, "Data inizio", start);
+        addFormRow(form, "Prossima scadenza", next);
+        addFormRow(form, "Fine opzionale", end);
+        addFormRow(form, "Categoria", category);
+
+        JLabel note = new JLabel(
+                "Nota: le transazioni gia' generate restano nello storico. Le modifiche valgono per le prossime scadenze.");
+        note.setForeground(AppTheme.TEXT_MUTED);
+        note.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        form.add(note);
+
+        SoftButton saveButton = createDialogButton("Salva", AppTheme.ACCENT);
+        saveButton.addActionListener(e -> updateRecurringExpense(
+                dialog, ricorrenza, name, amount, frequency, start, next, end, category));
+
+        root.add(form, BorderLayout.CENTER);
+        root.add(createDialogFooter(dialog, saveButton), BorderLayout.SOUTH);
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(560, 420));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void selectCategory(final JComboBox<Categoria> categoryCombo,
+            final long idCategoria) {
+        for (int i = 0; i < categoryCombo.getItemCount(); i++) {
+            final Categoria categoria = categoryCombo.getItemAt(i);
+            if (categoria.getId() == idCategoria) {
+                categoryCombo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private void updateRecurringExpense(final JDialog dialog, final SpesaRicorrente ricorrenza,
+            final JTextField nameField, final JTextField amountField,
+            final JTextField frequencyField, final JTextField startField,
+            final JTextField nextField, final JTextField endField,
+            final JComboBox<Categoria> categoryField) {
+        try {
+            final String name = requireDescription(nameField);
+            final BigDecimal amount = parseAmount(amountField);
+            final int frequency = Integer.parseInt(frequencyField.getText().trim());
+            if (frequency <= 0) {
+                throw new IllegalArgumentException("La frequenza deve essere positiva.");
+            }
+            final LocalDate start = LocalDate.parse(startField.getText().trim());
+            final LocalDate next = LocalDate.parse(nextField.getText().trim());
+            final LocalDate end = parseOptionalDate(endField);
+            final Categoria category = (Categoria) categoryField.getSelectedItem();
+
+            speseRicorrentiController.modificaRicorrenza(
+                    currentUser.getEmail(), ricorrenza.getId(), name, amount,
+                    frequency, start, next, end, category.getId());
+            dialog.dispose();
             refreshContent("CARD_RECURRING");
         } catch (final Exception ex) {
             showRecurringError(ex);

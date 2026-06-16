@@ -22,6 +22,8 @@ public interface TransazioneDAO {
 
     List<Transazione> findByFonte(String email, long idFonte) throws SQLException;
 
+    List<Transazione> findByRicorrenza(String email, long idRicorrenza) throws SQLException;
+
     Transazione findById(long idTransazione, String email) throws SQLException;
 
     List<Long> findTagIds(long idTransazione, String email) throws SQLException;
