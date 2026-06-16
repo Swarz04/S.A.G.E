@@ -54,13 +54,8 @@ public final class SqlScriptConsistencyTest {
     }
 
     private static void testDocumentoUnicoPerTransazione() throws IOException {
-<<<<<<< HEAD
-        final String schema = readSql("schema_completo.sql").toUpperCase();
-        final String migration = readSql("aggiornamento_funzioni_richieste.sql").toUpperCase();
-=======
         final String schema = readSql("01_schema_completo.sql").toUpperCase();
         final String migration = readSql("03_migrazione_database_esistente.sql").toUpperCase();
->>>>>>> 3351d66 (aggiornamento interfaccia)
         TestAssertions.assertTrue(schema.contains("UQ_DOCUMENTO_TRANSIZIONE")
                         && schema.contains("ON DOCUMENTO (ID_TRANSIZIONE)"),
                 "Lo schema deve impedire piu' documenti sulla stessa transazione");
@@ -152,16 +147,6 @@ public final class SqlScriptConsistencyTest {
     private static void testDocumentazioneIndicaScriptUfficiali() throws IOException {
         final String latex = Files.readString(Path.of("doc", "latex", "main.tex"),
                 StandardCharsets.UTF_8);
-<<<<<<< HEAD
-        final String legacy = readSql("creazione_schema_indici.sql").toUpperCase();
-        TestAssertions.assertTrue(latex.contains("doc/sql/schema\\_completo.sql")
-                        && latex.contains("doc/sql/query\\_operazioni.sql")
-                        && latex.contains("trigger\\_viste.sql"),
-                "Il LaTeX deve indicare gli script SQL ufficiali corretti");
-        TestAssertions.assertTrue(legacy.contains("SCRIPT STORICO")
-                        && legacy.contains("NON UFFICIALE"),
-                "Lo script vecchio deve essere marcato come storico e non ufficiale");
-=======
         final String readme = Files.readString(Path.of("doc", "sql", "README.md"),
                 StandardCharsets.UTF_8);
         TestAssertions.assertTrue(latex.contains("01\\_schema\\_completo.sql")
@@ -178,7 +163,6 @@ public final class SqlScriptConsistencyTest {
             TestAssertions.assertTrue(sqlCount <= 5,
                     "La cartella doc/sql deve contenere al massimo cinque file SQL");
         }
->>>>>>> 3351d66 (aggiornamento interfaccia)
     }
 
     private static String readSql(final String fileName) throws IOException {
