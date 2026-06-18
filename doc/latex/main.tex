@@ -10,13 +10,15 @@
 \usepackage{geometry}
 \geometry{margin=2.5cm}
 \usepackage{graphicx}
+\graphicspath{{figures/}}
 \usepackage[hidelinks]{hyperref}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{longtable}
 \usepackage{float}
 \usepackage{listings}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
+\usepackage{multirow}
 \usepackage{enumitem}
 
 % Stile dei blocchi SQL nel report: colori leggibili e numeri di riga.
@@ -24,6 +26,7 @@
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codeblue}{rgb}{0,0,0.8}
+\definecolor{tableheader}{RGB}{217,235,247}
 
 \lstset{
     language=SQL,
@@ -46,6 +49,12 @@
     morekeywords={LAST_INSERT_ID, ON, DUPLICATE, KEY, UPDATE, LIMIT, COALESCE, NULLIF, BOOLEAN, TRUE, FALSE}
 }
 \setlist{nosep, leftmargin=*}
+\raggedbottom
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{9pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{5pt}
+\setlength{\belowcaptionskip}{2pt}
 
 % Dati del frontespizio, separati in comandi per modificarli in fretta.
 \newcommand{\ProjectTitle}{S.A.G.E. - Sistema di Analisi e Gestione Economica}
@@ -221,7 +230,7 @@ La vista studente è centrata sul portafoglio personale. Ogni schermata applicat
 La progettazione concettuale privilegia un modello chiaro, con entità separate per gli oggetti persistenti principali e associazioni esplicite per i legami molti-a-molti. Le scelte sono guidate da tre criteri: isolamento dei dati per utente, semplicità di interrogazione e coerenza con l'applicazione Java.
 
 \subsection{Entità principali}
-\begin{longtable}{p{3.8cm} p{11cm}}
+\begin{longtable}{p{4.7cm} p{10.1cm}}
 \toprule
 \textbf{Entità} & \textbf{Ruolo nel sistema} \\
 \midrule
@@ -242,6 +251,39 @@ La progettazione concettuale privilegia un modello chiaro, con entità separate 
 \bottomrule
 \end{longtable}
 
+\subsection{Progetto delle viste}
+Come nelle relazioni di riferimento, lo schema viene prima presentato attraverso le viste parziali delle classi di utenza e successivamente integrato in uno schema globale. Le viste non introducono necessariamente nuove relazioni persistenti: descrivono soprattutto i dati e le operazioni rilevanti per ciascun ruolo.
+
+\subsubsection{Vista studente}
+La vista studente comprende il portafoglio personale: transazioni, periodi, categorie, fonti, tag, budget, documenti e spese ricorrenti. L'associazione con \textsc{UTENTE} rappresenta il vincolo fondamentale di isolamento dei dati.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{vista_studente.jpg}
+    \caption{Vista concettuale dello studente.}
+    \label{fig:vista-studente}
+\end{figure}
+
+\subsubsection{Vista amministratore}
+La figura seguente rappresenta la parte persistente direttamente gestita dall'amministratore: categorie, tag e fonti di sistema. Lo schema è sufficiente come \emph{vista funzionale} dei cataloghi globali, ma richiede due precisazioni. Nel database l'amministratore non è una entità autonoma: è una istanza di \textsc{UTENTE} con ruolo amministrativo. Inoltre le statistiche aggregate mostrate dalla dashboard non costituiscono una nuova entità, perché sono calcolate a partire da \textsc{TRANSIZIONE}, \textsc{PERIODO}, \textsc{CATEGORIA} e \textsc{BUDGET}. Non viene infine storicizzato quale amministratore abbia creato un elemento di sistema; per introdurre tale tracciamento sarebbe necessario aggiungere un riferimento all'utente amministratore nelle relative entità.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{vista_admin.jpg}
+    \caption{Vista funzionale dell'amministratore per la gestione dei cataloghi di sistema.}
+    \label{fig:vista-admin}
+\end{figure}
+
+\subsubsection{Integrazione delle viste}
+Le due viste condividono le classificazioni e i dati economici su cui vengono calcolate le statistiche. La loro integrazione produce lo schema ibrido riportato in Figura~\ref{fig:visione-ibrida}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{visione_ibrida.jpg}
+    \caption{Integrazione delle viste studente e amministratore.}
+    \label{fig:visione-ibrida}
+\end{figure}
+
 \subsection{Raffinamenti dello schema}
 \subsubsection{Gerarchia delle transazioni}
 Nel dominio esistono due sottotipi di transazione: spesa ed entrata. La specializzazione è totale ed esclusiva: ogni transazione è necessariamente una spesa o una entrata, e non può essere entrambe. Nel modello logico questa gerarchia è collassata in \textsc{TRANSIZIONE}, con l'attributo \texttt{TipoTransazione}. I vincoli CHECK garantiscono la coerenza: una spesa richiede \texttt{ID\_Categoria}, una entrata richiede \texttt{ID\_Fonte}.
@@ -250,12 +292,22 @@ Nel dominio esistono due sottotipi di transazione: spesa ed entrata. La speciali
 \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} sono modellati con una soluzione ibrida. Gli elementi globali hanno \texttt{is\_system = TRUE} e nessun proprietario; gli elementi personali hanno \texttt{is\_system = FALSE} e sono collegati a un utente. Le query applicative mostrano a uno studente sia gli elementi globali sia quelli personali.
 
 \subsubsection{Reificazione del budget}
-Il budget è modellato come entità autonoma collegata a utente e periodo. L'eventuale categoria distingue un budget specifico da un budget mensile complessivo. L'attributo \texttt{Totale\_Speso\_Attuale} è ridondante, ma serve a rendere efficiente la dashboard.
+Il budget è modellato come entità autonoma collegata a utente e periodo. L'eventuale categoria distingue un budget specifico da un budget mensile complessivo. L'attributo \path{Totale_Speso_Attuale} è ridondante, ma serve a rendere efficiente la dashboard.
 
 \subsubsection{Documenti digitali}
-Il documento digitale è collegato a una spesa e contiene \texttt{Path\_File}, \texttt{Tipo\_File} e \texttt{Data\_Acquisizione\_Documento}. Il contenuto binario del file non è salvato nel DBMS.
+Il documento digitale è collegato a una spesa e contiene \texttt{Path\_File}, \texttt{Tipo\_File} e \path{Data_Acquisizione_Documento}. Il contenuto binario del file non è salvato nel DBMS.
 
 Questa scelta riduce il peso del database e semplifica backup, query e codice JDBC. Il limite principale è la portabilità: spostandosi su un altro dispositivo, il percorso locale potrebbe non esistere. Una futura versione potrebbe usare path relativi sincronizzati oppure un attributo \texttt{LONGBLOB}, qualora la portabilità completa del documento attraverso il solo database diventasse un requisito prioritario.
+
+\subsection{Schema concettuale integrato dopo i raffinamenti}
+Lo schema seguente recepisce il collasso delle specializzazioni di categoria, tag e fonte mediante gli attributi \texttt{is\_system} ed \texttt{Email\_creatore}, oltre al discriminante della transazione. Il termine ``normalizzazione'' usato nel nome originario dell'immagine indica qui il raffinamento concettuale; la verifica delle forme normali del modello relazionale viene svolta successivamente, nella progettazione logica.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.74\textheight,keepaspectratio]{visione_ibrida_raffinata.jpg}
+    \caption{Schema concettuale integrato dopo i raffinamenti.}
+    \label{fig:visione-ibrida-raffinata}
+\end{figure}
 
 \subsection{Associazioni principali e cardinalità}
 \begin{longtable}{p{4.2cm} p{3cm} p{7.2cm}}
@@ -336,57 +388,256 @@ Le statistiche includono totali mensili di spese ed entrate, rapporto percentual
 
 \section{Progettazione logica}
 \subsection{Stima del volume dei dati}
-Per un utilizzo universitario individuale si stimano volumi contenuti ma crescenti nel tempo:
-\begin{itemize}
-    \item poche decine di utenti demo nel contesto del progetto;
-    \item circa 50--150 transazioni annue per utente;
-    \item 5--20 categorie personali per utente;
-    \item un numero di documenti inferiore o uguale al numero di spese;
-    \item pochi budget per mese e per utente.
-\end{itemize}
-Questi volumi giustificano un modello relazionale normalizzato e indici mirati sulle chiavi esterne e sui campi più filtrati.
+La tabella seguente riporta il numero medio di istanze previsto per ogni entità e associazione dello schema concettuale. Le stime descrivono un utilizzo pluriennale del sistema da parte di circa 300 utenti e costituiscono la base per il calcolo dei costi delle operazioni.
 
-\subsection{Descrizione delle operazioni principali e frequenza}
-\begin{longtable}{p{4cm} p{3cm} p{7cm}}
-\toprule
-\textbf{Operazione} & \textbf{Frequenza stimata} & \textbf{Osservazioni} \\
-\midrule
+\begin{table}[H]
+\centering
+\caption{Stima del volume dei dati}\label{tab:volumi-dati}
+\scriptsize
+\renewcommand{\arraystretch}{1.02}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{8.2cm}|c|r|}
+\hline
+\rowcolor{tableheader}
+\textbf{NOME} & \textbf{TIPO} & \textbf{VOLUME DI DATI} \\
+\hline
+\textsc{UTENTE} & E & 300 \\
+\hline
+\textsc{PERIODO} & E & 40 \\
+\hline
+\textsc{TRANSIZIONE} & E & 120.000 \\
+\hline
+\textsc{SPESA} & E & 100.000 \\
+\hline
+\textsc{ENTRATA} & E & 20.000 \\
+\hline
+\textsc{CATEGORIA} & E & 2.020 \\
+\hline
+\textsc{CATEGORIA\_PERSONALE} & E & 2.000 \\
+\hline
+\textsc{CATEGORIA\_SISTEMA} & E & 20 \\
+\hline
+\textsc{TAG} & E & 2.510 \\
+\hline
+\textsc{TAG\_PERSONALE} & E & 2.500 \\
+\hline
+\textsc{TAG\_SISTEMA} & E & 10 \\
+\hline
+\textsc{FONTE} & E & 1.010 \\
+\hline
+\textsc{FONTE\_PERSONALE} & E & 1.000 \\
+\hline
+\textsc{FONTE\_SISTEMA} & E & 10 \\
+\hline
+\textsc{DOCUMENTO} & E & 15.000 \\
+\hline
+\textsc{BUDGET} & E & 10.000 \\
+\hline
+\textsc{SPESA\_RICORRENTE} & E & 1.000 \\
+\hline
+\textsc{EFFETTUA} & R & 120.000 \\
+\hline
+\textsc{AVVIENE} & R & 120.000 \\
+\hline
+\textsc{PROVIENE} & R & 20.000 \\
+\hline
+\textsc{CLASSIFICA} & R & 100.000 \\
+\hline
+\textsc{ASSOCIAZIONE} & R & 100.000 \\
+\hline
+\textsc{DOCUMENTA} & R & 15.000 \\
+\hline
+\textsc{PERSONALIZZA\_CAT} & R & 2.000 \\
+\hline
+\textsc{PERSONALIZZA\_TAG} & R & 2.500 \\
+\hline
+\textsc{PERSONALIZZA\_FONTE} & R & 1.000 \\
+\hline
+\textsc{DEFINIZIONE} & R & 10.000 \\
+\hline
+\textsc{RELATIVO} & R & 10.000 \\
+\hline
+\textsc{LIMITAZIONE} & R & 8.000 \\
+\hline
+\textsc{PIANIFICA} & R & 1.000 \\
+\hline
+\textsc{TIPO\_RICORRENZA} & R & 1.000 \\
+\hline
+\end{tabular}
+\end{table}
+
+Le stime risultano internamente coerenti: le 120.000 transazioni sono ripartite in 100.000 spese e 20.000 entrate; categorie, tag e fonti coincidono con la somma dei rispettivi elementi personali e di sistema. Il volume di \textsc{ASSOCIAZIONE} assume in media un tag per spesa; \textsc{DOCUMENTA} indica che il 15\% delle spese possiede un documento; \textsc{LIMITAZIONE} indica che 8.000 budget su 10.000 sono specifici per categoria, mentre i restanti sono budget generali.
+
+\subsection{Descrizione delle operazioni principali, frequenza e tabelle degli accessi}
+Le operazioni derivano dai casi d'uso descritti nell'analisi dei requisiti. Tutte le frequenze sono espresse su base mensile e sono già incorporate nella colonna \emph{Totale degli accessi al mese}. Le letture sono indicate con L e le scritture con S. Nel calcolo del costo pesato, una scrittura vale due letture; la tabella riporta invece il numero grezzo di accessi, in modo da rendere immediatamente verificabile il prodotto tra frequenza e accessi per singola esecuzione.
+
+\clearpage
+{\fontsize{6.4}{7.1}\selectfont
+\renewcommand{\arraystretch}{0.98}
+\setlength{\tabcolsep}{2.1pt}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.8cm}|>{\raggedright\arraybackslash}p{3.15cm}|>{\centering\arraybackslash}p{1.25cm}|>{\centering\arraybackslash}p{1.35cm}|>{\raggedleft\arraybackslash}p{1.75cm}|>{\raggedleft\arraybackslash}p{2.45cm}|}
+\caption{Operazioni principali e tabella degli accessi}\label{tab:accessi}\\
+\hline
+\rowcolor{tableheader}
+\textbf{Operazione} & \textbf{Concetto} & \shortstack{\textbf{Entità/}\\\textbf{Assoc.}} & \textbf{Lettura/ Scrittura} & \textbf{Numero di accessi} & \textbf{Totale degli accessi (al mese)} \\
+\hline
 \endfirsthead
-\toprule
-\textbf{Operazione} & \textbf{Frequenza stimata} & \textbf{Osservazioni} \\
-\midrule
+\hline
+\rowcolor{tableheader}
+\textbf{Operazione} & \textbf{Concetto} & \shortstack{\textbf{Entità/}\\\textbf{Assoc.}} & \textbf{Lettura/ Scrittura} & \textbf{Numero di accessi} & \textbf{Totale degli accessi (al mese)} \\
+\hline
 \endhead
-Login & Alta & Prima operazione di ogni sessione. \\
-Inserimento transazione & Media & Deve essere atomico con periodo, documento e budget. \\
-Consultazione dashboard & Alta & Motiva la ridondanza sul totale speso del budget. \\
-Gestione documenti & Media & Lettura frequente, inserimento occasionale. \\
-Report aggregati & Bassa/Media & Usati per analisi periodica. \\
-\bottomrule
-\end{longtable}
 
-\subsection{Schemi di navigazione}
-La navigazione principale parte da \textsc{UTENTE}, identificato dalla sessione. Da esso si raggiungono le transazioni, i budget, gli elementi personali e le spese ricorrenti. Le transazioni permettono di navigare verso categorie, fonti, tag e documenti. Questo schema conferma la centralità dell'email come chiave di isolamento.
+\parbox[t]{3.6cm}{1 -- Registrazione utente} & \textsc{UTENTE} & E & S & 1 & 30 \\
+\hline
 
-\subsection{Tabelle degli accessi}
-\begin{longtable}{p{4cm} p{5cm} p{5.5cm}}
-\toprule
-\textbf{Funzione} & \textbf{Tabelle lette} & \textbf{Tabelle scritte} \\
-\midrule
-\endfirsthead
-\toprule
-\textbf{Funzione} & \textbf{Tabelle lette} & \textbf{Tabelle scritte} \\
-\midrule
-\endhead
-Login & \textsc{UTENTE} & -- \\
-Nuova spesa & \textsc{PERIODO}, \textsc{BUDGET} & \textsc{PERIODO}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} \\
-Nuova entrata & \textsc{PERIODO} & \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
-Documenti & \textsc{DOCUMENTO}, \textsc{TRANSIZIONE} & \textsc{DOCUMENTO} \\
-Dashboard budget & \textsc{BUDGET}, \textsc{PERIODO}, \textsc{CATEGORIA} & -- \\
-\bottomrule
+\parbox[t]{3.6cm}{2.1 -- Inserimento di una nuova spesa} & \textsc{UTENTE} & E & L & 1 & 2.500 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 1 & 2.500 \\* \cline{2-6}
+& \textsc{TRANSIZIONE} & E & S & 1 & 2.500 \\* \cline{2-6}
+& \textsc{SPESA} & E & S & 1 & 2.500 \\* \cline{2-6}
+& \textsc{EFFETTUA} & R & S & 1 & 2.500 \\* \cline{2-6}
+& \textsc{AVVIENE} & R & S & 1 & 2.500 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 1 & 2.500 \\* \cline{2-6}
+& \textsc{CLASSIFICA} & R & S & 1 & 2.500 \\* \cline{2-6}
+& \textsc{TAG} & E & L & 1 & 2.500 \\* \cline{2-6}
+& \textsc{ASSOCIAZIONE} & R & S & 1 & 2.500 \\
+\hline
+
+\parbox[t]{3.6cm}{2.2 -- Inserimento di una nuova entrata} & \textsc{UTENTE} & E & L & 1 & 600 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 1 & 600 \\* \cline{2-6}
+& \textsc{TRANSIZIONE} & E & S & 1 & 600 \\* \cline{2-6}
+& \textsc{ENTRATA} & E & S & 1 & 600 \\* \cline{2-6}
+& \textsc{EFFETTUA} & R & S & 1 & 600 \\* \cline{2-6}
+& \textsc{AVVIENE} & R & S & 1 & 600 \\* \cline{2-6}
+& \textsc{FONTE} & E & L & 1 & 600 \\* \cline{2-6}
+& \textsc{PROVIENE} & R & S & 1 & 600 \\
+\hline
+
+\parbox[t]{3.6cm}{3 -- Visualizzazione delle transazioni di un periodo} & \textsc{UTENTE} & E & L & 1 & 3.000 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 1 & 3.000 \\* \cline{2-6}
+& \textsc{EFFETTUA} & R & L & 10 & 30.000 \\* \cline{2-6}
+& \textsc{AVVIENE} & R & L & 10 & 30.000 \\* \cline{2-6}
+& \textsc{TRANSIZIONE} & E & L & 10 & 30.000 \\* \cline{2-6}
+& \textsc{SPESA} & E & L & 8 & 24.000 \\* \cline{2-6}
+& \textsc{ENTRATA} & E & L & 2 & 6.000 \\* \cline{2-6}
+& \textsc{CLASSIFICA} & R & L & 8 & 24.000 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 8 & 24.000 \\* \cline{2-6}
+& \textsc{PROVIENE} & R & L & 2 & 6.000 \\* \cline{2-6}
+& \textsc{FONTE} & E & L & 2 & 6.000 \\* \cline{2-6}
+& \textsc{DOCUMENTA} & R & L & 1 & 3.000 \\* \cline{2-6}
+& \textsc{DOCUMENTO} & E & L & 1 & 3.000 \\* \cline{2-6}
+& \textsc{ASSOCIAZIONE} & R & L & 8 & 24.000 \\* \cline{2-6}
+& \textsc{TAG} & E & L & 8 & 24.000 \\
+\hline
+
+\parbox[t]{3.6cm}{4 -- Analisi delle spese per categoria e tag} & \textsc{UTENTE} & E & L & 1 & 1.500 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 2 & 3.000 \\* \cline{2-6}
+& \textsc{EFFETTUA} & R & L & 20 & 30.000 \\* \cline{2-6}
+& \textsc{AVVIENE} & R & L & 20 & 30.000 \\* \cline{2-6}
+& \textsc{TRANSIZIONE} & E & L & 20 & 30.000 \\* \cline{2-6}
+& \textsc{SPESA} & E & L & 20 & 30.000 \\* \cline{2-6}
+& \textsc{CLASSIFICA} & R & L & 20 & 30.000 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 10 & 15.000 \\* \cline{2-6}
+& \textsc{ASSOCIAZIONE} & R & L & 20 & 30.000 \\* \cline{2-6}
+& \textsc{TAG} & E & L & 10 & 15.000 \\
+\hline
+
+\parbox[t]{3.6cm}{5 -- Definizione o modifica di un budget} & \textsc{UTENTE} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{BUDGET} & E & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{DEFINIZIONE} & R & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{RELATIVO} & R & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{LIMITAZIONE} & R & S & 1 & 1.000 \\
+\hline
+
+\parbox[t]{3.6cm}{6 -- Monitoraggio del superamento del budget} & \textsc{UTENTE} & E & L & 1 & 6.000 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 1 & 6.000 \\* \cline{2-6}
+& \textsc{DEFINIZIONE} & R & L & 5 & 30.000 \\* \cline{2-6}
+& \textsc{RELATIVO} & R & L & 5 & 30.000 \\* \cline{2-6}
+& \textsc{BUDGET} & E & L & 5 & 30.000 \\* \cline{2-6}
+& \textsc{LIMITAZIONE} & R & L & 4 & 24.000 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 4 & 24.000 \\
+\hline
+
+\parbox[t]{3.6cm}{7 -- Definizione di una spesa ricorrente} & \textsc{UTENTE} & E & L & 1 & 100 \\* \cline{2-6}
+& \textsc{SPESA\_RICORRENTE} & E & S & 1 & 100 \\* \cline{2-6}
+& \textsc{PIANIFICA} & R & S & 1 & 100 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 1 & 100 \\* \cline{2-6}
+& \textsc{TIPO\_RICORRENZA} & R & S & 1 & 100 \\
+\hline
+
+\parbox[t]{3.6cm}{8 -- Generazione mensile delle spese ricorrenti} & \textsc{SPESA\_RICORRENTE} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{PIANIFICA} & R & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{UTENTE} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{TIPO\_RICORRENZA} & R & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{PERIODO} & E & L & 1 & 1.000 \\* \cline{2-6}
+& \textsc{TRANSIZIONE} & E & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{SPESA} & E & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{EFFETTUA} & R & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{AVVIENE} & R & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{CLASSIFICA} & R & S & 1 & 1.000 \\* \cline{2-6}
+& \textsc{BUDGET} & E & S & 2 & 2.000 \\
+\hline
+\pagebreak[4]
+
+\parbox[t]{3.6cm}{9 -- Associazione di un documento a una spesa} & \textsc{SPESA} & E & L & 1 & 300 \\* \cline{2-6}
+& \textsc{DOCUMENTO} & E & S & 1 & 300 \\* \cline{2-6}
+& \textsc{DOCUMENTA} & R & S & 1 & 300 \\
+\hline
+
+\parbox[t]{3.6cm}{10.1 -- Creazione o modifica di una categoria personale} & \textsc{UTENTE} & E & L & 1 & 300 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & S & 1 & 300 \\* \cline{2-6}
+& \textsc{CATEGORIA\_PERSONALE} & E & S & 1 & 300 \\* \cline{2-6}
+& \textsc{PERSONALIZZA\_CAT} & R & S & 1 & 300 \\
+\hline
+
+\parbox[t]{3.6cm}{10.2 -- Creazione o modifica di un tag personale} & \textsc{UTENTE} & E & L & 1 & 400 \\* \cline{2-6}
+& \textsc{TAG} & E & S & 1 & 400 \\* \cline{2-6}
+& \textsc{TAG\_PERSONALE} & E & S & 1 & 400 \\* \cline{2-6}
+& \textsc{PERSONALIZZA\_TAG} & R & S & 1 & 400 \\
+\hline
+
+\parbox[t]{3.6cm}{10.3 -- Creazione o modifica di una fonte personale} & \textsc{UTENTE} & E & L & 1 & 200 \\* \cline{2-6}
+& \textsc{FONTE} & E & S & 1 & 200 \\* \cline{2-6}
+& \textsc{FONTE\_PERSONALE} & E & S & 1 & 200 \\* \cline{2-6}
+& \textsc{PERSONALIZZA\_FONTE} & R & S & 1 & 200 \\
+\hline
+
+\parbox[t]{3.6cm}{11.1 -- Gestione amministrativa delle categorie di sistema} & \textsc{UTENTE} & E & L & 1 & 20 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & S & 1 & 20 \\* \cline{2-6}
+& \textsc{CATEGORIA\_SISTEMA} & E & S & 1 & 20 \\
+\hline
+
+\parbox[t]{3.6cm}{11.2 -- Gestione amministrativa dei tag di sistema} & \textsc{UTENTE} & E & L & 1 & 20 \\* \cline{2-6}
+& \textsc{TAG} & E & S & 1 & 20 \\* \cline{2-6}
+& \textsc{TAG\_SISTEMA} & E & S & 1 & 20 \\
+\hline
+
+\parbox[t]{3.6cm}{11.3 -- Gestione amministrativa delle fonti di sistema} & \textsc{UTENTE} & E & L & 1 & 10 \\* \cline{2-6}
+& \textsc{FONTE} & E & S & 1 & 10 \\* \cline{2-6}
+& \textsc{FONTE\_SISTEMA} & E & S & 1 & 10 \\
+\hline
+
+\parbox[t]{3.6cm}{12 -- Visualizzazione di statistiche aggregate anonime} & \textsc{TRANSIZIONE} & E & L & 3.000 & 30.000 \\* \cline{2-6}
+& \textsc{SPESA} & E & L & 2.500 & 25.000 \\* \cline{2-6}
+& \textsc{ENTRATA} & E & L & 500 & 5.000 \\* \cline{2-6}
+& \textsc{AVVIENE} & R & L & 3.000 & 30.000 \\* \cline{2-6}
+& \textsc{CLASSIFICA} & R & L & 2.500 & 25.000 \\* \cline{2-6}
+& \textsc{CATEGORIA} & E & L & 2.000 & 20.000 \\* \cline{2-6}
+& \textsc{BUDGET} & E & L & 1.000 & 10.000 \\* \cline{2-6}
+& \textsc{LIMITAZIONE} & R & L & 800 & 8.000 \\
+\hline
 \end{longtable}
+}
+
+La navigazione parte normalmente da \textsc{UTENTE}, identificato dalla sessione. Le transazioni vengono raggiunte tramite \textsc{EFFETTUA} e sono collocate temporalmente tramite \textsc{AVVIENE}. Da una spesa si prosegue verso categoria, tag e documento; da una entrata verso la fonte. I budget sono raggiunti tramite \textsc{DEFINIZIONE} e \textsc{RELATIVO}, mentre \textsc{LIMITAZIONE} è presente soltanto per i budget specifici di categoria. Le spese ricorrenti sono raggiunte tramite \textsc{PIANIFICA} e collegate alla categoria mediante \textsc{TIPO\_RICORRENZA}.
+
+Le ipotesi usate sono: dieci transazioni medie nella consultazione di un periodo, di cui otto spese e due entrate; un tag medio per spesa; un documento ogni dieci movimenti consultati; cinque budget mostrati nella dashboard, di cui quattro specifici per categoria. Per il monitoraggio non vengono rilette tutte le spese, perché si sfrutta la ridondanza \path{Totale_Speso_Attuale}. Nella generazione delle ricorrenze si considerano al massimo due budget aggiornabili: quello generale e quello della categoria.
 
 \subsection{Analisi delle ridondanze}
-L'attributo \texttt{Totale\_Speso\_Attuale} della relazione \textsc{BUDGET} è ridondante perché può essere ricavato sommando le spese presenti in \textsc{TRANSIZIONE}. La ridondanza viene mantenuta per ridurre il costo delle letture più frequenti della dashboard.
+L'attributo \path{Totale_Speso_Attuale} della relazione \textsc{BUDGET} è ridondante perché può essere ricavato sommando le spese presenti in \textsc{TRANSIZIONE}. La ridondanza viene mantenuta per ridurre il costo delle letture più frequenti della dashboard.
 
 La coerenza viene garantita con due regole applicative:
 \begin{itemize}
@@ -413,7 +664,14 @@ L'email è scelta come chiave primaria di \textsc{UTENTE}, perché identifica di
 Le associazioni 1:N sono tradotte tramite chiavi esterne. Le associazioni N:M, come quella tra spese e tag, sono tradotte tramite tabella ponte. I vincoli applicativi più specifici sono rafforzati tramite trigger e controlli SQL.
 
 \subsection{Schema relazionale finale}
-Lo schema relazionale finale comprende le relazioni \textsc{UTENTE}, \textsc{PERIODO}, \textsc{CATEGORIA}, \textsc{FONTE}, \textsc{TAG}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} e \textsc{SPESA\_RICORRENTE}. La struttura è coerente con lo script ufficiale \texttt{doc/sql/schema\_completo.sql}, che definisce chiavi primarie, chiavi esterne, vincoli CHECK e indici.
+Lo schema relazionale finale è riportato in Figura~\ref{fig:schema-relazionale} e comprende dieci relazioni persistenti. La struttura è coerente con lo script ufficiale \path{doc/sql/01_schema_completo.sql}, che definisce chiavi primarie, chiavi esterne, vincoli CHECK e indici.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.76\textheight,keepaspectratio]{schema_relazionale.jpg}
+    \caption{Schema relazionale finale.}
+    \label{fig:schema-relazionale}
+\end{figure}
 
 \subsection{Vincoli di integrità}
 I vincoli principali sono:
@@ -426,25 +684,342 @@ I vincoli principali sono:
 \end{itemize}
 
 \subsection{Controllo della normalizzazione}
-Le relazioni principali rispettano la terza forma normale: gli attributi dipendono dalla chiave, da tutta la chiave e non da attributi non chiave. L'unica ridondanza intenzionale è \texttt{Totale\_Speso\_Attuale} in \textsc{BUDGET}, documentata e controllata tramite logica applicativa.
+Le relazioni principali rispettano la terza forma normale: gli attributi dipendono dalla chiave, da tutta la chiave e non da attributi non chiave. L'unica ridondanza intenzionale è \path{Totale_Speso_Attuale} in \textsc{BUDGET}, documentata e controllata tramite logica applicativa.
 
 \section{Implementazione SQL}
 \subsection{Script di creazione del database}
-Lo script principale crea il database MySQL, definisce le tabelle, imposta chiavi primarie e chiavi esterne e aggiunge vincoli CHECK. Gli script separati gestiscono popolamento iniziale, trigger, viste e query operative.
+Lo script \path{doc/sql/01_schema_completo.sql} crea da zero il database MySQL e seleziona lo schema prima di definire le relazioni. L'ordine di creazione segue le dipendenze referenziali: prima le entità indipendenti, poi quelle che importano chiavi esterne.
+
+\begin{lstlisting}[caption={Creazione dello schema e delle tabelle UTENTE e PERIODO}]
+DROP DATABASE IF EXISTS Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
+CREATE DATABASE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
+USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
+
+CREATE TABLE UTENTE (
+    Email VARCHAR(255) NOT NULL,
+    Password VARCHAR(128) NOT NULL,
+    Nome VARCHAR(80) NOT NULL,
+    Cognome VARCHAR(80) NOT NULL,
+    Ruolo VARCHAR(10) NOT NULL DEFAULT 'UTENTE',
+    CONSTRAINT PK_UTENTE PRIMARY KEY (Email),
+    CONSTRAINT CK_UTENTE_RUOLO
+        CHECK (Ruolo IN ('UTENTE', 'ADMIN'))
+);
+
+CREATE TABLE PERIODO (
+    ID_Periodo INT NOT NULL AUTO_INCREMENT,
+    Mese TINYINT NOT NULL,
+    Anno SMALLINT NOT NULL,
+    CONSTRAINT PK_PERIODO PRIMARY KEY (ID_Periodo),
+    CONSTRAINT UQ_PERIODO_MESE_ANNO UNIQUE (Mese, Anno),
+    CONSTRAINT CK_PERIODO_MESE CHECK (Mese BETWEEN 1 AND 12),
+    CONSTRAINT CK_PERIODO_ANNO CHECK (Anno >= 2000)
+);
+\end{lstlisting}
 
 \subsection{Creazione delle tabelle}
-Le tabelle sono create partendo dalle entità indipendenti, come \textsc{UTENTE} e \textsc{PERIODO}, per poi introdurre le tabelle dipendenti. Questa sequenza evita problemi con chiavi esterne non ancora disponibili.
+Le tabelle di classificazione adottano la soluzione ibrida descritta nello schema concettuale. Il campo \texttt{is\_system} distingue gli elementi globali da quelli personali, mentre \texttt{Email\_Proprietario} è valorizzata soltanto per gli elementi creati dall'utente. \textsc{FONTE} e \textsc{TAG} sono costruite con la stessa struttura di \textsc{CATEGORIA}.
+
+\begin{lstlisting}[caption={Tabella CATEGORIA per elementi di sistema e personali}]
+CREATE TABLE CATEGORIA (
+    ID_Categoria INT NOT NULL AUTO_INCREMENT,
+    Nome VARCHAR(80) NOT NULL,
+    Icona VARCHAR(255),
+    is_system BOOLEAN NOT NULL DEFAULT FALSE,
+    Email_Proprietario VARCHAR(255),
+    CONSTRAINT PK_CATEGORIA PRIMARY KEY (ID_Categoria),
+    CONSTRAINT FK_CATEGORIA_UTENTE
+        FOREIGN KEY (Email_Proprietario)
+        REFERENCES UTENTE (Email)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT CK_CATEGORIA_OWNER CHECK (
+        (is_system = TRUE AND Email_Proprietario IS NULL)
+        OR
+        (is_system = FALSE AND Email_Proprietario IS NOT NULL)
+    )
+);
+\end{lstlisting}
+
+La relazione \textsc{TRANSIZIONE} realizza il collasso della gerarchia tra spesa ed entrata. Il vincolo \texttt{CK\_TRANSIZIONE\_COLLASSO} impone una categoria alle spese e una fonte alle entrate, escludendo le combinazioni incoerenti.
+
+\begin{lstlisting}[caption={Tabella TRANSIZIONE e vincolo sul tipo di movimento}]
+CREATE TABLE TRANSIZIONE (
+    ID_Transizione INT NOT NULL AUTO_INCREMENT,
+    TipoTransazione CHAR(1) NOT NULL,
+    Importo DECIMAL(10,2) NOT NULL,
+    Data DATE NOT NULL,
+    Descrizione VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL,
+    ID_Categoria INT,
+    ID_Periodo INT NOT NULL,
+    ID_Fonte INT,
+    ID_Ricorrenza INT,
+    CONSTRAINT PK_TRANSIZIONE PRIMARY KEY (ID_Transizione),
+    CONSTRAINT FK_TRANSIZIONE_UTENTE FOREIGN KEY (Email)
+        REFERENCES UTENTE (Email) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT FK_TRANSIZIONE_CATEGORIA FOREIGN KEY (ID_Categoria)
+        REFERENCES CATEGORIA (ID_Categoria) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT FK_TRANSIZIONE_PERIODO FOREIGN KEY (ID_Periodo)
+        REFERENCES PERIODO (ID_Periodo) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT FK_TRANSIZIONE_FONTE FOREIGN KEY (ID_Fonte)
+        REFERENCES FONTE (ID_Fonte) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT CK_TRANSIZIONE_TIPO CHECK (TipoTransazione IN ('S', 'E')),
+    CONSTRAINT CK_TRANSIZIONE_IMPORTO CHECK (Importo > 0),
+    CONSTRAINT CK_TRANSIZIONE_RICORRENZA CHECK (
+        ID_Ricorrenza IS NULL OR TipoTransazione = 'S'
+    ),
+    CONSTRAINT CK_TRANSIZIONE_COLLASSO CHECK (
+        (TipoTransazione = 'S' AND ID_Categoria IS NOT NULL AND ID_Fonte IS NULL)
+        OR
+        (TipoTransazione = 'E' AND ID_Categoria IS NULL AND ID_Fonte IS NOT NULL)
+    )
+);
+\end{lstlisting}
 
 \subsection{Definizione di chiavi primarie e chiavi esterne}
-Ogni tabella ha una chiave primaria esplicita. Le chiavi esterne usano azioni coerenti con il dominio: ad esempio la cancellazione di un utente elimina i suoi dati personali, mentre l'eliminazione di un periodo già usato è limitata per preservare la storia dei budget.
+Ogni tabella ha una chiave primaria esplicita. Le associazioni molti-a-molti diventano relazioni autonome, come \textsc{SPESA\_TAG}; i documenti e le ricorrenze importano invece la chiave della transazione o dell'utente interessato. La chiave esterna verso \textsc{SPESA\_RICORRENTE} viene aggiunta dopo la creazione di entrambe le tabelle per rispettare l'ordine delle dipendenze.
 
-\subsection{Vincoli NOT NULL, UNIQUE, CHECK}
-I vincoli NOT NULL garantiscono la presenza degli attributi essenziali. I vincoli UNIQUE evitano duplicati su periodo e budget. I vincoli CHECK formalizzano regole di dominio come tipo transazione, mese valido, importo positivo e coerenza tra categoria/fonte.
+\begin{lstlisting}[caption={Relazioni SPESA\_TAG, DOCUMENTO e SPESA\_RICORRENTE}]
+CREATE TABLE SPESA_TAG (
+    ID_Transizione INT NOT NULL,
+    ID_Tag INT NOT NULL,
+    CONSTRAINT PK_SPESA_TAG PRIMARY KEY (ID_Transizione, ID_Tag),
+    CONSTRAINT FK_SPESA_TAG_TRANSIZIONE FOREIGN KEY (ID_Transizione)
+        REFERENCES TRANSIZIONE (ID_Transizione)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT FK_SPESA_TAG_TAG FOREIGN KEY (ID_Tag)
+        REFERENCES TAG (ID_Tag)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
 
-\subsection{Trigger, procedure o viste}
-I trigger presenti negli script rafforzano vincoli che non sono esprimibili interamente con semplici CHECK, come la validità di categorie, fonti, tag e documenti rispetto all'utente proprietario e al tipo della transazione. Le viste semplificano interrogazioni frequenti, come il riepilogo dei movimenti e lo stato dei budget.
+CREATE TABLE DOCUMENTO (
+    ID_Documento INT NOT NULL AUTO_INCREMENT,
+    ID_Transizione INT NOT NULL,
+    Path_File VARCHAR(500) NOT NULL,
+    Tipo_File VARCHAR(20) NOT NULL,
+    Data_Acquisizione_Documento DATE NOT NULL,
+    CONSTRAINT PK_DOCUMENTO PRIMARY KEY (ID_Documento),
+    CONSTRAINT FK_DOCUMENTO_TRANSIZIONE FOREIGN KEY (ID_Transizione)
+        REFERENCES TRANSIZIONE (ID_Transizione)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE SPESA_RICORRENTE (
+    ID_Ricorrenza INT NOT NULL AUTO_INCREMENT,
+    Nome VARCHAR(100) NOT NULL,
+    Importo_Previsto DECIMAL(10,2) NOT NULL,
+    Frequenza_Giorni INT NOT NULL,
+    Data_Inizio DATE NOT NULL,
+    Data_Prossima_Scadenza DATE NOT NULL,
+    Scadenza DATE,
+    ID_Categoria INT NOT NULL,
+    Email VARCHAR(255) NOT NULL,
+    CONSTRAINT PK_SPESA_RICORRENTE PRIMARY KEY (ID_Ricorrenza),
+    CONSTRAINT FK_RICORRENTE_CATEGORIA FOREIGN KEY (ID_Categoria)
+        REFERENCES CATEGORIA (ID_Categoria) ON DELETE RESTRICT,
+    CONSTRAINT FK_RICORRENTE_UTENTE FOREIGN KEY (Email)
+        REFERENCES UTENTE (Email) ON DELETE CASCADE,
+    CONSTRAINT CK_RICORRENTE_IMPORTO CHECK (Importo_Previsto > 0),
+    CONSTRAINT CK_RICORRENTE_FREQUENZA CHECK (Frequenza_Giorni > 0)
+);
+
+ALTER TABLE TRANSIZIONE
+    ADD CONSTRAINT FK_TRANSIZIONE_RICORRENZA
+    FOREIGN KEY (ID_Ricorrenza)
+    REFERENCES SPESA_RICORRENTE (ID_Ricorrenza)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+\end{lstlisting}
+
+\subsection{Vincoli NOT NULL, UNIQUE, CHECK e indici}
+I vincoli \texttt{NOT NULL} garantiscono gli attributi essenziali, i vincoli \texttt{UNIQUE} impediscono duplicati logici e i \texttt{CHECK} formalizzano le regole di dominio. Gli indici aggiunti corrispondono alle ricerche più frequenti dell'applicazione: movimenti di un utente ordinati per data, transazioni di un periodo, documenti collegati a una sola spesa e rate generate da una ricorrenza.
+
+\begin{lstlisting}[caption={Indici principali dello schema}]
+CREATE INDEX IDX_TRANSIZIONE_UTENTE_DATA
+    ON TRANSIZIONE (Email, Data);
+CREATE INDEX IDX_TRANSIZIONE_PERIODO
+    ON TRANSIZIONE (ID_Periodo);
+CREATE INDEX IDX_TRANSIZIONE_CATEGORIA
+    ON TRANSIZIONE (ID_Categoria);
+CREATE UNIQUE INDEX UQ_TRANSIZIONE_RICORRENZA_DATA
+    ON TRANSIZIONE (ID_Ricorrenza, Data);
+CREATE INDEX IDX_BUDGET_UTENTE_PERIODO
+    ON BUDGET (Email, ID_Periodo);
+CREATE UNIQUE INDEX UQ_DOCUMENTO_TRANSIZIONE
+    ON DOCUMENTO (ID_Transizione);
+CREATE INDEX IDX_RICORRENTE_EMAIL_SCADENZA
+    ON SPESA_RICORRENTE (Email, Data_Prossima_Scadenza);
+\end{lstlisting}
+
+\subsection{Trigger e viste}
+I trigger rafforzano i vincoli che devono valere anche al di fuori dell'applicazione Java. Il seguente controllo impedisce che una transazione utilizzi una categoria o una fonte non visibile all'utente e verifica la coerenza del collegamento con una ricorrenza.
+
+\begin{lstlisting}[caption={Trigger di controllo sull'inserimento di una transazione}]
+DELIMITER $$
+CREATE TRIGGER trg_transizione_insert_check
+BEFORE INSERT ON TRANSIZIONE
+FOR EACH ROW
+BEGIN
+    IF NEW.TipoTransazione = 'S' AND NOT EXISTS (
+        SELECT 1 FROM CATEGORIA C
+        WHERE C.ID_Categoria = NEW.ID_Categoria
+          AND (C.is_system = TRUE OR C.Email_Proprietario = NEW.Email)
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Categoria non valida per questo utente';
+    END IF;
+
+    IF NEW.TipoTransazione = 'E' AND NOT EXISTS (
+        SELECT 1 FROM FONTE F
+        WHERE F.ID_Fonte = NEW.ID_Fonte
+          AND (F.is_system = TRUE OR F.Email_Proprietario = NEW.Email)
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Fonte non valida per questo utente';
+    END IF;
+
+    IF NEW.ID_Ricorrenza IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM SPESA_RICORRENTE SR
+        WHERE SR.ID_Ricorrenza = NEW.ID_Ricorrenza
+          AND SR.Email = NEW.Email
+          AND SR.ID_Categoria = NEW.ID_Categoria
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Ricorrenza non coerente con la transazione';
+    END IF;
+END$$
+DELIMITER ;
+\end{lstlisting}
+
+Le viste forniscono risultati già aggregati alla dashboard e alla vista amministrativa. In particolare, la vista amministrativa non espone le singole descrizioni né l'identità degli utenti, ma soltanto conteggi e somme per mese.
+
+\begin{lstlisting}[caption={Vista delle statistiche aggregate per l'amministratore}]
+CREATE VIEW v_statistiche_aggregate_admin AS
+SELECT
+    P.Anno,
+    P.Mese,
+    COUNT(*) AS Numero_Transazioni,
+    SUM(CASE WHEN T.TipoTransazione = 'S'
+             THEN T.Importo ELSE 0 END) AS Totale_Spese,
+    SUM(CASE WHEN T.TipoTransazione = 'E'
+             THEN T.Importo ELSE 0 END) AS Totale_Entrate
+FROM TRANSIZIONE T
+JOIN PERIODO P ON T.ID_Periodo = P.ID_Periodo
+GROUP BY P.Anno, P.Mese;
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Vista dello stato dei budget}]
+CREATE VIEW v_budget_stato AS
+SELECT
+    B.ID_Budget,
+    B.Email,
+    P.Mese,
+    P.Anno,
+    COALESCE(C.Nome, 'Budget globale') AS Ambito,
+    B.Importo_Limite,
+    COALESCE(SUM(T.Importo), 0) AS Totale_Speso,
+    B.Importo_Limite - COALESCE(SUM(T.Importo), 0) AS Residuo,
+    CASE WHEN COALESCE(SUM(T.Importo), 0) > B.Importo_Limite
+         THEN TRUE ELSE FALSE END AS Superato
+FROM BUDGET B
+JOIN PERIODO P ON B.ID_Periodo = P.ID_Periodo
+LEFT JOIN CATEGORIA C ON B.ID_Categoria = C.ID_Categoria
+LEFT JOIN TRANSIZIONE T
+    ON T.Email = B.Email
+   AND T.ID_Periodo = B.ID_Periodo
+   AND T.TipoTransazione = 'S'
+   AND (B.ID_Categoria IS NULL OR T.ID_Categoria = B.ID_Categoria)
+GROUP BY B.ID_Budget, B.Email, P.Mese, P.Anno,
+         C.Nome, B.ID_Categoria, B.Importo_Limite;
+\end{lstlisting}
 
 \subsection{Popolamento iniziale del database}
+Lo script \path{doc/sql/02_popolamento_demo.sql} inserisce utenti, periodi, classificazioni e movimenti dimostrativi. Gli identificatori generati vengono recuperati mediante query o \texttt{LAST\_INSERT\_ID()}, evitando valori numerici rigidi nelle associazioni successive.
+
+\begin{lstlisting}[caption={Esempio di popolamento con utenti, categorie e una spesa documentata}]
+INSERT INTO UTENTE (Email, Password, Nome, Cognome, Ruolo)
+VALUES
+('studente1@mail.com', SHA2('password1', 512),
+ 'Mario', 'Rossi', 'UTENTE'),
+('admin@sage.com', SHA2('admin123', 512),
+ 'Admin', 'Sistema', 'ADMIN');
+
+INSERT INTO PERIODO (Mese, Anno)
+VALUES (5, 2026), (6, 2026), (7, 2026);
+
+INSERT INTO CATEGORIA (Nome, Icona, is_system, Email_Proprietario)
+VALUES
+('Trasporti', 'transport.png', TRUE, NULL),
+('Mensa universitaria', 'food.png', FALSE, 'studente1@mail.com');
+
+SET @periodo_maggio = (
+    SELECT ID_Periodo FROM PERIODO
+    WHERE Mese = 5 AND Anno = 2026
+);
+SET @cat_mensa = (
+    SELECT ID_Categoria FROM CATEGORIA
+    WHERE Nome = 'Mensa universitaria'
+      AND Email_Proprietario = 'studente1@mail.com'
+);
+
+INSERT INTO TRANSIZIONE
+(TipoTransazione, Importo, Data, Descrizione, Email,
+ ID_Categoria, ID_Periodo, ID_Fonte)
+VALUES
+('S', 8.50, '2026-05-13', 'Pranzo in mensa',
+ 'studente1@mail.com', @cat_mensa, @periodo_maggio, NULL);
+
+SET @spesa_mensa = LAST_INSERT_ID();
+INSERT INTO DOCUMENTO
+(ID_Transizione, Path_File, Tipo_File, Data_Acquisizione_Documento)
+VALUES
+(@spesa_mensa, '/documenti/scontrino_mensa.pdf', 'PDF', '2026-05-13');
+\end{lstlisting}
+
+\subsection{Migrazione di un database esistente}
+Lo script \path{doc/sql/03_migrazione_database_esistente.sql} aggiorna in modo incrementale le installazioni create con versioni precedenti. Prima di ogni modifica consulta \texttt{INFORMATION\_SCHEMA}; in questo modo aggiunge soltanto colonne, vincoli e indici ancora assenti. Poiché la migrazione comprende aggiornamenti massivi controllati, salva il valore di \texttt{SQL\_SAFE\_UPDATES}, lo disattiva esclusivamente per la sessione corrente e lo ripristina al termine. In questo modo lo script è eseguibile anche da MySQL Workbench con la modalità sicura attiva, senza modificare le preferenze globali.
+
+\begin{lstlisting}[caption={Gestione della modalità safe update nella migrazione}]
+SET @sage_old_sql_safe_updates = @@SESSION.SQL_SAFE_UPDATES;
+SET SESSION SQL_SAFE_UPDATES = 0;
+
+-- aggiornamenti e cancellazioni controllati della migrazione
+
+SET SESSION SQL_SAFE_UPDATES = @sage_old_sql_safe_updates;
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Migrazione condizionale delle icone e del collegamento alle ricorrenze}]
+SET @column_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'CATEGORIA'
+      AND COLUMN_NAME = 'Icona'
+);
+SET @sql = IF(
+    @column_exists = 0,
+    'ALTER TABLE CATEGORIA ADD COLUMN Icona VARCHAR(255) NULL AFTER Nome',
+    'SELECT ''CATEGORIA.Icona gia presente'' AS Messaggio'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @column_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'TRANSIZIONE'
+      AND COLUMN_NAME = 'ID_Ricorrenza'
+);
+SET @sql = IF(
+    @column_exists = 0,
+    'ALTER TABLE TRANSIZIONE ADD COLUMN ID_Ricorrenza INT NULL AFTER ID_Fonte',
+    'SELECT ''TRANSIZIONE.ID_Ricorrenza gia presente'' AS Messaggio'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+\end{lstlisting}
 
 \subsection{Query SQL delle operazioni principali}
 \subsubsection{Problemi e criticità}
@@ -569,41 +1144,149 @@ L'uso di \texttt{PreparedStatement} evita concatenazioni insicure e permette di 
 
 \section{Progettazione dell’applicazione}
 \subsection{Architettura generale dell’applicazione}
+L'applicazione S.A.G.E. è un programma desktop organizzato secondo un'architettura a livelli. La separazione delle responsabilità evita che l'interfaccia grafica esegua direttamente le query e rende più semplice modificare una parte del sistema senza intervenire sulle altre. Il flusso ordinario è il seguente:
+
+\begin{center}
+\texttt{View $\rightarrow$ Controller $\rightarrow$ Service $\rightarrow$ DAO $\rightarrow$ MySQL}
+\end{center}
+
+Le classi del livello \texttt{view} raccolgono gli input e aggiornano le schermate; i controller espongono le operazioni richieste dall'interfaccia; i service applicano le regole di dominio e coordinano le transazioni; i DAO contengono il codice JDBC e traducono le righe del database in oggetti del model. Le classi del package \texttt{model} rappresentano invece gli oggetti persistenti, come utente, transazione, budget, categoria, documento e spesa ricorrente.
+
+La finestra principale \texttt{MainFrame} utilizza un \texttt{CardLayout}. All'avvio mostra il pannello di autenticazione; dopo il login crea una dashboard diversa in base al ruolo dell'utente. Un account con ruolo \texttt{UTENTE} accede alla dashboard personale, mentre un account con ruolo \texttt{ADMIN} accede alla dashboard amministrativa. Il database risiede in locale e viene raggiunto direttamente dall'applicazione, realizzando quindi un'architettura desktop 2-tier.
 
 \subsection{Tecnologie usate}
+Le tecnologie principali sono:
+\begin{itemize}
+    \item \textbf{Java SE}: linguaggio usato per logica applicativa, accesso ai dati e interfaccia;
+    \item \textbf{Java Swing e AWT}: costruzione delle finestre, dei form, delle tabelle, dei pannelli e dei grafici;
+    \item \textbf{JDBC}: collegamento al DBMS e gestione di query parametrizzate e transazioni;
+    \item \textbf{MySQL Connector/J}: driver JDBC incluso nella cartella \path{lib};
+    \item \textbf{MySQL}: DBMS utilizzato, eseguito localmente tramite l'installazione XAMPP;
+    \item \textbf{SQL}: definizione dello schema, trigger, viste, popolamento e interrogazioni;
+    \item \textbf{API Desktop di Java}: apertura dei documenti digitali con il programma predefinito del sistema operativo.
+\end{itemize}
+Non viene utilizzato un ORM: la traduzione tra oggetti Java e relazioni è gestita esplicitamente dai DAO. Questa scelta rende visibili le query effettivamente eseguite ed è coerente con gli obiettivi del corso.
 
 \subsection{Struttura dei package Java}
+Il codice sorgente si trova sotto \path{src/it/unibo/sage} ed è suddiviso come segue.
+
+\begin{longtable}{p{4.1cm} p{10.5cm}}
+\toprule
+\textbf{Package} & \textbf{Responsabilità} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Package} & \textbf{Responsabilità} \\
+\midrule
+\endhead
+\texttt{it.unibo.sage} & Contiene il punto di ingresso \texttt{Main}. \\
+\texttt{model} & Rappresenta le entità del dominio e i tipi enumerativi. \\
+\texttt{dao} & Definisce le interfacce di persistenza e le implementazioni JDBC. \\
+\texttt{service} & Implementa regole di dominio, aggregazioni e operazioni atomiche. \\
+\texttt{controller} & Fa da collegamento tra pannelli Swing e servizi applicativi. \\
+\texttt{view} & Contiene la finestra principale e le viste dedicate a login, dashboard, amministrazione, documenti e configurazione iniziale. \\
+\texttt{view.components} & Componenti grafici riutilizzabili, come sidebar, pulsanti, pannelli di riepilogo e notifiche. \\
+\texttt{view.dashboard} & Dashboard dell'utente, grafici e supporto alle icone di categorie, tag e fonti. \\
+\texttt{view.admin} & Dashboard amministrativa e visualizzazione delle statistiche aggregate. \\
+\texttt{utils} & Connessione al database e gestione della memorizzazione delle icone personalizzate. \\
+\bottomrule
+\end{longtable}
+
+Questa struttura segue la separazione in livelli adottata nelle relazioni di riferimento: le finestre non incorporano la logica SQL, ma delegano a classi dedicate che rendono esplicito il percorso tra interfaccia e database.
 
 \subsection{Collegamento al database tramite JDBC}
+La classe \texttt{DatabaseConnection} centralizza la creazione delle connessioni. Prima carica il driver \texttt{com.mysql.cj.jdbc.Driver}, quindi usa \texttt{DriverManager.getConnection}. In assenza di configurazioni esterne, il collegamento predefinito punta al database locale:
+
+\begin{lstlisting}[language=Java,caption={Configurazione predefinita della connessione JDBC}]
+jdbc:mysql://localhost:3306/
+Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata
+?serverTimezone=Europe/Rome
+\end{lstlisting}
+
+URL, utente e password possono essere sovrascritti tramite proprietà Java o variabili d'ambiente: \texttt{sage.db.url}, \texttt{sage.db.user}, \texttt{sage.db.password} oppure \texttt{SAGE\_DB\_URL}, \texttt{SAGE\_DB\_USER}, \texttt{SAGE\_DB\_PASSWORD}. Questo permette di eseguire lo stesso programma su configurazioni differenti senza modificare il codice sorgente.
+
+Le connessioni, i \texttt{PreparedStatement} e i \texttt{ResultSet} sono chiusi con \emph{try-with-resources}. Le query ricevono i dati attraverso parametri, evitando la concatenazione di stringhe. Le operazioni che coinvolgono più relazioni, come inserimento di una spesa, aggiornamento dei budget e generazione delle ricorrenze, disabilitano temporaneamente l'auto-commit e terminano con \texttt{commit}; in caso di errore viene eseguito il \texttt{rollback}.
 
 \subsection{Organizzazione delle classi principali}
+\begin{longtable}{p{5.1cm} p{9.5cm}}
+\toprule
+\textbf{Classe o gruppo} & \textbf{Compito principale} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Classe o gruppo} & \textbf{Compito principale} \\
+\midrule
+\endhead
+\texttt{Main}, \texttt{MainFrame} & Avvio del programma, applicazione del tema, gestione del \texttt{CardLayout} e scelta della dashboard in base al ruolo. \\
+\texttt{LoginPanel}, \texttt{LoginController}, \texttt{LoginService} & Autenticazione, registrazione di un nuovo studente e apertura della sessione. \\
+\texttt{DashboardPanel} & Navigazione dell'utente tra riepilogo, transazioni, budget, categorie e tag, fonti, ricorrenze e documenti. \\
+\texttt{AdminDashboardPanel}, \texttt{AdminService} & Indicatori globali, grafici mensili, categorie più utilizzate e consultazione delle viste aggregate. \\
+\texttt{MovimentiController}, \texttt{MovimentiService} & Inserimento, modifica, eliminazione e ricerca delle transazioni e delle classificazioni personali. \\
+\texttt{BudgetController}, \texttt{BudgetService} & Creazione o aggiornamento dei budget e calcolo dello stato di utilizzo. \\
+\texttt{SpeseRicorrentiController}, \texttt{SpeseRicorrentiService} & Gestione dei modelli ricorrenti e generazione delle transazioni mancanti fino alla data corrente. \\
+\texttt{DocumentiController}, \texttt{DocumentiPanel} & Associazione, modifica, eliminazione e apertura dei documenti collegati alle spese. \\
+\texttt{DashboardDataService}, \texttt{DashboardOverviewCalculator} & Raccolta dei dati necessari al riepilogo e calcolo di saldi e aggregazioni mostrate nei grafici. \\
+\texttt{Jdbc*DAO} & Esecuzione delle query SQL e conversione dei risultati negli oggetti del model. \\
+\bottomrule
+\end{longtable}
+
+Le classi model non dipendono da Swing né da JDBC. Tale indipendenza permette di utilizzare gli stessi oggetti sia nelle viste sia nei servizi e semplifica i test della logica di calcolo.
 
 \subsection{Gestione degli errori e validazione input}
+La validazione è distribuita su più livelli:
+\begin{itemize}
+    \item i form Swing verificano campi obbligatori, importi positivi, date e selezioni richieste;
+    \item i service applicano regole di dominio, come unicità dei nomi disponibili, frequenza positiva delle ricorrenze e coerenza tra data iniziale, prossima scadenza e data finale;
+    \item i DAO usano query parametrizzate e filtrano sempre per l'email dell'utente quando trattano dati personali;
+    \item il DBMS applica chiavi esterne, \texttt{CHECK}, \texttt{UNIQUE}, trigger e vincoli di proprietà.
+\end{itemize}
+
+Gli errori di input vengono rappresentati principalmente con \texttt{IllegalArgumentException}; gli errori di accesso ai dati propagano una \texttt{SQLException}. Le viste intercettano tali eccezioni e mostrano messaggi mediante \texttt{JOptionPane}. Prima delle eliminazioni viene richiesta una conferma esplicita. I documenti sono controllati sia prima della registrazione sia prima dell'apertura, così da gestire il caso in cui il file sia stato spostato o cancellato.
+
+Le operazioni più lente, come login, caricamento dei documenti e configurazione iniziale, usano \texttt{SwingWorker}: il lavoro JDBC viene eseguito fuori dall'Event Dispatch Thread e l'interfaccia resta utilizzabile. La password non viene salvata in chiaro, ma confrontata e registrata mediante \texttt{SHA2} nel database.
 
 \subsection{Interfaccia grafica Java Swing}
+L'interfaccia è realizzata interamente in Swing. Un tema comune definisce font, spaziature e componenti; la sidebar permette di cambiare area senza aprire nuove finestre. La dashboard dell'utente utilizza pannelli a scheda per mostrare saldo, entrate, spese e percentuale di budget utilizzato. I grafici sono disegnati da componenti dedicati e si aggiornano quando l'utente seleziona il filtro mese, anno o intero storico.
 
-Per l'utente standard la dashboard permette di consultare riepilogo, transazioni, budget e classificazioni. Il pulsante per la nuova transazione apre un form applicativo che consente di inserire una spesa o un'entrata scegliendo categoria o fonte tra quelle disponibili per l'utente. La sezione \textit{Categorie e Tag} consente inoltre di aggiungere, rinominare ed eliminare elementi personali, mentre gli elementi di sistema restano protetti e non modificabili dall'utente.
+Le principali aree disponibili all'utente sono:
+\begin{itemize}
+    \item \textbf{Riepilogo}: indicatori, andamento temporale, distribuzione per categoria, stato dei budget e ultimi movimenti;
+    \item \textbf{Transazioni}: schede delle entrate e delle spese, con modifica ed eliminazione;
+    \item \textbf{Budget}: definizione di limiti generali o specifici per categoria;
+    \item \textbf{Categorie e Tag} e \textbf{Fonti}: elementi di sistema e personali, con scelta o caricamento di un'icona;
+    \item \textbf{Ricorrenze}: modelli periodici e consultazione delle spese generate;
+    \item \textbf{Documenti}: documenti collegati alle spese, apribili con il programma predefinito.
+\end{itemize}
 
-Per l'amministratore viene mostrata una vista distinta, coerente con i requisiti di privacy: l'admin non consulta il dettaglio dei movimenti personali, ma accede a statistiche aggregate mensili e allo stato complessivo dei budget tramite viste SQL dedicate.
-
-La schermata iniziale gestisce sia l'accesso sia la creazione di un nuovo account studente. La registrazione richiede nome, cognome, email, password e conferma password; il nuovo utente viene inserito nella tabella \textsc{UTENTE} con ruolo \texttt{UTENTE}, mentre la password viene salvata in forma hash tramite \texttt{SHA2}. La creazione di account amministrativi non è esposta dall'interfaccia utente, così da mantenere separati gli account operativi dagli account di gestione.
+La dashboard amministrativa è separata da quella personale. Mostra numero di utenti, numero di transazioni, spese, entrate, budget superati, andamento mensile globale e categorie più utilizzate. I dati sono aggregati: l'amministratore non accede alle descrizioni dei movimenti né ai documenti personali.
 
 \subsection{Schermate principali}
+La Figura~\ref{fig:dashboard-utente} mostra la schermata principale dell'utente con il filtro annuale selezionato. Nella parte superiore sono riepilogati saldo, entrate, spese e budget utilizzato. Il grafico a barre confronta entrate e spese mese per mese, mentre il grafico ad anello mostra la distribuzione delle uscite tra le categorie. Nella parte inferiore sono riportati lo stato dei budget e le transazioni più recenti.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{dashboard_utente.png}
+    \caption{Dashboard principale dell'utente con riepilogo annuale.}
+    \label{fig:dashboard-utente}
+\end{figure}
+
+La schermata costituisce il punto di accesso alle funzioni operative: il pulsante \emph{Nuova transazione} apre il form di inserimento, i pulsanti \emph{Mese}, \emph{Anno} e \emph{Tutto} cambiano l'intervallo analizzato e la sidebar permette di raggiungere le altre sezioni.
 
 \subsection{Flussi d’uso principali}
-
-Registrazione studente\\
-Inserimento di una spesa\\
-Inserimento di una entrata\\
-Definizione di un budget\\
-Gestione di categorie e tag personali\\
-Gestione di una spesa ricorrente\\
-Associazione di un documento digitale\\
-Visualizzazione statistiche amministratore
+\begin{enumerate}
+    \item \textbf{Registrazione e login}: lo studente crea un account, accede con email e password e viene indirizzato alla propria dashboard; il ruolo amministrativo apre invece la vista aggregata.
+    \item \textbf{Inserimento di una spesa}: l'utente specifica importo, data, descrizione e categoria, seleziona eventuali tag e documento; il sistema registra il periodo e aggiorna i budget interessati nella stessa transazione JDBC.
+    \item \textbf{Inserimento di una entrata}: l'utente seleziona una fonte; la transazione viene salvata senza categoria, tag o documento.
+    \item \textbf{Definizione di un budget}: l'utente sceglie mese, anno, limite ed eventuale categoria; il totale già speso viene calcolato sui movimenti esistenti.
+    \item \textbf{Gestione delle classificazioni}: categorie, tag e fonti personali possono essere creati, modificati o eliminati; gli elementi di sistema rimangono disponibili ma protetti.
+    \item \textbf{Spesa ricorrente}: il modello memorizza nome, importo, frequenza, categoria e scadenze; il servizio genera le transazioni non ancora registrate e ne evita la duplicazione.
+    \item \textbf{Documento digitale}: l'utente seleziona una spesa priva di allegato e un file locale; il DB conserva il percorso e l'interfaccia permette successivamente di aprirlo, modificarlo o eliminarlo.
+    \item \textbf{Statistiche amministrative}: l'amministratore consulta indicatori e grafici costruiti su dati aggregati e gestisce categorie, tag e fonti di sistema.
+\end{enumerate}
 
 \section{Test e validazione}
 \subsection{Dati di test utilizzati}
-I dati di test includono due studenti normali e un amministratore. Lo studente \texttt{studente1@mail.com} ha transazioni, categorie personali, fonti, tag, budget e almeno un documento dimostrativo. Lo studente \texttt{studente2@mail.com} consente di verificare l'isolamento dei dati.
+I dati di test includono due studenti normali e un amministratore. Lo studente \path{studente1@mail.com} ha transazioni, categorie personali, fonti, tag, budget e almeno un documento dimostrativo. Lo studente \path{studente2@mail.com} consente di verificare l'isolamento dei dati.
 
 \subsection{Test delle query SQL}
 \begin{longtable}{p{4.5cm} p{5cm} p{5cm}}
@@ -615,7 +1298,7 @@ I dati di test includono due studenti normali e un amministratore. Lo studente \
 \textbf{Test} & \textbf{Input} & \textbf{Risultato atteso} \\
 \midrule
 \endhead
-Login valido & \texttt{studente1@mail.com}, \texttt{password1} & Utente trovato. \\
+Login valido & \path{studente1@mail.com}, \texttt{password1} & Utente trovato. \\
 Login non valido & Password errata & Nessun utente trovato. \\
 Documenti utente & Email studente 1 & Solo documenti delle sue spese. \\
 Spese senza documento & Email studente 1 & Solo spese prive di documento. \\
@@ -663,28 +1346,5 @@ Sviluppi futuri includono:
     \item grafici statistici più avanzati;
     \item esportazione dei report in PDF o CSV.
 \end{itemize}
-
-\appendix
-\section{Script SQL completo}
-<<<<<<< HEAD
-Gli script completi sono mantenuti nella cartella \texttt{doc/sql}. In particolare, \texttt{schema\_completo.sql} contiene la versione pulita e ufficiale dello schema, mentre \texttt{popolamento.sql}, \texttt{trigger\_viste.sql} e \texttt{query\_operazioni.sql} raccolgono dati demo, trigger, viste e query operative. Il file \texttt{creazione\_schema\_indici.sql} resta solo come traccia storica della prima trasformazione e non è lo script da eseguire per la consegna.
-
-\section{Query SQL complete}
-Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{doc/sql/query\_operazioni.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
-=======
-Gli script SQL sono consolidati nella cartella \texttt{doc/sql}: \texttt{01\_schema\_completo.sql} crea schema, indici, trigger e viste; \texttt{02\_popolamento\_demo.sql} inserisce i dati dimostrativi; \texttt{03\_migrazione\_database\_esistente.sql} aggiorna installazioni precedenti; \texttt{04\_query\_operazioni.sql} raccoglie le query operative facoltative.
-
-\section{Query SQL complete}
-Le query principali sono riportate nel capitolo di implementazione SQL e nel file \texttt{doc/sql/04\_query\_operazioni.sql}. Le query applicative usano parametri JDBC e filtrano sempre i dati personali tramite email.
->>>>>>> 3351d66 (aggiornamento interfaccia)
-
-\section{Screenshot dell'applicazione}
-Gli screenshot dell'applicazione possono essere inseriti in questa sezione durante la consegna finale. Le schermate più rilevanti sono login, dashboard, budget e gestione documenti.
-
-\section{Manuale utente sintetico}
-Per usare l'applicazione occorre avviare \texttt{it.unibo.sage.Main}, effettuare il login con un utente presente nel database e navigare tra le sezioni della dashboard. I dati demo includono l'utente \texttt{studente1@mail.com} con password \texttt{password1}.
-
-\section{Eventuale link al repository}
-Il link al repository può essere aggiunto in fase di consegna, insieme a eventuali istruzioni di compilazione ed esecuzione.
 
 \end{document}

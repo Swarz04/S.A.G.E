@@ -11,6 +11,13 @@
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
 
+-- MySQL Workbench puo avere SQL_SAFE_UPDATES attivo. La migrazione salva
+-- l'impostazione della sessione, la disattiva solo durante gli aggiornamenti
+-- massivi controllati e la ripristina al termine. Non vengono modificate
+-- preferenze globali del server o di Workbench.
+SET @sage_old_sql_safe_updates = @@SESSION.SQL_SAFE_UPDATES;
+SET SESSION SQL_SAFE_UPDATES = 0;
+
 -- ---------------------------------------------------------------------------
 -- Nuove colonne
 -- ---------------------------------------------------------------------------
@@ -510,3 +517,6 @@ FROM SPESA_RICORRENTE SR
 JOIN CATEGORIA C ON SR.ID_Categoria = C.ID_Categoria
 WHERE SR.Data_Prossima_Scadenza <= CURRENT_DATE
   AND (SR.Scadenza IS NULL OR SR.Data_Prossima_Scadenza <= SR.Scadenza);
+
+-- Ripristino della modalita safe update al valore presente prima della migrazione.
+SET SESSION SQL_SAFE_UPDATES = @sage_old_sql_safe_updates;

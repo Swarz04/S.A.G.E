@@ -2,25 +2,15 @@ package it.unibo.sage.view.admin;
 
 import it.unibo.sage.model.Utente;
 import it.unibo.sage.service.AdminService;
-<<<<<<< HEAD
-=======
 import it.unibo.sage.service.AdminService.AdminSummary;
 import it.unibo.sage.service.AdminService.CategoryUsage;
 import it.unibo.sage.service.AdminService.MonthlyAdminStat;
->>>>>>> 3351d66 (aggiornamento interfaccia)
 import it.unibo.sage.service.AdminService.TableData;
 import it.unibo.sage.view.components.AppBackgroundPanel;
 import it.unibo.sage.view.components.GlassPanel;
 import it.unibo.sage.view.theme.AppTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
-<<<<<<< HEAD
-import java.awt.Font;
-import java.sql.SQLException;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-=======
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -36,17 +26,13 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
->>>>>>> 3351d66 (aggiornamento interfaccia)
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
-<<<<<<< HEAD
-=======
 import javax.swing.SwingConstants;
->>>>>>> 3351d66 (aggiornamento interfaccia)
 import javax.swing.table.DefaultTableModel;
 
 public class AdminDashboardPanel extends AppBackgroundPanel {
@@ -57,15 +43,9 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
     public AdminDashboardPanel(final Utente currentUser) {
         super(new BorderLayout());
         this.currentUser = currentUser;
-<<<<<<< HEAD
-        setBorder(BorderFactory.createEmptyBorder(26, 30, 26, 30));
-        add(createHeader(), BorderLayout.NORTH);
-        add(createTabs(), BorderLayout.CENTER);
-=======
         setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
         add(createHeader(), BorderLayout.NORTH);
         add(createScrollableContent(), BorderLayout.CENTER);
->>>>>>> 3351d66 (aggiornamento interfaccia)
     }
 
     private JPanel createHeader() {
@@ -77,11 +57,7 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
         title.setFont(new Font("SansSerif", Font.BOLD, 30));
         title.setForeground(AppTheme.TEXT);
 
-<<<<<<< HEAD
-        JLabel subtitle = new JLabel("Analisi aggregate e controllo dello stato dei budget");
-=======
         JLabel subtitle = new JLabel("Panoramica aggregata di utenti, movimenti, categorie e budget");
->>>>>>> 3351d66 (aggiornamento interfaccia)
         subtitle.setForeground(AppTheme.TEXT_MUTED);
 
         JLabel user = new JLabel(currentUser.getNome() + " " + currentUser.getCognome()
@@ -97,8 +73,6 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
         return header;
     }
 
-<<<<<<< HEAD
-=======
     private JScrollPane createScrollableContent() {
         JPanel content = new JPanel();
         content.setOpaque(false);
@@ -225,7 +199,6 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
                 + formatEuro(first.getTotalExpenses()) + ").";
     }
 
->>>>>>> 3351d66 (aggiornamento interfaccia)
     private JTabbedPane createTabs() {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Statistiche mensili", createTablePanel(loadStats()));
@@ -235,12 +208,6 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
 
     private JPanel createTablePanel(final TableData data) {
         JPanel panel = new GlassPanel(new BorderLayout());
-<<<<<<< HEAD
-        panel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
-
-        DefaultTableModel model = new DefaultTableModel(
-                data.getColumns().toArray(new String[0]), 0);
-=======
         panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
 
         DefaultTableModel model = new DefaultTableModel(
@@ -250,7 +217,6 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
                 return false;
             }
         };
->>>>>>> 3351d66 (aggiornamento interfaccia)
         for (Object[] row : data.getRows()) {
             model.addRow(row);
         }
@@ -266,8 +232,6 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
         return panel;
     }
 
-<<<<<<< HEAD
-=======
     private AdminSummary loadSummary() {
         try {
             return adminService.caricaRiepilogo();
@@ -295,17 +259,12 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
         }
     }
 
->>>>>>> 3351d66 (aggiornamento interfaccia)
     private TableData loadStats() {
         try {
             return adminService.caricaStatisticheAggregate();
         } catch (final SQLException ex) {
             showLoadError(ex);
-<<<<<<< HEAD
-            return new TableData(java.util.List.of(), java.util.List.of());
-=======
             return new TableData(List.of(), List.of());
->>>>>>> 3351d66 (aggiornamento interfaccia)
         }
     }
 
@@ -314,12 +273,6 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
             return adminService.caricaStatoBudget();
         } catch (final SQLException ex) {
             showLoadError(ex);
-<<<<<<< HEAD
-            return new TableData(java.util.List.of(), java.util.List.of());
-        }
-    }
-
-=======
             return new TableData(List.of(), List.of());
         }
     }
@@ -328,15 +281,12 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
         return String.format(Locale.ITALY, "%.2f €", value == null ? BigDecimal.ZERO : value);
     }
 
->>>>>>> 3351d66 (aggiornamento interfaccia)
     private void showLoadError(final SQLException ex) {
         JOptionPane.showMessageDialog(this,
                 "Errore durante il caricamento dei dati admin: " + ex.getMessage(),
                 "Errore database",
                 JOptionPane.ERROR_MESSAGE);
     }
-<<<<<<< HEAD
-=======
 
     private static String compactNumber(final double value) {
         if (value >= 1000.0) {
@@ -501,5 +451,4 @@ public class AdminDashboardPanel extends AppBackgroundPanel {
             return value.substring(0, maxLength - 1) + "…";
         }
     }
->>>>>>> 3351d66 (aggiornamento interfaccia)
 }

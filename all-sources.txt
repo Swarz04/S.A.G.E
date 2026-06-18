@@ -1,3 +1,4 @@
+src/it/unibo/sage/Main.java
 src/it/unibo/sage/controller/BudgetController.java
 src/it/unibo/sage/controller/ConfigurazioneInizialeController.java
 src/it/unibo/sage/controller/DocumentiController.java
@@ -22,7 +23,6 @@ src/it/unibo/sage/dao/SpesaRicorrenteDAO.java
 src/it/unibo/sage/dao/TagDAO.java
 src/it/unibo/sage/dao/TransazioneDAO.java
 src/it/unibo/sage/dao/UtenteDAO.java
-src/it/unibo/sage/Main.java
 src/it/unibo/sage/model/Budget.java
 src/it/unibo/sage/model/Categoria.java
 src/it/unibo/sage/model/Documento.java
@@ -47,6 +47,7 @@ src/it/unibo/sage/service/MovimentiService.java
 src/it/unibo/sage/service/SpeseRicorrentiService.java
 src/it/unibo/sage/utils/DatabaseConnection.java
 src/it/unibo/sage/utils/IconStorage.java
+src/it/unibo/sage/view/MainFrame.java
 src/it/unibo/sage/view/admin/AdminDashboardPanel.java
 src/it/unibo/sage/view/auth/LoginPanel.java
 src/it/unibo/sage/view/components/AppBackgroundPanel.java
@@ -62,7 +63,6 @@ src/it/unibo/sage/view/dashboard/DashboardCharts.java
 src/it/unibo/sage/view/dashboard/DashboardPanel.java
 src/it/unibo/sage/view/documents/DocumentiListPanel.java
 src/it/unibo/sage/view/documents/DocumentiPanel.java
-src/it/unibo/sage/view/MainFrame.java
 src/it/unibo/sage/view/onboarding/ConfigurazioneInizialePanel.java
 src/it/unibo/sage/view/theme/AppTheme.java
 test/it/unibo/sage/test/BudgetModelTest.java
@@ -75,10 +75,10 @@ test/it/unibo/sage/test/DatabaseContentSmokeTest.java
 test/it/unibo/sage/test/DocumentoModelTest.java
 test/it/unibo/sage/test/IconResourceTest.java
 test/it/unibo/sage/test/ModelMappingTest.java
+test/it/unibo/sage/test/RequestedFeaturesSourceInspectionTest.java
 test/it/unibo/sage/test/SpeseRicorrentiServiceTest.java
 test/it/unibo/sage/test/SqlScriptConsistencyTest.java
 test/it/unibo/sage/test/TestAssertions.java
 test/it/unibo/sage/test/TestSuite.java
 test/it/unibo/sage/test/TransazioneModelTest.java
 test/it/unibo/sage/test/UtenteModelTest.java
-test/it/unibo/sage/test/RequestedFeaturesSourceInspectionTest.java
