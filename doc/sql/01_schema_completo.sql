@@ -110,7 +110,7 @@ CREATE TABLE BUDGET (
         ON DELETE CASCADE,
     CONSTRAINT CK_BUDGET_IMPORTO CHECK (Importo_Limite >= 0),
     CONSTRAINT CK_BUDGET_TOTALE CHECK (Totale_Speso_Attuale >= 0),
-    CONSTRAINT UQ_BUDGET_AMBITO UNIQUE (Email, ID_Periodo, ID_Categoria_Key)
+    CONSTRAINT UQ_BUDGET_AMBITO UNIQUE (Email, ID_Categoria_Key)
 );
 
 CREATE TABLE TRANSIZIONE (
@@ -689,7 +689,8 @@ JOIN PERIODO P ON T.ID_Periodo = P.ID_Periodo
 GROUP BY P.Anno, P.Mese;
 
 -- Stato dei budget: confronto limite, speso e residuo per capire subito se un
--- budget e' stato superato.
+-- budget e' stato superato. Ogni budget e' unico per utente e ambito;
+-- il periodo salvato viene aggiornato dall'applicazione al mese corrente.
 CREATE VIEW v_budget_stato AS
 SELECT
     B.ID_Budget,

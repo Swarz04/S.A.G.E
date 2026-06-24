@@ -5,7 +5,7 @@
 
 USE Schema_finale_del_relazionale_SAGE_Vista_ibrida_Raffinata;
 
--- Variabili di test: le imposto una volta e le riuso nel resto dello script.
+-- Variabili dimostrative: le imposto una volta e le riuso nel resto dello script.
 
 -- Studente demo su cui faccio girare gli esempi.
 SET @email_utente = 'studente1@mail.com';
@@ -101,7 +101,7 @@ SET @id_periodo_spesa = LAST_INSERT_ID();
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
-('S', 12.00, '2026-05-25', 'Spesa di test in mensa', @email_utente, @id_categoria_mensa, @id_periodo_spesa, NULL);
+('S', 12.00, '2026-05-25', 'Spesa temporanea in mensa', @email_utente, @id_categoria_mensa, @id_periodo_spesa, NULL);
 
 SET @id_spesa_test = LAST_INSERT_ID();
 
@@ -117,7 +117,7 @@ VALUES (@id_spesa_test, @id_tag_universita);
 INSERT INTO DOCUMENTO
 (ID_Transizione, Path_File, Tipo_File, Data_Acquisizione_Documento)
 VALUES
-(@id_spesa_test, '/documenti/spesa_test.pdf', 'PDF', CURRENT_DATE);
+(@id_spesa_test, '/documenti/spesa_temporanea.pdf', 'PDF', CURRENT_DATE);
 
 -- Inserimento di una nuova entrata usando una fonte valida per lo studente.
 
@@ -132,7 +132,7 @@ SET @id_periodo_entrata = LAST_INSERT_ID();
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email, ID_Categoria, ID_Periodo, ID_Fonte)
 VALUES
-('E', 75.00, '2026-05-26', 'Entrata di test', @email_utente, NULL, @id_periodo_entrata, @id_fonte_borsa);
+('E', 75.00, '2026-05-26', 'Entrata temporanea', @email_utente, NULL, @id_periodo_entrata, @id_fonte_borsa);
 
 SET @id_entrata_test = LAST_INSERT_ID();
 
@@ -141,7 +141,7 @@ COMMIT;
 -- Creo una categoria personale, quindi legata all'utente corrente.
 
 INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario)
-VALUES ('Categoria personale test', FALSE, @email_utente);
+VALUES ('Categoria temporanea utente', FALSE, @email_utente);
 
 SET @id_categoria_personale_test = LAST_INSERT_ID();
 
@@ -149,49 +149,50 @@ SET @id_categoria_personale_test = LAST_INSERT_ID();
 -- concessa solo a un amministratore.
 
 INSERT INTO CATEGORIA (Nome, is_system, Email_Proprietario)
-VALUES ('Categoria sistema test', TRUE, NULL);
+VALUES ('Categoria temporanea sistema', TRUE, NULL);
 
 SET @id_categoria_sistema_test = LAST_INSERT_ID();
 
 -- Creo una fonte personale per lo studente.
 
 INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
-VALUES ('Fonte personale test', FALSE, @email_utente);
+VALUES ('Fonte temporanea utente', FALSE, @email_utente);
 
 SET @id_fonte_personale_test = LAST_INSERT_ID();
 
 -- Creo una fonte di sistema, anche qui riservata agli amministratori nell'app.
 
 INSERT INTO FONTE (Nome, is_system, Email_Proprietario)
-VALUES ('Fonte sistema test', TRUE, NULL);
+VALUES ('Fonte temporanea sistema', TRUE, NULL);
 
 SET @id_fonte_sistema_test = LAST_INSERT_ID();
 
 -- Creo un tag personale per classificazioni piu' specifiche.
 
 INSERT INTO TAG (Nome, is_system, Email_Proprietario)
-VALUES ('Tag personale test', FALSE, @email_utente);
+VALUES ('Tag temporaneo utente', FALSE, @email_utente);
 
 SET @id_tag_personale_test = LAST_INSERT_ID();
 
 -- Creo un tag di sistema, disponibile poi per tutti gli utenti.
 
 INSERT INTO TAG (Nome, is_system, Email_Proprietario)
-VALUES ('Tag sistema test', TRUE, NULL);
+VALUES ('Tag temporaneo sistema', TRUE, NULL);
 
 SET @id_tag_sistema_test = LAST_INSERT_ID();
 
--- Budget globale del periodo: se esiste gia', aggiorno il limite.
+-- Budget globale mensile: e' unico per utente e viene riusato ogni mese.
 
 INSERT INTO BUDGET
 (Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
 VALUES
-(350.00, TRUE, @id_periodo_test, NULL, @email_utente)
+(750.00, TRUE, @id_periodo_test, NULL, @email_utente)
 ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
-Alert_Soglia = VALUES(Alert_Soglia);
+Alert_Soglia = VALUES(Alert_Soglia),
+ID_Periodo = VALUES(ID_Periodo);
 
--- Budget specifico su una categoria, sempre con upsert per evitare duplicati.
+-- Budget specifico su una categoria: una sola riga per categoria e utente.
 
 INSERT INTO BUDGET
 (Importo_Limite, Alert_Soglia, ID_Periodo, ID_Categoria, Email)
@@ -199,14 +200,15 @@ VALUES
 (150.00, TRUE, @id_periodo_test, @id_categoria_mensa, @email_utente)
 ON DUPLICATE KEY UPDATE
 Importo_Limite = VALUES(Importo_Limite),
-Alert_Soglia = VALUES(Alert_Soglia);
+Alert_Soglia = VALUES(Alert_Soglia),
+ID_Periodo = VALUES(ID_Periodo);
 
--- Modifico una transazione di test mantenendo il controllo sull'utente proprietario.
+-- Modifico una transazione temporanea mantenendo il controllo sull'utente proprietario.
 
 UPDATE TRANSIZIONE
 SET Importo = 13.50,
     Data = '2026-05-25',
-    Descrizione = 'Spesa di test modificata',
+    Descrizione = 'Spesa temporanea modificata',
     ID_Periodo = @id_periodo_test
 WHERE ID_Transizione = @id_spesa_test
   AND Email = @email_utente;
@@ -348,22 +350,27 @@ SELECT
 FROM v_statistiche_aggregate_admin
 ORDER BY Anno DESC, Mese DESC;
 
--- Pulizia della spesa di test: documento e tag collegati vengono rimossi in cascata.
+-- Pulizia della spesa temporanea: documento e tag collegati vengono rimossi in cascata.
 
 DELETE FROM TRANSIZIONE
 WHERE ID_Transizione = @id_spesa_test
   AND Email = @email_utente;
 
--- Pulizia dell'entrata di test.
+-- Pulizia dell'entrata temporanea.
 
 DELETE FROM TRANSIZIONE
 WHERE ID_Transizione = @id_entrata_test
   AND Email = @email_utente;
 
--- Pulizia della categoria personale di test. Riesce solo se non e' usata da
--- transazioni, budget o ricorrenze.
+-- Pulizia delle classificazioni temporanee create dallo script.
+-- In questo modo 04_query_operazioni.sql resta una raccolta di esempi
+-- eseguibili senza sporcare il database usato dall'applicazione.
+
+DELETE FROM TAG
+WHERE ID_Tag IN (@id_tag_personale_test, @id_tag_sistema_test);
+
+DELETE FROM FONTE
+WHERE ID_Fonte IN (@id_fonte_personale_test, @id_fonte_sistema_test);
 
 DELETE FROM CATEGORIA
-WHERE ID_Categoria = @id_categoria_personale_test
-  AND is_system = FALSE
-  AND Email_Proprietario = @email_utente;
+WHERE ID_Categoria IN (@id_categoria_personale_test, @id_categoria_sistema_test);
