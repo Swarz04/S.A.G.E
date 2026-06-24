@@ -44,39 +44,39 @@ public class MovimentiService {
 
     private static final String UPDATE_CATEGORIA_PERSONALE_SQL =
             "UPDATE CATEGORIA SET Nome = ? "
-            + "WHERE ID_Categoria = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Categoria = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String UPDATE_CATEGORIA_COMPLETA_SQL =
             "UPDATE CATEGORIA SET Nome = ?, Icona = ? "
-            + "WHERE ID_Categoria = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Categoria = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String DELETE_CATEGORIA_PERSONALE_SQL =
             "DELETE FROM CATEGORIA "
-            + "WHERE ID_Categoria = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Categoria = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String UPDATE_TAG_PERSONALE_SQL =
             "UPDATE TAG SET Nome = ? "
-            + "WHERE ID_Tag = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Tag = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String UPDATE_TAG_COMPLETO_SQL =
             "UPDATE TAG SET Nome = ?, Icona = ? "
-            + "WHERE ID_Tag = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Tag = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String DELETE_TAG_PERSONALE_SQL =
             "DELETE FROM TAG "
-            + "WHERE ID_Tag = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Tag = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String UPDATE_FONTE_PERSONALE_SQL =
             "UPDATE FONTE SET Nome = ? "
-            + "WHERE ID_Fonte = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Fonte = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String UPDATE_FONTE_COMPLETA_SQL =
             "UPDATE FONTE SET Nome = ?, Icona = ? "
-            + "WHERE ID_Fonte = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Fonte = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String DELETE_FONTE_PERSONALE_SQL =
             "DELETE FROM FONTE "
-            + "WHERE ID_Fonte = ? AND is_system = FALSE AND Email_Proprietario = ?";
+            + "WHERE ID_Fonte = ? AND (is_system = TRUE OR Email_Proprietario = ?)";
 
     private static final String EXISTS_CATEGORIA_DISPONIBILE_SQL =
             "SELECT 1 FROM CATEGORIA "
@@ -287,7 +287,7 @@ public class MovimentiService {
             statement.setLong(2, id);
             statement.setString(3, email);
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Elemento non personale o inesistente");
+                throw new SQLException("Elemento inesistente o non disponibile");
             }
         }
     }
@@ -301,7 +301,7 @@ public class MovimentiService {
             statement.setLong(3, id);
             statement.setString(4, email);
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Elemento non personale o inesistente");
+                throw new SQLException("Elemento inesistente o non disponibile");
             }
         }
     }
@@ -347,7 +347,7 @@ public class MovimentiService {
             statement.setLong(1, id);
             statement.setString(2, email);
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Elemento non personale o inesistente");
+                throw new SQLException("Elemento inesistente o non disponibile");
             }
         }
     }

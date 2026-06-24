@@ -1,6 +1,7 @@
 package it.unibo.sage.dao;
 
 import it.unibo.sage.model.Budget;
+import it.unibo.sage.model.Periodo;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -19,6 +20,28 @@ public class JdbcBudgetDAO implements BudgetDAO {
             + "Importo_Limite = VALUES(Importo_Limite), "
             + "Alert_Soglia = VALUES(Alert_Soglia), "
             + "Totale_Speso_Attuale = VALUES(Totale_Speso_Attuale)";
+
+
+    private static final String UPDATE_BUDGET_SQL =
+            "UPDATE BUDGET "
+            + "SET Importo_Limite = ?, Alert_Soglia = ?, Totale_Speso_Attuale = ?, "
+            + "ID_Periodo = ?, ID_Categoria = ? "
+            + "WHERE Email = ? AND ID_Budget = ?";
+
+    private static final String DELETE_BUDGET_SQL =
+            "DELETE FROM BUDGET WHERE Email = ? AND ID_Budget = ?";
+
+    private static final String EXISTS_BUDGET_AMBITO_SQL =
+            "SELECT 1 FROM BUDGET "
+            + "WHERE Email = ? "
+            + "AND ID_Categoria_Key = COALESCE(?, 0) "
+            + "AND ID_Budget <> ? "
+            + "LIMIT 1";
+
+    private static final String FIND_PERIODO_BUDGET_SQL =
+            "SELECT P.ID_Periodo, P.Mese, P.Anno "
+            + "FROM BUDGET B JOIN PERIODO P ON P.ID_Periodo = B.ID_Periodo "
+            + "WHERE B.Email = ? AND B.ID_Budget = ?";
 
     private static final String CALCOLA_TOTALE_GLOBALE_SQL =
             "SELECT COALESCE(SUM(Importo), 0) AS Totale "
@@ -42,11 +65,16 @@ public class JdbcBudgetDAO implements BudgetDAO {
             + "WHERE Email = ? AND ID_Periodo = ? AND ID_Categoria = ?";
 
     private static final String FIND_BY_UTENTE_SQL =
-            "SELECT ID_Budget, Email, ID_Periodo, ID_Categoria, Importo_Limite, "
-            + "Totale_Speso_Attuale, Alert_Soglia "
-            + "FROM BUDGET "
-            + "WHERE Email = ? "
-            + "ORDER BY ID_Periodo DESC, ID_Categoria";
+            "SELECT B.ID_Budget, B.Email, B.ID_Periodo, B.ID_Categoria, B.Importo_Limite, "
+            + "B.Totale_Speso_Attuale, B.Alert_Soglia "
+            + "FROM BUDGET B "
+            + "JOIN ("
+            + "    SELECT MAX(ID_Budget) AS ID_Budget "
+            + "    FROM BUDGET "
+            + "    WHERE Email = ? "
+            + "    GROUP BY ID_Categoria_Key"
+            + ") Ultimo ON Ultimo.ID_Budget = B.ID_Budget "
+            + "ORDER BY B.ID_Categoria_Key, B.ID_Budget";
 
     private final Connection connection;
 
@@ -64,6 +92,60 @@ public class JdbcBudgetDAO implements BudgetDAO {
             setNullableLong(statement, 5, budget.getIdCategoria());
             statement.setString(6, budget.getEmail());
             statement.executeUpdate();
+        }
+    }
+
+
+    @Override
+    public void aggiornaBudget(final Budget budget) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(UPDATE_BUDGET_SQL)) {
+            statement.setBigDecimal(1, budget.getImportoLimite());
+            statement.setBoolean(2, budget.isAlertSoglia());
+            statement.setBigDecimal(3, budget.getTotaleSpesoAttuale());
+            statement.setLong(4, budget.getIdPeriodo());
+            setNullableLong(statement, 5, budget.getIdCategoria());
+            statement.setString(6, budget.getEmail());
+            statement.setLong(7, budget.getId());
+            statement.executeUpdate();
+        }
+    }
+
+    @Override
+    public void eliminaBudget(final String email, final long idBudget) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(DELETE_BUDGET_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idBudget);
+            statement.executeUpdate();
+        }
+    }
+
+    @Override
+    public boolean esisteBudgetPerAmbitoDiversoDaId(final String email, final Long idCategoria,
+            final long idBudgetEscluso) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(EXISTS_BUDGET_AMBITO_SQL)) {
+            statement.setString(1, email);
+            setNullableLong(statement, 2, idCategoria);
+            statement.setLong(3, idBudgetEscluso);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    @Override
+    public Periodo findPeriodoBudget(final String email, final long idBudget) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(FIND_PERIODO_BUDGET_SQL)) {
+            statement.setString(1, email);
+            statement.setLong(2, idBudget);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException("Budget non trovato.");
+                }
+                return new Periodo(
+                        resultSet.getLong("ID_Periodo"),
+                        resultSet.getInt("Mese"),
+                        resultSet.getInt("Anno"));
+            }
         }
     }
 

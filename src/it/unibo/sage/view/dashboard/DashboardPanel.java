@@ -1,6 +1,7 @@
 package it.unibo.sage.view.dashboard;
 
 import it.unibo.sage.controller.MovimentiController;
+import it.unibo.sage.controller.BudgetController;
 import it.unibo.sage.controller.SpeseRicorrentiController;
 import it.unibo.sage.model.Budget;
 import it.unibo.sage.model.Categoria;
@@ -49,6 +50,7 @@ public class DashboardPanel extends AppBackgroundPanel {
     private final JPanel contentPanel;
     private final Utente currentUser;
     private final MovimentiController movimentiController = new MovimentiController();
+    private final BudgetController budgetController = new BudgetController();
     private final SpeseRicorrentiController speseRicorrentiController = new SpeseRicorrentiController();
     private final DashboardDataService dashboardDataService = new DashboardDataService();
     private final DashboardOverviewCalculator overviewCalculator = new DashboardOverviewCalculator();
@@ -396,22 +398,56 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private JPanel createBudgetCard() {
-        final String[] columns = {"ID", "Periodo", "Categoria", "Limite", "Speso", "Alert"};
-        final DefaultTableModel model = new DefaultTableModel(columns, 0);
+        final List<Budget> budgets = loadBudgets();
         final Map<Long, String> categoryNames = loadCategoryNames();
-        for (Budget budget : loadBudgets()) {
-            model.addRow(new Object[] {
-                budget.getId(),
-                "Periodo " + budget.getIdPeriodo(),
-                budget.getIdCategoria() == null
-                        ? "Mensile"
-                        : categoryNames.getOrDefault(budget.getIdCategoria(), "Categoria " + budget.getIdCategoria()),
-                formatEuro(budget.getImportoLimite()),
-                formatEuro(budget.getTotaleSpesoAttuale()),
-                budget.isAlertSoglia() ? "Si" : "No"
-            });
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        actions.setOpaque(false);
+        SoftButton addBudgetButton = createSmallActionButton("+ Budget");
+        addBudgetButton.addActionListener(e -> showAddBudgetDialog());
+        actions.add(addBudgetButton);
+
+        JPanel panel = new GlassPanel(new BorderLayout(0, 18));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+
+        JPanel header = new JPanel(new BorderLayout(12, 0));
+        header.setOpaque(false);
+        JPanel titlePanel = new JPanel();
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+
+        JLabel titleLabel = new JLabel("Budget");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        titleLabel.setForeground(AppTheme.TEXT);
+
+        JLabel subtitleLabel = new JLabel("Imposta e controlla i limiti mensili e per categoria.");
+        subtitleLabel.setForeground(AppTheme.TEXT_MUTED);
+
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(6));
+        titlePanel.add(subtitleLabel);
+        header.add(titlePanel, BorderLayout.CENTER);
+        header.add(actions, BorderLayout.EAST);
+
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+
+        if (budgets.isEmpty()) {
+            content.add(createPlaceholderBox("Nessun budget configurato",
+                    "Crea un budget mensile o per categoria con il pulsante Budget."));
+        } else {
+            for (int i = 0; i < budgets.size(); i++) {
+                content.add(createBudgetProgressRow(budgets.get(i), categoryNames, true));
+                if (i < budgets.size() - 1) {
+                    content.add(Box.createVerticalStrut(18));
+                }
+            }
         }
-        return createTableCard("Budget demo", "Budget mensili e per categoria caricati dal database.", model);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(createClassificationScrollPane(content), BorderLayout.CENTER);
+        return panel;
     }
     private JPanel createRecurringCard() {
         final List<SpesaRicorrente> ricorrenze = loadRecurringExpenses();
@@ -625,17 +661,15 @@ public class DashboardPanel extends AppBackgroundPanel {
         textPanel.add(Box.createVerticalGlue());
         tile.add(textPanel, BorderLayout.CENTER);
 
-        if (!system) {
-            JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
-            buttons.setOpaque(false);
-            SoftButton renameButton = createTinyActionButton("Modifica");
-            SoftButton deleteButton = createTinyActionButton("Elimina");
-            renameButton.addActionListener(e -> editClassification(type, id, name, iconName));
-            deleteButton.addActionListener(e -> deleteClassification(type, id));
-            buttons.add(renameButton);
-            buttons.add(deleteButton);
-            tile.add(buttons, BorderLayout.EAST);
-        }
+        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
+        buttons.setOpaque(false);
+        SoftButton renameButton = createTinyActionButton("Modifica");
+        SoftButton deleteButton = createTinyActionButton("Elimina");
+        renameButton.addActionListener(e -> editClassification(type, id, name, iconName));
+        deleteButton.addActionListener(e -> deleteClassification(type, id));
+        buttons.add(renameButton);
+        buttons.add(deleteButton);
+        tile.add(buttons, BorderLayout.EAST);
 
         installClassificationClick(tile, type, id, name);
         return tile;
@@ -1142,7 +1176,7 @@ public class DashboardPanel extends AppBackgroundPanel {
             int limit = Math.min(5, budgets.size());
             for (int i = 0; i < limit; i++) {
                 Budget budget = budgets.get(i);
-                content.add(createBudgetProgressRow(budget, categoryNames));
+                content.add(createBudgetProgressRow(budget, categoryNames, false));
                 if (i < limit - 1) {
                     content.add(Box.createVerticalStrut(12));
                 }
@@ -1156,8 +1190,16 @@ public class DashboardPanel extends AppBackgroundPanel {
     }
 
     private JPanel createBudgetProgressRow(final Budget budget, final Map<Long, String> categoryNames) {
-        JPanel row = new JPanel(new BorderLayout(10, 8));
+        return createBudgetProgressRow(budget, categoryNames, false);
+    }
+
+    private JPanel createBudgetProgressRow(final Budget budget, final Map<Long, String> categoryNames,
+            final boolean withActions) {
+        JPanel row = new JPanel(new BorderLayout(12, 8));
         row.setOpaque(false);
+
+        JPanel progressArea = new JPanel(new BorderLayout(10, 8));
+        progressArea.setOpaque(false);
 
         String label = budget.getIdCategoria() == null
                 ? "Budget mensile"
@@ -1192,8 +1234,22 @@ public class DashboardPanel extends AppBackgroundPanel {
         progressBar.setBackground(AppTheme.SURFACE_MUTED);
         progressBar.setBorder(BorderFactory.createEmptyBorder());
 
-        row.add(top, BorderLayout.NORTH);
-        row.add(progressBar, BorderLayout.CENTER);
+        progressArea.add(top, BorderLayout.NORTH);
+        progressArea.add(progressBar, BorderLayout.CENTER);
+        row.add(progressArea, BorderLayout.CENTER);
+
+        if (withActions) {
+            JPanel actionPanel = new JPanel(new GridLayout(2, 1, 0, 8));
+            actionPanel.setOpaque(false);
+            SoftButton editButton = createSmallActionButton("Modifica");
+            editButton.addActionListener(e -> showEditBudgetDialog(budget));
+            SoftButton deleteButton = createSmallActionButton("Elimina");
+            deleteButton.addActionListener(e -> deleteBudget(budget));
+            actionPanel.add(editButton);
+            actionPanel.add(deleteButton);
+            row.add(actionPanel, BorderLayout.EAST);
+        }
+
         return row;
     }
 
@@ -1730,6 +1786,179 @@ public class DashboardPanel extends AppBackgroundPanel {
                 JOptionPane.ERROR_MESSAGE);
     }
 
+    private void showAddBudgetDialog() {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Nuovo budget", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(createBudgetDialogContent(dialog, null));
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(520, 290));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void showEditBudgetDialog(final Budget budget) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Modifica budget", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(createBudgetDialogContent(dialog, budget));
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(520, 290));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private JPanel createBudgetDialogContent(final JDialog dialog, final Budget budget) {
+        final boolean editing = budget != null;
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+        root.setBackground(Color.WHITE);
+
+        JTextField limit = createDialogTextField(editing
+                ? budget.getImportoLimite().toPlainString()
+                : "");
+        JCheckBox alert = new JCheckBox("Avvisa quando il budget viene superato",
+                !editing || budget.isAlertSoglia());
+        alert.setOpaque(false);
+        alert.setForeground(AppTheme.TEXT);
+        JComboBox<Object> category = createBudgetCategoryCombo();
+        if (editing) {
+            selectBudgetCategory(category, budget.getIdCategoria());
+        }
+
+        JPanel form = createDialogFormPanel();
+        addFormRow(form, "Categoria", category);
+        addFormRow(form, "Limite", limit);
+        addFormRow(form, "Alert", alert);
+
+        JLabel note = new JLabel("Ogni budget e' unico: il limite viene riusato e ricalcolato mese per mese.");
+        note.setForeground(AppTheme.TEXT_MUTED);
+        note.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        form.add(note);
+
+        SoftButton saveButton = createDialogButton(editing ? "Salva modifiche" : "Salva", AppTheme.ACCENT);
+        saveButton.addActionListener(e -> {
+            if (editing) {
+                updateBudget(dialog, budget.getId(), category, limit, alert);
+            } else {
+                saveBudget(dialog, category, limit, alert);
+            }
+        });
+
+        root.add(form, BorderLayout.CENTER);
+        root.add(createDialogFooter(dialog, saveButton), BorderLayout.SOUTH);
+        return root;
+    }
+
+    private void selectBudgetCategory(final JComboBox<Object> categoryField, final Long idCategoria) {
+        if (idCategoria == null) {
+            categoryField.setSelectedIndex(0);
+            return;
+        }
+        for (int i = 0; i < categoryField.getItemCount(); i++) {
+            final Object item = categoryField.getItemAt(i);
+            if (item instanceof Categoria
+                    && Long.valueOf(((Categoria) item).getId()).equals(idCategoria)) {
+                categoryField.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private JComboBox<Object> createBudgetCategoryCombo() {
+        final java.util.List<Object> values = new java.util.ArrayList<>();
+        values.add("Budget mensile totale");
+        values.addAll(loadCategories());
+        JComboBox<Object> combo = new JComboBox<>(values.toArray());
+        combo.setRenderer((list, value, index, selected, focus) -> {
+            final JLabel label = new JLabel(value instanceof Categoria
+                    ? ((Categoria) value).getNome()
+                    : String.valueOf(value));
+            label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+            label.setBackground(selected ? AppTheme.ACCENT : Color.WHITE);
+            label.setForeground(selected ? Color.WHITE : AppTheme.TEXT);
+            return label;
+        });
+        combo.setPreferredSize(new Dimension(260, 36));
+        return combo;
+    }
+
+    private void saveBudget(final JDialog dialog, final JComboBox<Object> categoryField,
+            final JTextField limitField, final JCheckBox alertField) {
+        try {
+            final BudgetFormData formData = readBudgetForm(categoryField, limitField, alertField);
+            final LocalDate today = LocalDate.now();
+            budgetController.salvaBudget(currentUser.getEmail(), today.getMonthValue(), today.getYear(),
+                    formData.idCategoria, formData.limit, formData.alert);
+            dialog.dispose();
+            refreshContent("CARD_BUDGET");
+        } catch (final Exception ex) {
+            showBudgetError(ex);
+        }
+    }
+
+    private void updateBudget(final JDialog dialog, final long idBudget,
+            final JComboBox<Object> categoryField, final JTextField limitField,
+            final JCheckBox alertField) {
+        try {
+            final BudgetFormData formData = readBudgetForm(categoryField, limitField, alertField);
+            final LocalDate today = LocalDate.now();
+            budgetController.aggiornaBudget(currentUser.getEmail(), idBudget, today.getMonthValue(), today.getYear(),
+                    formData.idCategoria, formData.limit, formData.alert);
+            dialog.dispose();
+            refreshContent("CARD_BUDGET");
+        } catch (final Exception ex) {
+            showBudgetError(ex);
+        }
+    }
+
+    private BudgetFormData readBudgetForm(final JComboBox<Object> categoryField,
+            final JTextField limitField, final JCheckBox alertField) {
+        final BigDecimal limit = parseAmount(limitField);
+        final Object selected = categoryField.getSelectedItem();
+        final Long idCategoria = selected instanceof Categoria
+                ? ((Categoria) selected).getId()
+                : null;
+        return new BudgetFormData(idCategoria, limit, alertField.isSelected());
+    }
+
+    private void deleteBudget(final Budget budget) {
+        final int confirm = JOptionPane.showConfirmDialog(this,
+                "Eliminare definitivamente il budget selezionato?",
+                "Conferma eliminazione budget",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            budgetController.eliminaBudget(currentUser.getEmail(), budget.getId());
+            refreshContent("CARD_BUDGET");
+        } catch (final SQLException ex) {
+            showBudgetError(ex);
+        }
+    }
+
+    private static final class BudgetFormData {
+        private final Long idCategoria;
+        private final BigDecimal limit;
+        private final boolean alert;
+
+        private BudgetFormData(final Long idCategoria, final BigDecimal limit, final boolean alert) {
+            this.idCategoria = idCategoria;
+            this.limit = limit;
+            this.alert = alert;
+        }
+    }
+
+    private void showBudgetError(final Exception ex) {
+        JOptionPane.showMessageDialog(this,
+                "Budget non salvato: " + ex.getMessage(),
+                "Errore",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
     private void showAddRecurringDialog() {
         final List<Categoria> categories = loadCategories();
         if (categories.isEmpty()) {
@@ -2253,14 +2482,10 @@ public class DashboardPanel extends AppBackgroundPanel {
     private void renameSelectedClassification(final JTable table) {
         final int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Seleziona una categoria o un tag personale.");
+            JOptionPane.showMessageDialog(this, "Seleziona una categoria o un tag.");
             return;
         }
         final String origin = String.valueOf(table.getValueAt(selectedRow, 3));
-        if (!"Personale".equals(origin)) {
-            JOptionPane.showMessageDialog(this, "Gli elementi di sistema non si modificano.");
-            return;
-        }
         final String type = String.valueOf(table.getValueAt(selectedRow, 0));
         final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 1)));
         final String oldName = String.valueOf(table.getValueAt(selectedRow, 2));
@@ -2270,14 +2495,10 @@ public class DashboardPanel extends AppBackgroundPanel {
     private void deleteSelectedClassification(final JTable table) {
         final int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Seleziona una categoria o un tag personale.");
+            JOptionPane.showMessageDialog(this, "Seleziona una categoria o un tag.");
             return;
         }
         final String origin = String.valueOf(table.getValueAt(selectedRow, 3));
-        if (!"Personale".equals(origin)) {
-            JOptionPane.showMessageDialog(this, "Gli elementi di sistema non si eliminano.");
-            return;
-        }
         final String type = String.valueOf(table.getValueAt(selectedRow, 0));
         final long id = Long.parseLong(String.valueOf(table.getValueAt(selectedRow, 1)));
         deleteClassification(type, id);

@@ -132,6 +132,7 @@ Il sistema prevede due ruoli:
 \subsection{Tecnologie utilizzate}
 \begin{itemize}
     \item \textbf{DBMS}: MySQL.
+    \item \textbf{Ambiente locale}: XAMPP, utilizzato per avviare il server MySQL locale e per amministrare il database tramite phpMyAdmin durante sviluppo e test.
     \item \textbf{Linguaggio applicativo}: Java.
     \item \textbf{Interfaccia}: Java Swing.
     \item \textbf{Connessione al database}: JDBC con MySQL Connector/J.
@@ -150,7 +151,7 @@ La scelta sui documenti riduce il peso del DBMS e semplifica le operazioni JDBC.
 
 \section{Analisi dei requisiti}
 \subsection{Requisiti in linguaggio naturale}
-Il sistema deve permettere a uno studente di registrare e monitorare i propri movimenti economici. Ogni transazione deve avere data, importo e descrizione. Una spesa deve essere associata a una categoria e può avere tag e documenti digitali; un'entrata deve essere associata a una fonte. L'utente deve poter definire budget per periodo e, opzionalmente, per categoria. Il sistema deve inoltre supportare spese ricorrenti come modelli da cui generare movimenti effettivi.
+Il sistema deve permettere a uno studente di registrare e monitorare i propri movimenti economici. Ogni transazione deve avere data, importo e descrizione. Una spesa deve essere associata a una categoria e può avere tag e documenti digitali; un'entrata deve essere associata a una fonte. L'utente deve poter definire budget mensili riutilizzabili, globali o opzionalmente legati a una categoria. Il sistema deve inoltre supportare spese ricorrenti come modelli da cui generare movimenti effettivi.
 
 \subsection{Analisi delle ambiguità e decisioni progettuali}
 \begin{longtable}{p{3.5cm} p{5cm} p{6cm}}
@@ -162,7 +163,7 @@ Il sistema deve permettere a uno studente di registrare e monitorare i propri mo
 \textbf{Concetto} & \textbf{Ambiguità} & \textbf{Decisione progettuale} \\
 \midrule
 \endhead
-Periodo temporale & Come collegare transazioni e budget mensili? & Il periodo è derivato dalla data della transazione e storicizzato nella tabella \textsc{PERIODO}. \\
+Periodo temporale & Come collegare transazioni e budget mensili? & Il periodo è derivato dalla data della transazione; i budget sono unici per ambito e vengono ricalcolati sul periodo corrente. \\
 Transazione & Separare fisicamente spese ed entrate? & Si usa una relazione unica \textsc{TRANSIZIONE} con attributo \texttt{TipoTransazione}. \\
 Classificazione & Come distinguere catalogo comune e personalizzazioni? & \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} usano \texttt{is\_system} ed eventuale \texttt{Email\_Proprietario}. \\
 Spesa ricorrente & È una transazione già avvenuta? & No: è un modello generatore che può produrre transazioni future. \\
@@ -190,7 +191,7 @@ Privacy & L'admin vede i movimenti personali? & No: l'accesso amministrativo è 
     \item \textbf{Categoria}: classificazione principale di una spesa.
     \item \textbf{Fonte}: origine di un'entrata.
     \item \textbf{Tag}: etichetta trasversale che consente classificazioni aggiuntive.
-    \item \textbf{Budget}: limite di spesa collegato a utente, periodo ed eventuale categoria.
+    \item \textbf{Budget}: limite di spesa mensile collegato a un utente e, opzionalmente, a una categoria; per lo stesso ambito esiste una sola configurazione.
     \item \textbf{Documento}: riferimento digitale a uno scontrino o a una fattura associata a una spesa.
     \item \textbf{Spesa ricorrente}: modello da cui generare spese periodiche.
 \end{itemize}
@@ -245,7 +246,7 @@ La progettazione concettuale privilegia un modello chiaro, con entità separate 
 \textsc{FONTE} & Classifica le entrate; può essere di sistema o personale. \\
 \textsc{TAG} & Aggiunge classificazioni trasversali alle spese. \\
 \textsc{PERIODO} & Storicizza mese e anno usati dai budget. \\
-\textsc{BUDGET} & Definisce una soglia di spesa per periodo, con eventuale categoria. \\
+\textsc{BUDGET} & Definisce una soglia mensile riutilizzata mese per mese, globale o per categoria. \\
 \textsc{DOCUMENTO} & Conserva percorso, tipo e data di acquisizione del file associato a una spesa. \\
 \textsc{SPESA\_RICORRENTE} & Modello astratto per spese periodiche future. \\
 \bottomrule
@@ -292,7 +293,7 @@ Nel dominio esistono due sottotipi di transazione: spesa ed entrata. La speciali
 \textsc{CATEGORIA}, \textsc{TAG} e \textsc{FONTE} sono modellati con una soluzione ibrida. Gli elementi globali hanno \texttt{is\_system = TRUE} e nessun proprietario; gli elementi personali hanno \texttt{is\_system = FALSE} e sono collegati a un utente. Le query applicative mostrano a uno studente sia gli elementi globali sia quelli personali.
 
 \subsubsection{Reificazione del budget}
-Il budget è modellato come entità autonoma collegata a utente e periodo. L'eventuale categoria distingue un budget specifico da un budget mensile complessivo. L'attributo \path{Totale_Speso_Attuale} è ridondante, ma serve a rendere efficiente la dashboard.
+Il budget è modellato come entità autonoma collegata all'utente e a un ambito: globale oppure riferito a una categoria. Il sistema mantiene una sola configurazione per ciascun ambito e aggiorna il periodo di riferimento al mese corrente; in questo modo non vengono create copie gennaio, febbraio, marzo dello stesso budget. L'attributo \path{Totale_Speso_Attuale} è ridondante, ma serve a rendere efficiente la dashboard.
 
 \subsubsection{Documenti digitali}
 Il documento digitale è collegato a una spesa e contiene \texttt{Path\_File}, \texttt{Tipo\_File} e \path{Data_Acquisizione_Documento}. Il contenuto binario del file non è salvato nel DBMS.
@@ -324,8 +325,8 @@ Transazione--Categoria & N:1 opzionale & Solo le spese hanno una categoria. \\
 Transazione--Fonte & N:1 opzionale & Solo le entrate hanno una fonte. \\
 Spesa--Tag & N:M & Una spesa può avere più tag e un tag può essere riutilizzato. \\
 Spesa--Documento & 1:N logico & Una spesa può avere documenti; nella UI corrente si limita a un documento per semplicità. \\
-Utente--Budget & 1:N & Ogni utente può definire più budget nel tempo. \\
-Periodo--Budget & 1:N & Un periodo può essere condiviso da budget di utenti diversi. \\
+Utente--Budget & 1:N & Ogni utente può definire più budget, ma al massimo uno per ambito. \\
+Periodo--Budget & 1:N & Il periodo indica il mese di riferimento corrente usato per calcolare lo stato del budget. \\
 \bottomrule
 \end{longtable}
 
@@ -344,7 +345,7 @@ Il dizionario riassume gli attributi principali:
 \begin{itemize}
     \item \textsc{UTENTE}: Email, Password, Nome, Cognome, Ruolo.
     \item \textsc{TRANSIZIONE}: ID, TipoTransazione, Importo, Data, Descrizione, Email, Categoria/Fonte.
-    \item \textsc{BUDGET}: ID, Importo\_Limite, Alert\_Soglia, Totale\_Speso\_Attuale, Periodo, Categoria, Email.
+    \item \textsc{BUDGET}: ID, Importo\_Limite, Alert\_Soglia, Totale\_Speso\_Attuale, Periodo corrente, Categoria opzionale, Email; il vincolo su Email e categoria impedisce duplicati dello stesso budget.
     \item \textsc{DOCUMENTO}: ID, ID\_Transizione, Path\_File, Tipo\_File, Data\_Acquisizione\_Documento.
     \item \textsc{SPESA\_TAG}: associazione molti-a-molti tra spesa e tag.
 \end{itemize}
@@ -366,13 +367,13 @@ Le funzionalità principali sono organizzate in operazioni utente e operazioni a
 Login & Email, password & \textsc{UTENTE} \\
 Nuova spesa & Importo, data, descrizione, categoria, tag, documento opzionale & \textsc{PERIODO}, \textsc{TRANSIZIONE}, \textsc{SPESA\_TAG}, \textsc{DOCUMENTO}, \textsc{BUDGET} \\
 Nuova entrata & Importo, data, descrizione, fonte & \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
-Nuovo budget & Periodo, importo limite, categoria opzionale & \textsc{BUDGET}, \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
+Nuovo budget & Importo limite, categoria opzionale & \textsc{BUDGET}, \textsc{PERIODO}, \textsc{TRANSIZIONE} \\
 Nuovo documento & Spesa, percorso file, tipo file & \textsc{DOCUMENTO}, \textsc{TRANSIZIONE} \\
 \bottomrule
 \end{longtable}
 
 \subsection{Operazioni di modifica ed eliminazione}
-Le modifiche riguardano principalmente budget, categorie personali, fonti personali e tag personali. Le eliminazioni devono rispettare i vincoli referenziali: ad esempio una categoria personale eliminata non deve lasciare riferimenti incoerenti nelle spese già registrate. La cancellazione di transazioni o documenti sfrutta le regole di integrità definite nello schema SQL.
+Le modifiche riguardano budget, categorie, fonti e tag, sia personali sia di sistema quando l'operazione è svolta dall'amministratore. Le eliminazioni devono rispettare i vincoli referenziali: ad esempio una categoria eliminata non deve lasciare riferimenti incoerenti nelle spese già registrate. La cancellazione di transazioni o documenti sfrutta le regole di integrità definite nello schema SQL.
 
 \subsection{Operazioni di interrogazione}
 \begin{itemize}
@@ -471,8 +472,8 @@ Le stime risultano internamente coerenti: le 120.000 transazioni sono ripartite 
 \subsection{Descrizione delle operazioni principali, frequenza e tabelle degli accessi}
 Le operazioni derivano dai casi d'uso descritti nell'analisi dei requisiti. Tutte le frequenze sono espresse su base mensile e sono già incorporate nella colonna \emph{Totale degli accessi al mese}. Le letture sono indicate con L e le scritture con S. Nel calcolo del costo pesato, una scrittura vale due letture; la tabella riporta invece il numero grezzo di accessi, in modo da rendere immediatamente verificabile il prodotto tra frequenza e accessi per singola esecuzione.
 
-\clearpage
-{\fontsize{6.4}{7.1}\selectfont
+
+\noindent{\fontsize{6.4}{7.1}\selectfont
 \renewcommand{\arraystretch}{0.98}
 \setlength{\tabcolsep}{2.1pt}
 \begin{longtable}{|>{\raggedright\arraybackslash}p{3.8cm}|>{\raggedright\arraybackslash}p{3.15cm}|>{\centering\arraybackslash}p{1.25cm}|>{\centering\arraybackslash}p{1.35cm}|>{\raggedleft\arraybackslash}p{1.75cm}|>{\raggedleft\arraybackslash}p{2.45cm}|}
@@ -688,6 +689,8 @@ Le relazioni principali rispettano la terza forma normale: gli attributi dipendo
 
 \section{Implementazione SQL}
 \subsection{Script di creazione del database}
+Gli script SQL consolidati sono \texttt{01\_schema\_completo.sql}, \texttt{02\_popolamento\_demo.sql}, \texttt{03\_migrazione\_database\_esistente.sql} e \texttt{04\_query\_operazioni.sql}.
+
 Lo script \path{doc/sql/01_schema_completo.sql} crea da zero il database MySQL e seleziona lo schema prima di definire le relazioni. L'ordine di creazione segue le dipendenze referenziali: prima le entità indipendenti, poi quelle che importano chiavi esterne.
 
 \begin{lstlisting}[caption={Creazione dello schema e delle tabelle UTENTE e PERIODO}]
@@ -935,50 +938,49 @@ GROUP BY B.ID_Budget, B.Email, P.Mese, P.Anno,
 \end{lstlisting}
 
 \subsection{Popolamento iniziale del database}
-Lo script \path{doc/sql/02_popolamento_demo.sql} inserisce utenti, periodi, classificazioni e movimenti dimostrativi. Gli identificatori generati vengono recuperati mediante query o \texttt{LAST\_INSERT\_ID()}, evitando valori numerici rigidi nelle associazioni successive.
+Lo script \path{doc/sql/02_popolamento_demo.sql} inserisce un dataset dimostrativo pi\`u ampio rispetto alla prima versione. Il popolamento mantiene due account studente e un account amministratore tecnico, crea i periodi da gennaio a luglio 2026 e registra movimenti da gennaio a giugno. Per ogni mese sono presenti pi\`u entrate e spese: lo studente principale ha circa dieci movimenti mensili, mentre il secondo studente ne ha almeno otto. In questo modo i grafici annuali, le ricorrenze, i budget e l'isolamento tra utenti possono essere verificati con dati meno artificiali. Gli identificatori generati vengono recuperati mediante query o \texttt{LAST\_INSERT\_ID()}, evitando valori numerici rigidi nelle associazioni successive.
 
-\begin{lstlisting}[caption={Esempio di popolamento con utenti, categorie e una spesa documentata}]
+\begin{lstlisting}[caption={Estratto del popolamento esteso con due utenti e movimenti distribuiti nel tempo}]
 INSERT INTO UTENTE (Email, Password, Nome, Cognome, Ruolo)
 VALUES
-('studente1@mail.com', SHA2('password1', 512),
- 'Mario', 'Rossi', 'UTENTE'),
-('admin@sage.com', SHA2('admin123', 512),
- 'Admin', 'Sistema', 'ADMIN');
+('studente1@mail.com', SHA2('password1', 512), 'Mario', 'Rossi', 'UTENTE'),
+('studente2@mail.com', SHA2('password2', 512), 'Luca', 'Bianchi', 'UTENTE'),
+('admin@sage.com', SHA2('admin123', 512), 'Admin', 'Sistema', 'ADMIN');
 
 INSERT INTO PERIODO (Mese, Anno)
-VALUES (5, 2026), (6, 2026), (7, 2026);
-
-INSERT INTO CATEGORIA (Nome, Icona, is_system, Email_Proprietario)
 VALUES
-('Trasporti', 'transport.png', TRUE, NULL),
-('Mensa universitaria', 'food.png', FALSE, 'studente1@mail.com');
+(1, 2026), (2, 2026), (3, 2026), (4, 2026),
+(5, 2026), (6, 2026), (7, 2026);
 
-SET @periodo_maggio = (
-    SELECT ID_Periodo FROM PERIODO
-    WHERE Mese = 5 AND Anno = 2026
-);
-SET @cat_mensa = (
-    SELECT ID_Categoria FROM CATEGORIA
-    WHERE Nome = 'Mensa universitaria'
-      AND Email_Proprietario = 'studente1@mail.com'
-);
+-- Le ricorrenze vengono create prima delle transazioni,
+-- cosi le rate gia generate possono essere collegate.
+INSERT INTO SPESA_RICORRENTE
+(Nome, Importo_Previsto, Frequenza_Giorni, Data_Inizio,
+ Data_Prossima_Scadenza, Scadenza, ID_Categoria, Email)
+VALUES
+('Affitto', 450.00, 30, '2026-01-15', '2026-07-15',
+ '2026-12-31', @cat_casa, 'studente1@mail.com'),
+('Netflix', 9.99, 30, '2026-01-23', '2026-07-23',
+ '2026-12-31', @cat_svago, 'studente1@mail.com');
 
 INSERT INTO TRANSIZIONE
 (TipoTransazione, Importo, Data, Descrizione, Email,
- ID_Categoria, ID_Periodo, ID_Fonte)
+ ID_Categoria, ID_Periodo, ID_Fonte, ID_Ricorrenza)
 VALUES
-('S', 8.50, '2026-05-13', 'Pranzo in mensa',
- 'studente1@mail.com', @cat_mensa, @periodo_maggio, NULL);
-
-SET @spesa_mensa = LAST_INSERT_ID();
-INSERT INTO DOCUMENTO
-(ID_Transizione, Path_File, Tipo_File, Data_Acquisizione_Documento)
-VALUES
-(@spesa_mensa, '/documenti/scontrino_mensa.pdf', 'PDF', '2026-05-13');
+('E', 250.00, '2026-01-03', 'Aiuto famiglia gennaio',
+ 'studente1@mail.com', NULL, @periodo_gennaio, @fonte_aiuto_famiglia, NULL),
+('S', 450.00, '2026-01-15', 'Affitto',
+ 'studente1@mail.com', @cat_casa, @periodo_gennaio, NULL, @ricorrenza_affitto_s1),
+('S', 9.99, '2026-01-23', 'Netflix',
+ 'studente1@mail.com', @cat_svago, @periodo_gennaio, NULL, @ricorrenza_netflix_s1),
+('E', 200.00, '2026-02-07', 'Lavoretto weekend febbraio',
+ 'studente2@mail.com', NULL, @periodo_febbraio, @fonte_lavoretto, NULL),
+('S', 320.00, '2026-02-15', 'Stanza in affitto',
+ 'studente2@mail.com', @cat_casa_fuori_sede_s2, @periodo_febbraio, NULL, @ricorrenza_affitto_s2);
 \end{lstlisting}
 
 \subsection{Migrazione di un database esistente}
-Lo script \path{doc/sql/03_migrazione_database_esistente.sql} aggiorna in modo incrementale le installazioni create con versioni precedenti. Prima di ogni modifica consulta \texttt{INFORMATION\_SCHEMA}; in questo modo aggiunge soltanto colonne, vincoli e indici ancora assenti. Poiché la migrazione comprende aggiornamenti massivi controllati, salva il valore di \texttt{SQL\_SAFE\_UPDATES}, lo disattiva esclusivamente per la sessione corrente e lo ripristina al termine. In questo modo lo script è eseguibile anche da MySQL Workbench con la modalità sicura attiva, senza modificare le preferenze globali.
+Lo script \path{doc/sql/03_migrazione_database_esistente.sql} aggiorna in modo incrementale le installazioni create con versioni precedenti. Prima di ogni modifica consulta \texttt{INFORMATION\_SCHEMA}; in questo modo aggiunge soltanto colonne, vincoli e indici ancora assenti. La migrazione rimuove anche eventuali classificazioni dimostrative residue create da vecchie esecuzioni dello script delle query operative, così tali voci non compaiono nell'interfaccia. Poiché la migrazione comprende aggiornamenti massivi controllati, salva il valore di \texttt{SQL\_SAFE\_UPDATES}, lo disattiva esclusivamente per la sessione corrente e lo ripristina al termine. In questo modo lo script è eseguibile anche da MySQL Workbench con la modalità sicura attiva, senza modificare le preferenze globali.
 
 \begin{lstlisting}[caption={Gestione della modalità safe update nella migrazione}]
 SET @sage_old_sql_safe_updates = @@SESSION.SQL_SAFE_UPDATES;
@@ -1161,7 +1163,8 @@ Le tecnologie principali sono:
     \item \textbf{Java Swing e AWT}: costruzione delle finestre, dei form, delle tabelle, dei pannelli e dei grafici;
     \item \textbf{JDBC}: collegamento al DBMS e gestione di query parametrizzate e transazioni;
     \item \textbf{MySQL Connector/J}: driver JDBC incluso nella cartella \path{lib};
-    \item \textbf{MySQL}: DBMS utilizzato, eseguito localmente tramite l'installazione XAMPP;
+    \item \textbf{MySQL}: DBMS utilizzato per la persistenza dei dati;
+    \item \textbf{XAMPP}: ambiente locale usato per eseguire MySQL, gestire l'avvio del servizio e amministrare il database tramite phpMyAdmin;
     \item \textbf{SQL}: definizione dello schema, trigger, viste, popolamento e interrogazioni;
     \item \textbf{API Desktop di Java}: apertura dei documenti digitali con il programma predefinito del sistema operativo.
 \end{itemize}
@@ -1195,7 +1198,7 @@ Il codice sorgente si trova sotto \path{src/it/unibo/sage} ed è suddiviso come 
 Questa struttura segue la separazione in livelli adottata nelle relazioni di riferimento: le finestre non incorporano la logica SQL, ma delegano a classi dedicate che rendono esplicito il percorso tra interfaccia e database.
 
 \subsection{Collegamento al database tramite JDBC}
-La classe \texttt{DatabaseConnection} centralizza la creazione delle connessioni. Prima carica il driver \texttt{com.mysql.cj.jdbc.Driver}, quindi usa \texttt{DriverManager.getConnection}. In assenza di configurazioni esterne, il collegamento predefinito punta al database locale:
+La classe \texttt{DatabaseConnection} centralizza la creazione delle connessioni. Prima carica il driver \texttt{com.mysql.cj.jdbc.Driver}, quindi usa \texttt{DriverManager.getConnection}. Il server MySQL viene avviato localmente tramite XAMPP; in assenza di configurazioni esterne, il collegamento predefinito punta al database locale:
 
 \begin{lstlisting}[language=Java,caption={Configurazione predefinita della connessione JDBC}]
 jdbc:mysql://localhost:3306/
@@ -1252,8 +1255,8 @@ Le principali aree disponibili all'utente sono:
 \begin{itemize}
     \item \textbf{Riepilogo}: indicatori, andamento temporale, distribuzione per categoria, stato dei budget e ultimi movimenti;
     \item \textbf{Transazioni}: schede delle entrate e delle spese, con modifica ed eliminazione;
-    \item \textbf{Budget}: definizione di limiti generali o specifici per categoria;
-    \item \textbf{Categorie e Tag} e \textbf{Fonti}: elementi di sistema e personali, con scelta o caricamento di un'icona;
+    \item \textbf{Budget}: visualizzazione dei budget unici tramite barre di avanzamento, con modifica, eliminazione e creazione di nuovi limiti tramite il pulsante \emph{+ Budget};
+    \item \textbf{Categorie e Tag} e \textbf{Fonti}: elementi di sistema e personali, con scelta o caricamento di un'icona e pulsanti di modifica/eliminazione;
     \item \textbf{Ricorrenze}: modelli periodici e consultazione delle spese generate;
     \item \textbf{Documenti}: documenti collegati alle spese, apribili con il programma predefinito.
 \end{itemize}
@@ -1261,7 +1264,7 @@ Le principali aree disponibili all'utente sono:
 La dashboard amministrativa è separata da quella personale. Mostra numero di utenti, numero di transazioni, spese, entrate, budget superati, andamento mensile globale e categorie più utilizzate. I dati sono aggregati: l'amministratore non accede alle descrizioni dei movimenti né ai documenti personali.
 
 \subsection{Schermate principali}
-La Figura~\ref{fig:dashboard-utente} mostra la schermata principale dell'utente con il filtro annuale selezionato. Nella parte superiore sono riepilogati saldo, entrate, spese e budget utilizzato. Il grafico a barre confronta entrate e spese mese per mese, mentre il grafico ad anello mostra la distribuzione delle uscite tra le categorie. Nella parte inferiore sono riportati lo stato dei budget e le transazioni più recenti.
+La Figura~\ref{fig:dashboard-utente} mostra la schermata principale dell'utente con il filtro annuale selezionato. Nella parte superiore sono riepilogati saldo, entrate, spese e budget utilizzato. Il grafico a barre confronta entrate e spese mese per mese, mentre il grafico ad anello mostra la distribuzione delle uscite tra le categorie. Nella parte inferiore sono riportati lo stato dei budget, rappresentato con barre percentuali, e le transazioni più recenti. La stessa rappresentazione a barre viene riutilizzata anche nella sezione dedicata alla gestione dei budget, che non mostra più una semplice tabella ma una vista più coerente con il riepilogo.
 
 \begin{figure}[H]
     \centering
@@ -1277,8 +1280,8 @@ La schermata costituisce il punto di accesso alle funzioni operative: il pulsant
     \item \textbf{Registrazione e login}: lo studente crea un account, accede con email e password e viene indirizzato alla propria dashboard; il ruolo amministrativo apre invece la vista aggregata.
     \item \textbf{Inserimento di una spesa}: l'utente specifica importo, data, descrizione e categoria, seleziona eventuali tag e documento; il sistema registra il periodo e aggiorna i budget interessati nella stessa transazione JDBC.
     \item \textbf{Inserimento di una entrata}: l'utente seleziona una fonte; la transazione viene salvata senza categoria, tag o documento.
-    \item \textbf{Definizione di un budget}: l'utente sceglie mese, anno, limite ed eventuale categoria; il totale già speso viene calcolato sui movimenti esistenti.
-    \item \textbf{Gestione delle classificazioni}: categorie, tag e fonti personali possono essere creati, modificati o eliminati; gli elementi di sistema rimangono disponibili ma protetti.
+    \item \textbf{Definizione di un budget}: l'utente apre il form tramite \emph{+ Budget}, sceglie limite ed eventuale categoria; se esiste già un budget per lo stesso ambito, il sistema lo aggiorna invece di crearne una copia. Il totale speso viene ricalcolato sui movimenti del mese corrente e la schermata mostra la barra di avanzamento aggiornata.
+    \item \textbf{Gestione delle classificazioni}: categorie, tag e fonti personali possono essere creati, modificati o eliminati; nella versione dimostrativa sono esposti anche i pulsanti di modifica ed eliminazione sugli elementi di sistema, restando comunque attivi i vincoli referenziali del database.
     \item \textbf{Spesa ricorrente}: il modello memorizza nome, importo, frequenza, categoria e scadenze; il servizio genera le transazioni non ancora registrate e ne evita la duplicazione.
     \item \textbf{Documento digitale}: l'utente seleziona una spesa priva di allegato e un file locale; il DB conserva il percorso e l'interfaccia permette successivamente di aprirlo, modificarlo o eliminarlo.
     \item \textbf{Statistiche amministrative}: l'amministratore consulta indicatori e grafici costruiti su dati aggregati e gestisce categorie, tag e fonti di sistema.
@@ -1286,7 +1289,7 @@ La schermata costituisce il punto di accesso alle funzioni operative: il pulsant
 
 \section{Test e validazione}
 \subsection{Dati di test utilizzati}
-I dati di test includono due studenti normali e un amministratore. Lo studente \path{studente1@mail.com} ha transazioni, categorie personali, fonti, tag, budget e almeno un documento dimostrativo. Lo studente \path{studente2@mail.com} consente di verificare l'isolamento dei dati.
+I dati di test includono due studenti normali e un amministratore. Lo studente \path{studente1@mail.com} ha transazioni, categorie personali, fonti, tag, budget, ricorrenze e almeno un documento dimostrativo. Lo studente \path{studente2@mail.com} consente di verificare l'isolamento dei dati con un secondo portafoglio completo. Il popolamento copre i mesi da gennaio a giugno 2026 con movimenti distribuiti nel tempo: sono presenti sia entrate sia spese, comprese rate ricorrenti collegate ai relativi modelli.
 
 \subsection{Test delle query SQL}
 \begin{longtable}{p{4.5cm} p{5cm} p{5cm}}
@@ -1302,7 +1305,7 @@ Login valido & \path{studente1@mail.com}, \texttt{password1} & Utente trovato. \
 Login non valido & Password errata & Nessun utente trovato. \\
 Documenti utente & Email studente 1 & Solo documenti delle sue spese. \\
 Spese senza documento & Email studente 1 & Solo spese prive di documento. \\
-Budget stato & Email studente 1 & Budget ordinati per periodo e ambito. \\
+Budget stato & Email studente 1 & Budget unici per ambito, con stato calcolato sul periodo corrente. \\
 Isolamento utenti & Email studente 2 & Nessun dato personale dello studente 1. \\
 \bottomrule
 \end{longtable}
@@ -1320,7 +1323,7 @@ Isolamento utenti & Email studente 2 & Nessun dato personale dello studente 1. \
 
 \subsection{Casi limite gestiti}
 \begin{itemize}
-    \item assenza di budget per il periodo corrente;
+    \item assenza di budget configurati;
     \item assenza di documenti per un utente;
     \item file documento rimosso dal disco;
     \item assenza di entrate nel calcolo percentuale;

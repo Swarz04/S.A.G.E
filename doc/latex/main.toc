@@ -63,25 +63,25 @@
 \contentsline {subsubsection}{\numberline {6.8.2}Inserimento atomico di una spesa}{21}{subsubsection.6.8.2}%
 \contentsline {subsubsection}{\numberline {6.8.3}Upsert del budget}{22}{subsubsection.6.8.3}%
 \contentsline {subsubsection}{\numberline {6.8.4}Documenti dell'utente}{22}{subsubsection.6.8.4}%
-\contentsline {subsubsection}{\numberline {6.8.5}Analisi percentuale}{22}{subsubsection.6.8.5}%
+\contentsline {subsubsection}{\numberline {6.8.5}Analisi percentuale}{23}{subsubsection.6.8.5}%
 \contentsline {subsubsection}{\numberline {6.8.6}Query di supporto}{23}{subsubsection.6.8.6}%
 \contentsline {subsubsection}{\numberline {6.8.7}Motivazioni}{23}{subsubsection.6.8.7}%
-\contentsline {section}{\numberline {7}Progettazione dell’applicazione}{23}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Architettura generale dell’applicazione}{23}{subsection.7.1}%
+\contentsline {section}{\numberline {7}Progettazione dell’applicazione}{24}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Architettura generale dell’applicazione}{24}{subsection.7.1}%
 \contentsline {subsection}{\numberline {7.2}Tecnologie usate}{24}{subsection.7.2}%
 \contentsline {subsection}{\numberline {7.3}Struttura dei package Java}{24}{subsection.7.3}%
 \contentsline {subsection}{\numberline {7.4}Collegamento al database tramite JDBC}{25}{subsection.7.4}%
 \contentsline {subsection}{\numberline {7.5}Organizzazione delle classi principali}{25}{subsection.7.5}%
 \contentsline {subsection}{\numberline {7.6}Gestione degli errori e validazione input}{26}{subsection.7.6}%
 \contentsline {subsection}{\numberline {7.7}Interfaccia grafica Java Swing}{26}{subsection.7.7}%
-\contentsline {subsection}{\numberline {7.8}Schermate principali}{26}{subsection.7.8}%
+\contentsline {subsection}{\numberline {7.8}Schermate principali}{27}{subsection.7.8}%
 \contentsline {subsection}{\numberline {7.9}Flussi d’uso principali}{27}{subsection.7.9}%
 \contentsline {section}{\numberline {8}Test e validazione}{28}{section.8}%
 \contentsline {subsection}{\numberline {8.1}Dati di test utilizzati}{28}{subsection.8.1}%
 \contentsline {subsection}{\numberline {8.2}Test delle query SQL}{28}{subsection.8.2}%
 \contentsline {subsection}{\numberline {8.3}Test delle funzionalità applicative}{28}{subsection.8.3}%
-\contentsline {subsection}{\numberline {8.4}Casi limite gestiti}{28}{subsection.8.4}%
-\contentsline {subsection}{\numberline {8.5}Errori noti o limitazioni}{28}{subsection.8.5}%
+\contentsline {subsection}{\numberline {8.4}Casi limite gestiti}{29}{subsection.8.4}%
+\contentsline {subsection}{\numberline {8.5}Errori noti o limitazioni}{29}{subsection.8.5}%
 \contentsline {section}{\numberline {9}Conclusioni}{29}{section.9}%
 \contentsline {subsection}{\numberline {9.1}Risultato ottenuto}{29}{subsection.9.1}%
 \contentsline {subsection}{\numberline {9.2}Scelte progettuali principali}{29}{subsection.9.2}%

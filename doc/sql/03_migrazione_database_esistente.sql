@@ -159,6 +159,31 @@ WHERE Icona IS NULL OR TRIM(Icona) = '';
 DELETE FROM TAG
 WHERE LOWER(TRIM(Nome)) = 'essenziale';
 
+-- Pulizia di eventuali voci dimostrative lasciate da vecchie esecuzioni di
+-- 04_query_operazioni.sql. Queste righe non fanno parte del popolamento demo
+-- ufficiale e non devono comparire nell'interfaccia dell'utente.
+DELETE F
+FROM FONTE F
+LEFT JOIN TRANSIZIONE T ON T.ID_Fonte = F.ID_Fonte
+WHERE TRIM(F.Nome) IN ('Fonte sistema test', 'Fonte personale test')
+  AND T.ID_Transizione IS NULL;
+
+DELETE TG
+FROM TAG TG
+LEFT JOIN SPESA_TAG ST ON ST.ID_Tag = TG.ID_Tag
+WHERE TRIM(TG.Nome) IN ('Tag sistema test', 'Tag personale test')
+  AND ST.ID_Tag IS NULL;
+
+DELETE C
+FROM CATEGORIA C
+LEFT JOIN TRANSIZIONE T ON T.ID_Categoria = C.ID_Categoria
+LEFT JOIN SPESA_RICORRENTE SR ON SR.ID_Categoria = C.ID_Categoria
+LEFT JOIN BUDGET B ON B.ID_Categoria = C.ID_Categoria
+WHERE TRIM(C.Nome) IN ('Categoria sistema test', 'Categoria personale test')
+  AND T.ID_Transizione IS NULL
+  AND SR.ID_Ricorrenza IS NULL
+  AND B.ID_Budget IS NULL;
+
 -- ---------------------------------------------------------------------------
 -- Vincoli e indice per la relazione ricorrenza -> transazioni
 -- ---------------------------------------------------------------------------
@@ -239,6 +264,63 @@ SET @sql = IF(
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+
+-- ---------------------------------------------------------------------------
+-- Budget unici per ambito
+-- ---------------------------------------------------------------------------
+
+-- La nuova versione considera il budget come un limite mensile ricorrente:
+-- per ogni utente puo' esistere un solo budget globale e un solo budget per
+-- ciascuna categoria. Il periodo salvato viene aggiornato dall'applicazione
+-- al mese corrente, evitando duplicati gennaio/febbraio/marzo ecc.
+SET @column_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'BUDGET'
+      AND COLUMN_NAME = 'ID_Categoria_Key'
+);
+SET @sql = IF(
+    @column_exists = 0,
+    'ALTER TABLE BUDGET ADD COLUMN ID_Categoria_Key INT GENERATED ALWAYS AS (IFNULL(ID_Categoria, 0)) STORED AFTER ID_Categoria',
+    'SELECT ''BUDGET.ID_Categoria_Key gia presente'' AS Messaggio'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Prima di applicare il nuovo vincolo tengo una sola riga per ambito,
+-- conservando quella con ID_Budget piu' recente.
+DELETE B1
+FROM BUDGET B1
+JOIN BUDGET B2
+  ON B1.Email = B2.Email
+ AND B1.ID_Categoria_Key = B2.ID_Categoria_Key
+ AND B1.ID_Budget < B2.ID_Budget;
+
+-- Coerenza dati demo: il budget globale mensile non deve essere inferiore
+-- ai budget specifici per categoria.
+UPDATE BUDGET
+SET Importo_Limite = 750.00
+WHERE ID_Categoria IS NULL
+  AND Importo_Limite < 750.00;
+
+SET @idx_exists = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'BUDGET'
+      AND INDEX_NAME = 'UQ_BUDGET_AMBITO'
+);
+SET @sql = IF(
+    @idx_exists > 0,
+    'ALTER TABLE BUDGET DROP INDEX UQ_BUDGET_AMBITO',
+    'SELECT ''UQ_BUDGET_AMBITO non presente: nessun drop necessario'' AS Messaggio'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+CREATE UNIQUE INDEX UQ_BUDGET_AMBITO ON BUDGET (Email, ID_Categoria_Key);
 
 -- ---------------------------------------------------------------------------
 -- Trigger anti-duplicato per categorie, tag e fonti
